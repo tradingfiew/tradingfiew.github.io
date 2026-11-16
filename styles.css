@@ -185,3 +185,16 @@ html,body{max-width:100%;overflow-x:clip}
  .modal-card{padding:16px}
 }
 @media(orientation:landscape) and (max-height:550px) and (max-width:960px){.chart-holder{height:330px;min-height:310px}}
+
+/* Crawlable market research explanation below the terminal, outside chart canvas */
+.seo-overview{border-top:1px solid var(--stroke);padding:35px 28px 42px;background:var(--shell);color:var(--text)}
+.seo-overview-header{max-width:1000px}
+.seo-overview h2{font-size:clamp(21px,2.4vw,30px);line-height:1.25;margin:6px 0 15px;letter-spacing:-.6px}
+.seo-overview h3{font-size:14px;margin:0 0 8px;color:var(--text)}
+.seo-overview p{color:var(--muted);font-size:12px;line-height:1.85;margin:0}
+.seo-overview a{color:var(--green);text-decoration:underline;text-underline-offset:3px}
+.seo-features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:24px 0 16px}
+.seo-features article{padding:18px;border-radius:11px;border:1px solid var(--stroke);background:var(--panel);min-width:0}
+.seo-disclaimer{max-width:1080px}
+@media(max-width:890px){.seo-features{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.seo-overview{padding:24px 14px 28px}.seo-features{grid-template-columns:1fr;gap:9px}.seo-features article{padding:15px}.seo-overview h2{font-size:22px}.seo-overview p{font-size:12px}}

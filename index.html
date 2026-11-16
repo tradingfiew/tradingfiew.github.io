@@ -48,6 +48,11 @@
         <div id="marketList" class="market-list"></div>
         <div class="sidebar-bottom"><button type="button" id="sideDonateBtn" class="side-donate"><span>♥</span> Donate with Crypto</button><div class="sidebar-tip">✦ <b>Zero API keys</b><br><span>Public exchange market data. No trading account needed. Non-crypto market quotes are indicative.</span></div><div class="side-foot">FREE TO USE <span>v1.0</span></div></div>
       </aside>
+      <nav class="mobile-jump-nav" aria-label="Mobile market navigation">
+        <a href="#chartHost">Chart</a>
+        <a href="#analysisPanel">SMC Analysis</a>
+        <a href="#donateBtn">Donate ₿</a>
+      </nav>
 
       <section class="center-pane">
         <div class="instrument-header">
@@ -172,6 +177,6 @@
       <button type="button" id="donateDoneBtn" class="donate-dismiss">Close</button>
     </div>
   </div>
-  <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a crypto pair and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical candles come from public Binance Spot uses public exchange candles and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
+  <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a crypto pair and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical crypto candles use Binance Spot data; the prices and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
 </body>
 </html>

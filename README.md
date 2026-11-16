@@ -58,3 +58,14 @@ A prominent **Donate ₿** button is in the header, plus a secondary button in t
 The wallet addresses are intentionally blank. **No donation is possible until the verified owner supplies the actual receiving address for each network.** To enable, edit the corresponding `address` value in `donate.js` and validate it against your wallet or exchange's deposit address. The application verifies the basic format before allowing address copying, but the operator must still verify network and wallet ownership, including that token deposits are supported. Crypto transfers may be irreversible.
 
 The donation button is independent of AdSense and must never be used to induce advertisement clicks.
+
+## Anonymous workspaces and full-screen Chart Window
+
+Every visit works without signing up or supplying a password. TradingFiew assigns a randomly generated **local browser workspace** ID and automatically saves each browser profile's symbol, time frame, favorites, category/search filters, theme, Auto SMC setting, technical-indicator toggles, tab and chart-window state.
+
+Manual horizontal levels, trend lines and Fibonacci retracements are saved separately for each instrument and timeframe, including partial removal of Fibonacci levels. Drawing selection/deletion in the manager immediately updates the saved workspace. The **My Space** panel explains the storage boundaries and offers a local erasure action with explicit confirmation.
+
+The top-right **⤢ Chart Window** button opens the same live interactive chart in an immersive phone/desktop window; it does not render a static screenshot. Open/close and Escape work on the focused chart. The setting is remembered locally.
+
+**Privacy limitation:** a GitHub Pages static app cannot identify or authenticate people without a server. Separate browser profiles/devices have separate local data; two people sharing **the same browser profile** can see its saved drawings, even with the anonymous ID. Use separate browser profiles for genuine separation without passwords. There is no cloud synchronization, account recovery, remote data upload or encryption guarantee for localStorage. Never store secret keys in the workspace.
+

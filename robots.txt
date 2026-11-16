@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tradingfiew.github.io/sitemap.xml

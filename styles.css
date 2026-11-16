@@ -258,3 +258,79 @@ body.light .selected-drawing-bar{background:rgba(244,248,253,.97)}
  .drawing-row .drawing-select{min-height:39px}
  .drawing-row .drawing-item-delete{min-height:39px}
 }
+
+/* Chart Window v1.6 — immersive terminal view, same interactive chart instance */
+.workspace-entry{min-height:34px;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--stroke);background:var(--panel);color:var(--text);border-radius:8px;padding:5px 9px;font:700 10px 'DM Sans',sans-serif;white-space:nowrap}
+.workspace-entry:hover{border-color:var(--green);color:var(--green)}
+.workspace-entry:focus-visible,.chart-window-close:focus-visible,.chart-window-trigger:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.workspace-entry>span:first-child{color:var(--green);font-size:16px}
+.workspace-modal{max-width:520px}
+.workspace-modal h2{font-size:25px;margin:8px 0 18px}
+.workspace-status{display:flex;align-items:center;gap:10px;border:1px solid rgba(66,216,157,.28);background:var(--mintwash);padding:12px;border-radius:9px;margin-bottom:16px}
+.workspace-status>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.workspace-status strong{font-size:12px;color:var(--text)}
+.workspace-status small{font-size:10px;color:var(--muted)}
+.workspace-dot{display:block;width:10px;height:10px;flex:none;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(56,201,149,.12)}
+.workspace-modal>p{font-size:12px;line-height:1.7}
+.workspace-privacy-note{padding:13px 14px;border:1px solid var(--stroke);border-radius:9px;margin:15px 0}
+.workspace-privacy-note strong{font-size:12px}
+.workspace-privacy-note p{font-size:11px;line-height:1.7;margin:7px 0 0;color:var(--muted)}
+.workspace-erase{width:100%;padding:11px;border:1px solid rgba(251,108,134,.54);background:rgba(248,97,126,.10);color:var(--red);border-radius:8px;font-weight:750;font-size:12px}
+.workspace-erase:hover{background:rgba(248,97,126,.18)}
+.chart-window-bar{display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 15px;border-bottom:1px solid var(--stroke);background:var(--panel);flex:0 0 auto}
+.chart-window-title{display:flex;align-items:center;gap:11px}
+.chart-window-icon{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--stroke);border-radius:9px;background:var(--mintwash);color:var(--green);font-size:22px}
+.chart-window-title>div{display:flex;flex-direction:column;gap:3px}
+.chart-window-title strong{font-size:12px;letter-spacing:1px}
+.chart-window-title small{font:10px 'DM Sans',sans-serif;color:var(--muted)}
+.chart-window-close{min-width:78px;min-height:36px;border:1px solid var(--stroke);background:var(--elev);color:var(--text);border-radius:8px;padding:7px 12px;font:750 12px 'DM Sans',sans-serif}
+.chart-window-close:hover{border-color:var(--green);color:var(--green)}
+body.chart-window-active{overflow:hidden}
+body.chart-window-active .center-pane{
+ position:fixed!important;inset:0!important;z-index:1001!important;width:100vw!important;
+ max-width:none!important;height:100dvh!important;max-height:100dvh!important;
+ background:var(--shell);margin:0!important;display:flex!important;flex-direction:column!important;
+ overflow:hidden!important;isolation:isolate
+}
+body.chart-window-active .chart-window-bar{display:flex}
+body.chart-window-active .center-pane .instrument-header{flex:0 0 auto}
+body.chart-window-active .center-pane .chart-toolbar{flex:0 0 auto}
+body.chart-window-active .center-pane .bottom-panel{display:none!important}
+body.chart-window-active .center-pane .chart-space{
+ flex:1 1 0!important;display:flex!important;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden!important
+}
+body.chart-window-active .center-pane .chart-inner{
+ flex:1 1 0!important;display:flex!important;flex-direction:column!important;
+ min-height:0!important;min-width:0!important;height:100%!important;overflow:hidden!important
+}
+body.chart-window-active .center-pane .chart-holder{
+ flex:1 1 0!important;min-height:170px!important;height:auto!important;max-height:none!important
+}
+body.chart-window-active .center-pane .chart-host{height:100%!important}
+body.chart-window-active .center-pane .rsi-panel{flex:0 0 92px!important;min-height:0!important}
+body.chart-window-active .center-pane .chart-footer{flex:0 0 30px!important}
+body.chart-window-active .center-pane .draw-tools{overflow-y:auto;overscroll-behavior:contain}
+@media(max-width:730px){
+ .workspace-entry{padding:6px;min-width:30px;height:33px;justify-content:center}
+ .workspace-entry .workspace-name{display:none}
+ .chart-window-title strong{font-size:11px}
+ .chart-window-title small{font-size:9px}
+ .chart-window-bar{padding:7px 10px}
+ .chart-window-close{min-height:33px;padding:6px 9px;font-size:11px}
+ body.chart-window-active .instrument-header{min-height:0!important;padding:7px 9px!important}
+ body.chart-window-active .instrument-stats{padding-top:5px!important}
+ body.chart-window-active .chart-toolbar{min-height:74px!important;padding:5px 8px!important}
+ body.chart-window-active .chart-space{flex:1 1 0!important;min-height:0!important;height:auto!important}
+ body.chart-window-active .chart-inner{min-height:0!important;height:100%!important}
+ body.chart-window-active .chart-holder{height:auto!important;flex:1 1 0!important;min-height:130px!important}
+ body.chart-window-active .rsi-panel{flex:0 0 75px!important;height:75px!important}
+ body.chart-window-active .chart-footer{flex:0 0 28px!important}
+ .workspace-modal h2{font-size:22px}
+ .workspace-modal>p{font-size:12px}
+}
+@media(max-width:360px){
+ .workspace-entry{padding:5px;min-width:26px;height:31px}
+ .header-actions .workspace-entry>span:first-child{font-size:14px}
+ .chart-window-title small{display:none}
+ body.chart-window-active .rsi-panel{flex-basis:65px!important}
+}

@@ -8,7 +8,7 @@ const activeMarket=()=>Markets.get(state.symbol)||coins[0];
 const coins=Markets.instruments;
 let state={
 symbol:'XAUUSD',category:'all',tf:'1h',data:[],analysis:null,htf:null,request:0,ws:null,controller:null,refreshTimer:null,
-heartbeat:null,analysisTimer:null,reconnectTimer:null,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
+heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,quoteBusy:false,quoteAt:null,quotePrice:null,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false;
@@ -24,7 +24,7 @@ const date=t=>new Date(t*1000).toLocaleString('en-GB',{timeZone:'UTC',day:'2-dig
 const relative=(t)=>{const n=Math.round((Date.now()/1000-t)/60);return n<1?'just now':n<60?n+'m ago':n<1440?Math.floor(n/60)+'h ago':Math.floor(n/1440)+'d ago';};
 const themeColors=()=>document.body.classList.contains('light')?{bg:'#f7f9fc',text:'#6b7b91',grid:'#e9eef4'}:{bg:'#0c1322',text:'#75849a',grid:'#172236'};
 function toast(message,error=false){const el=$('toast');el.textContent=message;el.classList.toggle('error',error);el.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),5000);}
-function connection(value,mode){$('connectionState').textContent=value;$('feedText').textContent=mode||value;$('liveDot').className='status-dot '+(value==='LIVE'?'online':value==='OFFLINE'?'offline':'');$('feedStatusDot').className='status-dot '+(value==='LIVE'?'online':value==='OFFLINE'?'offline':'');state.live=value==='LIVE';}
+function connection(value,mode){$('connectionState').textContent=value;$('feedText').textContent=mode||value;const live=value==='LIVE'||value==='LIVE QUOTE';$('liveDot').className='status-dot '+(live?'online':value==='OFFLINE'?'offline':'');$('feedStatusDot').className='status-dot '+(live?'online':value==='OFFLINE'?'offline':'');state.live=live;}
 function loading(message,sub,error=false){const el=$('chartState');el.classList.remove('hidden');el.classList.toggle('error',error);el.querySelector('strong').textContent=message;el.querySelector('span').textContent=sub;}
 function showChart(){ $('chartState').classList.add('hidden');}
 function chartOptions(height,primary=false){
@@ -92,27 +92,79 @@ if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineS
 if(!lastPriceLine)lastPriceLine=candles.createPriceLine(options);else lastPriceLine.applyOptions(options);
 }catch(e){console.warn('Last-price guide issue',e);}}
 }
+
+const TF_SECONDS=Object.freeze({'5m':300,'15m':900,'1h':3600,'4h':14400,'1d':86400});
+/* Quote and candle data must use the exact same price scale.
+ * An active quote adjusts ONLY an already-open, matching OHLC candle.
+ * Historic or closed candles are never fabricated or silently rewritten. */
+function syncIndicativeQuoteToChart(price,quoteAt){
+  if(activeMarket().provider==='binance'||!Number.isFinite(quoteAt)||!Number.isFinite(price))return;
+  const latest=state.data.at(-1),seconds=TF_SECONDS[state.tf];
+  if(!latest||!latest.isOpen||!seconds)return;
+  if(quoteAt<latest.time||quoteAt>=latest.time+seconds)return;
+  const revised={...latest,high:Math.max(latest.high,price),low:Math.min(latest.low,price),close:price};
+  state.data[state.data.length-1]=revised;
+  try{candles.update({time:revised.time,open:revised.open,high:revised.high,low:revised.low,close:revised.close});}
+  catch(error){console.warn('Active candle synchronization failed',error);}
+  setOhlc(revised);
+}
+function quoteFresh(t){
+  return t.marketState==='open'&&!t.stale&&Number.isFinite(t.quoteAt)&&Math.abs(Date.now()/1000-t.quoteAt)<120;
+}
 function candleFromKline(k){return{time:Math.floor(Number(k[0])/1000),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4]),volume:Number(k[5])};}
 function validate(rows){if(!Array.isArray(rows)||rows.length<60)throw new Error('Exchange returned insufficient candle data.');const data=rows.map(candleFromKline).filter(c=>Object.values(c).every(Number.isFinite));if(data.length<60)throw new Error('Exchange returned invalid OHLC prices.');return data.sort((a,b)=>a.time-b.time).filter((c,i,a)=>i===0||c.time!==a[i-1].time);}
 async function fetchCandles(symbol,tf,limit=650,signal){return Markets.candles(symbol,tf,limit,signal);}
 async function fetchTicker(symbol,request){
-const c=Markets.get(symbol);if(!c)return;
-try{const t=await Markets.quote(symbol,state.controller?.signal);if(request!==state.request)return;
-if(Number.isFinite(t.price))updatePrice(t.price);
-$('priceChange').textContent=t.marketState==='closed'?'MARKET CLOSED':sign(t.change);
-$('priceChange').className='change-label '+(t.marketState==='closed'?'':t.change>=0?'up':'down');
-$('high24').textContent=fmt(t.high);$('low24').textContent=fmt(t.low);
-$('volume24').textContent=c.provider==='binance'?compact(t.volume)+' USDT':(t.source||'Indicative').replace('MetaTrader 5','MT5').slice(0,18);
-if(c.provider!=='binance'){
-const fresh=t.marketState==='open'&&!t.stale;
-connection(fresh?'REST FEED':'MARKET CLOSED',fresh?'Indicative quotes (20s refresh)':'Last available indicative quote — market closed or stale');
-if(Number.isFinite(t.quoteAt))$('updatedAt').textContent='Quote '+new Date(t.quoteAt*1000).toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' UTC';
-}}catch(e){if(request===state.request){$('priceChange').textContent='Quote unavailable';if(c?.provider!=='binance')connection('OFFLINE','Indicative market quote unavailable');}}
+if(request!==state.request)return;
+const market=Markets.get(symbol);if(!market||state.quoteBusy)return;
+state.quoteBusy=true;
+try{
+const t=await Markets.quote(symbol,state.controller?.signal);
+if(request!==state.request)return;
+const validPrice=Number.isFinite(t.price)&&t.price>0;
+const quoteAt=Number.isFinite(t.quoteAt)?t.quoteAt:null;
+const newer=quoteAt===null||state.quoteAt===null||quoteAt>=state.quoteAt;
+const fresh=quoteFresh(t);
+if(validPrice&&newer){
+  state.quoteAt=quoteAt;
+  state.quotePrice=t.price;
+  updatePrice(t.price);
+  if(market.provider!=='binance'&&fresh)syncIndicativeQuoteToChart(t.price,quoteAt);
 }
-function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);try{state.ws?.close();}catch{}state.ws=null;}
+$('priceChange').textContent=t.marketState==='closed'?'MARKET CLOSED':t.stale?'QUOTE STALE':sign(t.change);
+$('priceChange').className='change-label '+(t.marketState==='closed'||t.stale?'':t.change>=0?'up':'down');
+$('high24').textContent=fmt(t.high);$('low24').textContent=fmt(t.low);
+$('volume24').textContent=market.provider==='binance'?compact(t.volume)+' USDT':(t.source||'Indicative').replace('MetaTrader 5','MT5').slice(0,18);
+if(market.provider!=='binance'){
+  const status=fresh?'LIVE QUOTE':t.marketState==='closed'?'MARKET CLOSED':'QUOTE STALE';
+  connection(status,fresh?'Indicative live midpoint · checks every 5s':
+    t.marketState==='closed'?'Market closed · last known indicative quote':'No fresh quote from market-data provider');
+  if(quoteAt!==null){
+    $('updatedAt').textContent='Quote '+new Date(quoteAt*1000).toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'})+' UTC';
+  }else $('updatedAt').textContent='Quote time unavailable';
+}
+}catch(error){
+ if(request===state.request){
+  if(market.provider!=='binance'){
+    connection('OFFLINE','Live quote unavailable · showing last known price');
+    $('priceChange').textContent='Quote unavailable';
+  }
+  console.warn('Quote refresh failed',error);
+ }
+}finally{state.quoteBusy=false;}
+}
+function startQuotePolling(request){
+  clearInterval(state.quoteTimer);state.quoteTimer=null;
+  if(request!==state.request||activeMarket().provider==='binance')return;
+  state.quoteTimer=setInterval(()=>{
+    if(request!==state.request||document.hidden)return;
+    void fetchTicker(state.symbol,request);
+  },5000);
+}
+function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
-try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();state.activePrice=null;connection('CONNECTING','Fetching historical candles...');
+try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
 $('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
 try{
@@ -149,7 +201,7 @@ if(show)try{const range=chart.timeScale().getVisibleRange();if(range)rsiChart.ti
 }
 function connectStream(request){
 if(request!==state.request)return;
-if(activeMarket().provider!=='binance'){connection('REST FEED','Indicative candles — polling every 20 seconds');startPolling(request);return;}
+if(activeMarket().provider!=='binance'){connection('REST FEED','Indicative candles (20s) · quotes (5s)');startPolling(request);startQuotePolling(request);return;}
 let connected=false;
 try{
 const url='wss://data-stream.binance.vision/ws/'+state.symbol.toLowerCase()+'@kline_'+state.tf;
@@ -179,7 +231,17 @@ if(request!==state.request)return;
 try{const rows=await fetchCandles(state.symbol,state.tf,activeMarket().provider==='binance'?100:160);if(request!==state.request)return;
 for(const c of rows){const last=state.data.at(-1);if(c.time===last?.time)state.data[state.data.length-1]=c;else if(c.time>last?.time)state.data.push(c);}
 if(state.data.length>650)state.data=state.data.slice(-650);
-setCandleData();updatePrice(state.data.at(-1).close);setOhlc(state.data.at(-1));analyze();fetchTicker(state.symbol,request);
+setCandleData();
+const candle=state.data.at(-1);
+if(activeMarket().provider==='biquote'&&Number.isFinite(state.quotePrice)&&Number.isFinite(state.quoteAt)&&quoteFresh({marketState:'open',stale:false,quoteAt:state.quoteAt})){
+  syncIndicativeQuoteToChart(state.quotePrice,state.quoteAt);
+}
+if(!Number.isFinite(state.quoteAt)||candle.time>state.quoteAt){
+  updatePrice(candle.close);
+  setOhlc(candle);
+}
+analyze();
+if(activeMarket().provider==='binance')void fetchTicker(state.symbol,request);
 }catch{}
 },activeMarket().provider==='binance'?60000:20000);
 }
@@ -660,7 +722,7 @@ const row=e.target.closest('[data-pair]');if(row&&row.dataset.pair!==state.symbo
 $('symbolSearch').addEventListener('input',()=>{remember('search',$('symbolSearch').value);renderMarkets();});
 $('timeframes').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b&&b.dataset.tf!==state.tf){clearDrawings({forget:false,notice:false});state.tf=b.dataset.tf;loadMarket();}});
 $('refreshBtn').addEventListener('click',()=>loadMarket(false));
-$('fitBtn').addEventListener('click',()=>chart?.timeScale().fitContent());
+$('fitBtn').addEventListener('click',focusRecentCandles);
 $('chartWindowBtn').addEventListener('click',()=>setChartWindow(!state.chartWindow));
 $('chartWindowCloseBtn').addEventListener('click',()=>setChartWindow(false));
 $('csvBtn').addEventListener('click',downloadCsv);
@@ -727,6 +789,7 @@ function start(){
 try{
 let responsiveTimer=null;
 window.addEventListener('resize',()=>{clearTimeout(responsiveTimer);responsiveTimer=setTimeout(()=>{resizeChartWindow();if(state.analysis){renderMarkers();drawZones();}},140);},{passive:true});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&activeMarket().provider==='biquote'&&state.data.length)void fetchTicker(state.symbol,state.request);});
 restoreSettings();setupWorkspaceUi();
 const url=new URL(location.href),requested=url.searchParams.get('symbol'),tf=url.searchParams.get('tf');
 if(coins.some(c=>c.symbol===requested))state.symbol=requested;

@@ -1,7 +1,7 @@
 /* RibhLab SMC Terminal | no secrets, no trading orders, all market data public. */
 (function(){
 'use strict';
-const LW=window.LightweightCharts,Engine=window.SmcEngine,Markets=window.TradingFiewMarkets;
+const LW=window.LightweightCharts,Engine=window.SmcEngine,Markets=window.TradingFiewMarkets,Space=window.TradingFiewWorkspace;
 const $=id=>document.getElementById(id);
 const intervals={'5m':'1h','15m':'4h','1h':'4h','4h':'1d','1d':'1w'};
 const activeMarket=()=>Markets.get(state.symbol)||coins[0];
@@ -13,8 +13,8 @@ tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false;
 let lastPriceLine=null,srGuides=[],drawingSeq=0;
-const preference=key=>{try{return localStorage.getItem('smct_'+key);}catch{return null;}};
-const remember=(key,value)=>{try{localStorage.setItem('smct_'+key,value);}catch{}};
+const preference=key=>Space?.get(key)??null;
+const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
 const decimals=v=>v<.01?6:v<5?5:v<100?3:2;
 const fmt=v=>num(v,decimals(Math.abs(v||1)));
@@ -69,6 +69,7 @@ $('marketCount').textContent=markets.length;
 $('marketList').innerHTML=markets.map(c=>`<button class="market-row ${c.symbol===state.symbol?'active':''}" data-pair="${c.symbol}"><span class="coin-symbol" style="background:${c.color}">${c.icon}</span><span class="market-name"><b>${c.symbol.replace('USDT','/USDT')}</b><small>${c.name}</small></span><span data-star="${c.symbol}" class="star ${fav.has(c.symbol)?'favorite':''}" title="Toggle favorite">${fav.has(c.symbol)?'★':'☆'}</span></button>`).join('')||'<div class="empty-small">No matching pairs</div>';
 }
 function showInstrument(){
+remember('symbol',state.symbol);remember('tf',state.tf);
 const c=activeMarket();
 $('pairTitle').textContent=c.category==='crypto'?state.symbol.replace('USDT',' / USDT'):state.symbol;
 $('pairSubtitle').textContent=c.name+' · '+c.venue;
@@ -520,14 +521,57 @@ const content=[header,...state.data.map(c=>[new Date(c.time*1000).toISOString(),
 const blob=new Blob([content],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');
 link.href=url;link.download='RibhLab_'+state.symbol+'_'+state.tf+'_OHLCV.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast('OHLCV CSV exported.');
 }
+const INDICATOR_IDS=['toggleEMA','toggleVolume','toggleRSI','toggleZones','toggleMarkers','toggleSR'];
+function saveIndicators(){
+  const prefs={};for(const id of INDICATOR_IDS)prefs[id]=$(id).checked;
+  remember('indicators',JSON.stringify(prefs));
+}
+function restoreSettings(){
+  if(!Space)throw Error('Local workspace module unavailable');
+  const symbol=preference('symbol'),tf=preference('tf'),category=preference('category'),tab=preference('tableTab');
+  if(coins.some(c=>c.symbol===symbol))state.symbol=symbol;
+  if(Object.hasOwn(intervals,tf))state.tf=tf;
+  if(['all','metals','indices','forex','crypto','energy','stocks'].includes(category))state.category=category;
+  if(['events','levels'].includes(tab))state.tableTab=tab;
+  state.autoSmc=preference('autoSmc')!=='false';
+  $('autoSmcBtn').classList.toggle('active-tool',state.autoSmc);
+  $('smcSwitchDot').style.opacity=state.autoSmc?'1':'.1';
+  $('symbolSearch').value=(preference('search')||'').slice(0,90);
+  const indicators=Space.getJSON('indicators',{});
+  for(const id of INDICATOR_IDS)if(typeof indicators[id]==='boolean')$(id).checked=indicators[id];
+  document.querySelectorAll('[data-category]').forEach(b=>b.classList.toggle('active',b.dataset.category===state.category));
+  $('marketCategoryName').textContent=state.category==='all'?'ALL MARKETS':state.category.toUpperCase();
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tableTab));
+}
+function setupWorkspaceUi(){
+  const meta=Space.info();
+  $('workspaceState').textContent=meta.persistent?'Saved automatically on this browser':'Temporary session (browser storage blocked)';
+  $('workspaceLabel').textContent=meta.persistent?
+    'Your drawings, favorites and indicators are saved locally, without an account':
+    'Your browser blocked local storage. Changes may disappear when you close this tab.';
+  const modal=$('workspaceModal');
+  const close=()=>{modal.classList.add('hidden');$('workspaceBtn').focus();};
+  $('workspaceBtn').addEventListener('click',()=>{modal.classList.remove('hidden');$('workspaceCloseBtn').focus();});
+  $('workspaceCloseBtn').addEventListener('click',close);
+  $('workspaceDoneBtn').addEventListener('click',close);
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!modal.classList.contains('hidden'))close();
+  });
+  $('workspaceEraseBtn').addEventListener('click',()=>{
+    if(!confirm('Erase all saved TradingFiew charts, favorites and settings from THIS browser profile? This cannot be undone.'))return;
+    Space.clearBrowser();
+    location.replace(location.pathname);
+  });
+}
 function bind(){
-$('marketCategories').addEventListener('click',e=>{const button=e.target.closest('[data-category]');if(!button)return;state.category=button.dataset.category;document.querySelectorAll('[data-category]').forEach(n=>n.classList.toggle('active',n===button));$('marketCategoryName').textContent=state.category==='all'?'ALL MARKETS':state.category.toUpperCase();renderMarkets();});
+$('marketCategories').addEventListener('click',e=>{const button=e.target.closest('[data-category]');if(!button)return;state.category=button.dataset.category;remember('category',state.category);document.querySelectorAll('[data-category]').forEach(n=>n.classList.toggle('active',n===button));$('marketCategoryName').textContent=state.category==='all'?'ALL MARKETS':state.category.toUpperCase();renderMarkets();});
 $('marketList').addEventListener('click',e=>{
 const star=e.target.closest('[data-star]');if(star){const s=star.dataset.star;if(state.favorites.has(s))state.favorites.delete(s);else state.favorites.add(s);remember('favorites',JSON.stringify([...state.favorites]));renderMarkets();return;}
-const row=e.target.closest('[data-pair]');if(row&&row.dataset.pair!==state.symbol){state.symbol=row.dataset.pair;clearDrawings();loadMarket();}
+const row=e.target.closest('[data-pair]');if(row&&row.dataset.pair!==state.symbol){clearDrawings({forget:false,notice:false});state.symbol=row.dataset.pair;loadMarket();}
 });
-$('symbolSearch').addEventListener('input',renderMarkets);
-$('timeframes').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b&&b.dataset.tf!==state.tf){state.tf=b.dataset.tf;clearDrawings();loadMarket();}});
+$('symbolSearch').addEventListener('input',()=>{remember('search',$('symbolSearch').value);renderMarkets();});
+$('timeframes').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b&&b.dataset.tf!==state.tf){clearDrawings({forget:false,notice:false});state.tf=b.dataset.tf;loadMarket();}});
 $('refreshBtn').addEventListener('click',()=>loadMarket(false));
 $('fitBtn').addEventListener('click',()=>chart?.timeScale().fitContent());
 $('csvBtn').addEventListener('click',downloadCsv);
@@ -541,7 +585,10 @@ $('toggleRSI').addEventListener('change',refreshRsi);
 $('toggleZones').addEventListener('change',drawZones);
 $('toggleMarkers').addEventListener('change',renderMarkers);
 $('toggleSR').addEventListener('change',renderSupportResistance);
-$('autoSmcBtn').addEventListener('click',()=>{state.autoSmc=!state.autoSmc;$('autoSmcBtn').classList.toggle('active-tool',state.autoSmc);$('smcSwitchDot').style.opacity=state.autoSmc?'1':'.1';drawZones();renderMarkers();toast(state.autoSmc?'Auto SMC overlays on':'Auto SMC overlays hidden');});
+for(const id of ['toggleEMA','toggleVolume','toggleRSI','toggleZones','toggleMarkers','toggleSR']){
+  $(id).addEventListener('change',saveIndicators);
+}
+$('autoSmcBtn').addEventListener('click',()=>{state.autoSmc=!state.autoSmc;$('autoSmcBtn').classList.toggle('active-tool',state.autoSmc);$('smcSwitchDot').style.opacity=state.autoSmc?'1':'.1';remember('autoSmc',String(state.autoSmc));drawZones();renderMarkers();toast(state.autoSmc?'Auto SMC overlays on':'Auto SMC overlays hidden');});
 document.querySelectorAll('[data-draw]').forEach(b=>b.addEventListener('click',()=>setDrawMode(b.dataset.draw)));
 $('clearDrawingsBtn').addEventListener('click',clearDrawings);
 $('undoDrawingBtn').addEventListener('click',undoDrawing);
@@ -567,7 +614,7 @@ $('drawingList').addEventListener('click',e=>{
   if(remove)removeDrawing(id,fraction);
   else selectDrawing(id,fraction);
 });
-document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{state.tableTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n===b));renderBottom();}));
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{state.tableTab=b.dataset.tab;remember('tableTab',state.tableTab);document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n===b));renderBottom();}));
 const close=()=>{$('guideModal').classList.add('hidden');};
 $('guideBtn').addEventListener('click',()=>{$('guideModal').classList.remove('hidden');});
 $('closeGuideBtn').addEventListener('click',close);$('guideDoneBtn').addEventListener('click',close);
@@ -590,6 +637,7 @@ function start(){
 try{
 let responsiveTimer=null;
 window.addEventListener('resize',()=>{clearTimeout(responsiveTimer);responsiveTimer=setTimeout(()=>{if(state.analysis){renderMarkers();drawZones();}},120);},{passive:true});
+restoreSettings();setupWorkspaceUi();
 const url=new URL(location.href),requested=url.searchParams.get('symbol'),tf=url.searchParams.get('tf');
 if(coins.some(c=>c.symbol===requested))state.symbol=requested;
 if(Object.hasOwn(intervals,tf))state.tf=tf;

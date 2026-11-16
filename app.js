@@ -624,6 +624,32 @@ function setupWorkspaceUi(){
     location.replace(location.pathname);
   });
 }
+
+/* Chart Window shows the existing live chart, not a duplicate or screenshot.
+ * Changes to indicators, drawings and timeframe remain fully functional. */
+function resizeChartWindow(){
+  if(!chart||!rsiChart)return;
+  try{
+    const el=$('chartHost'),r=el.getBoundingClientRect();
+    if(r.width>80&&r.height>70)chart.resize(Math.floor(r.width),Math.floor(r.height));
+    const rsi=$('rsiHost').getBoundingClientRect();
+    if(rsi.width>80&&rsi.height>30)rsiChart.resize(Math.floor(rsi.width),Math.floor(rsi.height));
+    drawZones();
+  }catch(error){console.warn('Chart window resizing issue',error);}
+}
+function setChartWindow(open,{save=true}={}){
+  document.body.classList.toggle('chart-window-active',Boolean(open));
+  $('chartWindowBtn').setAttribute('aria-pressed',String(Boolean(open)));
+  $('chartWindowBtn').title=open?'Chart window is open':'Open chart window (full screen)';
+  state.chartWindow=Boolean(open);
+  if(save)remember('chartWindow',String(Boolean(open)));
+  requestAnimationFrame(()=>{
+    resizeChartWindow();
+    requestAnimationFrame(resizeChartWindow);
+  });
+  if(open)$('chartWindowCloseBtn').focus();
+  else $('chartWindowBtn').focus();
+}
 function bind(){
 $('marketCategories').addEventListener('click',e=>{const button=e.target.closest('[data-category]');if(!button)return;state.category=button.dataset.category;remember('category',state.category);document.querySelectorAll('[data-category]').forEach(n=>n.classList.toggle('active',n===button));$('marketCategoryName').textContent=state.category==='all'?'ALL MARKETS':state.category.toUpperCase();renderMarkets();});
 $('marketList').addEventListener('click',e=>{
@@ -634,6 +660,8 @@ $('symbolSearch').addEventListener('input',()=>{remember('search',$('symbolSearc
 $('timeframes').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b&&b.dataset.tf!==state.tf){clearDrawings({forget:false,notice:false});state.tf=b.dataset.tf;loadMarket();}});
 $('refreshBtn').addEventListener('click',()=>loadMarket(false));
 $('fitBtn').addEventListener('click',()=>chart?.timeScale().fitContent());
+$('chartWindowBtn').addEventListener('click',()=>setChartWindow(!state.chartWindow));
+$('chartWindowCloseBtn').addEventListener('click',()=>setChartWindow(false));
 $('csvBtn').addEventListener('click',downloadCsv);
 $('themeBtn').addEventListener('click',()=>{state.dark=!state.dark;updateTheme();});
 $('reAnalyzeBtn').addEventListener('click',()=>{analyze();fetchHigherTimeframe(state.request);toast('SMC analysis refreshed.');});
@@ -681,6 +709,7 @@ $('closeGuideBtn').addEventListener('click',close);$('guideDoneBtn').addEventLis
 $('guideModal').addEventListener('click',e=>{if(e.target===$('guideModal'))close();});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
+    if(state.chartWindow)setChartWindow(false);
     close();setDrawMode('cursor');
     $('drawingsPanel').classList.add('hidden');
     $('drawingManagerBtn').setAttribute('aria-expanded','false');
@@ -696,7 +725,7 @@ document.addEventListener('keydown',e=>{
 function start(){
 try{
 let responsiveTimer=null;
-window.addEventListener('resize',()=>{clearTimeout(responsiveTimer);responsiveTimer=setTimeout(()=>{if(state.analysis){renderMarkers();drawZones();}},120);},{passive:true});
+window.addEventListener('resize',()=>{clearTimeout(responsiveTimer);responsiveTimer=setTimeout(()=>{resizeChartWindow();if(state.analysis){renderMarkers();drawZones();}},140);},{passive:true});
 restoreSettings();setupWorkspaceUi();
 const url=new URL(location.href),requested=url.searchParams.get('symbol'),tf=url.searchParams.get('tf');
 if(coins.some(c=>c.symbol===requested))state.symbol=requested;
@@ -704,6 +733,7 @@ if(Object.hasOwn(intervals,tf))state.tf=tf;
 try{state.favorites=new Set(JSON.parse(preference('favorites')||'[]'));}catch{}
 state.dark=preference('theme')!=='light';
 bind();renderMarkets();updateTheme();setupCharts();renderDrawingPanel();showInstrument();loadMarket();
+if(preference('chartWindow')==='true')setChartWindow(true,{save:false});
 }catch(e){loading('Unable to start the chart',e.message,true);connection('OFFLINE','Chart library missing');console.error(e);}
 }
 window.addEventListener('DOMContentLoaded',start);

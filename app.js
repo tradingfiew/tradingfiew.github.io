@@ -116,7 +116,7 @@ showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC dat
 $('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
 try{
 const rows=await fetchCandles(state.symbol,state.tf,650,state.controller.signal);if(request!==state.request)return;
-state.data=rows;setCandleData(true);setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
+state.data=rows;setCandleData(true);restoreDrawings();setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
 analyze();fetchTicker(state.symbol,request);fetchHigherTimeframe(request);connectStream(request);
 if(fit)focusRecentCandles();
 try{history.replaceState(null,'',location.pathname+'?symbol='+state.symbol+'&tf='+state.tf);}catch{}
@@ -296,6 +296,65 @@ root.innerHTML=items.length?'<table class="data-table"><thead><tr><th>DETECTED</
 /* User-created drawings: chart selection, Fibonacci-level selection,
  * delete selected, manage grouped levels, undo and mobile chart taps.
  * Automated SMC zones and pivots remain separate from user drawings. */
+
+/* Drawings persist by anonymous local browser workspace + market/timeframe.
+ * Chart series and price-line instances are never serialized. */
+const drawingsStorageKey=()=>('drawings:'+state.symbol+':'+state.tf);
+function serializeDrawing(d){
+  if(d.kind==='price')return {kind:'price',price:d.price};
+  if(d.kind==='series')return {kind:'series',points:d.points.map(p=>({time:p.time,value:p.value}))};
+  if(d.kind==='fib')return {kind:'fib',levels:d.levels.map(l=>({fraction:l.fraction,price:l.price}))};
+  return null;
+}
+function persistDrawings(){
+  const drawings=state.drawings.map(serializeDrawing).filter(Boolean);
+  if(!Space.setJSON(drawingsStorageKey(),drawings)){
+    // Browser quota / private mode can restrict persistence.
+    if(Space.info().persistent)console.warn('Unable to save chart drawings to browser workspace');
+  }
+}
+function restoreDrawings(){
+  if(state.drawings.length||!chart||!candles)return;
+  const rows=Space.getJSON(drawingsStorageKey(),[]);
+  if(!Array.isArray(rows))return;
+  const validPrice=p=>Number.isFinite(p)&&p>0;
+  const validTime=t=>Number.isSafeInteger(t)&&t>0;
+  for(const entry of rows.slice(0,100)){
+    try{
+      if(!entry||typeof entry!=='object')continue;
+      if(entry.kind==='price'&&validPrice(entry.price)){
+        const line=candles.createPriceLine({
+          price:entry.price,color:'#62aeff',lineWidth:2,lineStyle:LW.LineStyle.Dashed,
+          axisLabelVisible:true,title:'USER LEVEL'
+        });
+        state.drawings.push({kind:'price',price:entry.price,line,id:++drawingSeq});
+      }
+      else if(entry.kind==='series'&&Array.isArray(entry.points)&&entry.points.length===2){
+        const points=entry.points;
+        if(!points.every(p=>p&&validTime(p.time)&&validPrice(p.value))||points[0].time===points[1].time)continue;
+        const sorted=[...points].sort((a,b)=>a.time-b.time);
+        const line=addLine('#64b7ff',2);
+        line.setData(sorted);
+        state.drawings.push({kind:'series',line,points:sorted,id:++drawingSeq});
+      }
+      else if(entry.kind==='fib'&&Array.isArray(entry.levels)){
+        const levels=[];
+        for(const l of entry.levels.slice(0,9)){
+          if(!l||!validPrice(l.price)||!Number.isFinite(l.fraction)||l.fraction<0||l.fraction>1)continue;
+          const line=candles.createPriceLine({
+            price:l.price,color:l.fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
+            lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,
+            title:'FIB '+(l.fraction*100).toFixed(1)+'%'
+          });
+          levels.push({fraction:l.fraction,price:l.price,line});
+        }
+        if(levels.length)state.drawings.push({kind:'fib',lines:levels.map(l=>l.line),levels,id:++drawingSeq});
+      }
+    }catch(error){console.warn('Skipped invalid stored drawing',error);}
+  }
+  resetDrawingSelection();
+  renderDrawingPanel();
+}
 function drawingTitle(d){
   if(d.kind==='fib')return 'Fibonacci '+d.levels.length+' levels';
   if(d.kind==='series')return 'Trend line';
@@ -382,7 +441,7 @@ function selectDrawing(id,fraction=null){
   state.selectedDrawingId=id;
   state.selectedFibLevel=fraction===null?null:Number(fraction);
   setDrawMode('cursor');
-  renderDrawingPanel();
+  renderDrawingPanel();persistDrawings();
 }
 function removeDrawing(id,fraction=null){
   const index=state.drawings.findIndex(d=>d.id===id);
@@ -405,7 +464,7 @@ function removeDrawing(id,fraction=null){
     state.drawings.splice(index,1);
   }
   resetDrawingSelection();
-  renderDrawingPanel();
+  renderDrawingPanel();persistDrawings();
   toast(deletingOnlyLevel?'Fibonacci level deleted.':'Drawing deleted.');
 }
 function deleteSelectedDrawing(){
@@ -501,7 +560,7 @@ function setDrawMode(mode){
   $('drawHint').classList.toggle('hidden',mode==='cursor');
   if(mode!=='cursor')$('drawHint').textContent=mode==='horizontal'?'Tap chart to add a horizontal level':'Tap the first point on the chart';
 }
-function clearDrawings(){
+function clearDrawings({forget=true,notice=true}={}){
   const toRemove=[...state.drawings];
   for(const d of toRemove){
     try{
@@ -512,7 +571,8 @@ function clearDrawings(){
   }
   state.drawings=[];resetDrawingSelection();
   renderDrawingPanel();setDrawMode('cursor');
-  if(toRemove.length)toast('All drawings cleared.');
+  if(forget)persistDrawings();
+  if(notice&&toRemove.length)toast('All drawings cleared.');
 }
 function downloadCsv(){
 if(!state.data.length){toast('No candles to export yet',true);return;}

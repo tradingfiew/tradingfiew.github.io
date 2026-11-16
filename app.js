@@ -58,7 +58,7 @@ function updateTheme(){
 document.body.classList.toggle('light',!state.dark);$('themeBtn').textContent=state.dark?'☀':'☾';
 if(chart){
 let t=themeColors();chart.applyOptions({layout:{background:{type:'solid',color:t.bg},textColor:t.text},grid:{vertLines:{color:t.grid},horzLines:{color:t.grid}},rightPriceScale:{borderColor:t.grid},timeScale:{borderColor:t.grid}});
-rsiChart.applyOptions({layout:{background:{type:'solid',color:t.bg},textColor:t.text},grid:{horzLines:{color:t.grid}}});drawZones();
+rsiChart.applyOptions({layout:{background:{type:'solid',color:t.bg},textColor:t.text},grid:{horzLines:{color:t.grid}}});if(lastPriceLine)lastPriceLine.applyOptions({color:priceGuideColor()});drawZones();
 }
 remember('theme',state.dark?'dark':'light');
 }
@@ -84,10 +84,11 @@ renderMarkets();
 function setOhlc(c){
 for(const [id,key] of [['oVal','open'],['hVal','high'],['lVal','low'],['cVal','close']])$(id).textContent=fmt(c[key]);
 }
+function priceGuideColor(){return document.body.classList.contains('light')?'#008f88':'#22d7c1';}
 function updatePrice(v){if(!Number.isFinite(v)||v<=0)return;
 state.activePrice=v;$('lastPrice').textContent=fmt(v);
 $('updatedAt').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-if(candles){try{const options={price:v,color:'#40dba1',lineWidth:2,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'LAST'};
+if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:true,title:'LAST'};
 if(!lastPriceLine)lastPriceLine=candles.createPriceLine(options);else lastPriceLine.applyOptions(options);
 }catch(e){console.warn('Last-price guide issue',e);}}
 }

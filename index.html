@@ -18,6 +18,7 @@
   <script defer src="./market-data.js"></script>
   <script defer src="./app.js"></script>
   <script defer src="./adsense.js"></script>
+  <script defer src="./donate.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -32,6 +33,7 @@
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
+        <button type="button" id="donateBtn" class="donate-header" aria-haspopup="dialog" aria-controls="donateModal"><span class="donate-symbol">₿</span><span>Donate</span><span class="donate-crypto">Crypto</span></button>
         <span class="session-tag"><span id="liveDot" class="status-dot"></span><span id="connectionState">CONNECTING</span></span>
         <button class="icon-button" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">☾</button>
         <button class="header-button" id="refreshBtn">↻ <span>Refresh</span></button>
@@ -41,10 +43,10 @@
     <main class="workspace" id="terminal">
       <aside class="sidebar left-sidebar">
         <div class="sidebar-title"><span>MARKET WATCH</span><span id="marketCount" class="tiny-count">—</span></div>
-        <div class="search-box"><span>⌕</span><input id="symbolSearch" placeholder="Search crypto pairs..." aria-label="Search symbols"></div>
+        <div class="search-box"><span>⌕</span><input id="symbolSearch" placeholder="Search markets..." aria-label="Search symbols"></div>
         <div id="marketCategories" class="market-categories" aria-label="Markets"><button class="active" data-category="all">All</button><button data-category="metals">Metals</button><button data-category="indices">Indices</button><button data-category="forex">Forex</button><button data-category="crypto">Crypto</button><button data-category="energy">Oil</button><button data-category="stocks">Stocks</button></div><div class="market-controls"><span id="marketCategoryName">ALL MARKETS</span><span id="marketSourceName" class="market-source">MULTI-FEED</span></div>
         <div id="marketList" class="market-list"></div>
-        <div class="sidebar-bottom"><div class="sidebar-tip">✦ <b>Zero API keys</b><br><span>Public exchange market data. No trading account needed. Non-crypto market quotes are indicative.</span></div><div class="side-foot">FREE TO USE <span>v1.0</span></div></div>
+        <div class="sidebar-bottom"><button type="button" id="sideDonateBtn" class="side-donate"><span>♥</span> Donate with Crypto</button><div class="sidebar-tip">✦ <b>Zero API keys</b><br><span>Public exchange market data. No trading account needed. Non-crypto market quotes are indicative.</span></div><div class="side-foot">FREE TO USE <span>v1.0</span></div></div>
       </aside>
 
       <section class="center-pane">
@@ -138,12 +140,38 @@
           <h3>TECHNICAL CONTEXT</h3>
           <div class="tech-rows"><div><span>RSI (14)</span><b id="techRsi">—</b></div><div><span>EMA 20 / EMA 50</span><b id="techEma">—</b></div><div><span>ATR (14)</span><b id="techAtr">—</b></div><div><span>Last liquidity sweep</span><b id="techSweep">—</b></div></div>
         </div>
+        <section class="ad-placement ad-placement-sidebar" data-ad-placement="sidebar" aria-label="Advertisement space">
+          <span class="ad-label">ADVERTISEMENT</span>
+          <div class="ad-reserved"><span class="ad-symbol">▤</span><strong>Ad space</strong><small>Reserved for Google AdSense</small><small class="ad-pending">Pending site approval</small></div>
+        </section>
         <div class="analysis-note"><span>ⓘ</span><p><strong>Educational analysis only.</strong> SMC zones and structure labels are heuristic, may disagree with other indicators, and do not predict future prices. No trading or wallet access.</p></div>
       </aside>
     </main>
+    <section class="ad-placement ad-placement-banner" data-ad-placement="banner" aria-label="Advertisement space">
+      <span class="ad-label">ADVERTISEMENT</span>
+      <div class="ad-reserved"><span class="ad-symbol">▤</span><strong>Advertising space</strong><small>Google AdSense placement · Awaiting approval</small></div>
+    </section>
     <footer class="footer"><span>© 2026 TradingFiew by RibhLab <span class="footer-sep">•</span> Independent chart research</span><span>Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a> · Data: Binance Spot + indicative biquote feeds · Not financial advice</span><nav class="legal-links" aria-label="Legal and analysis links"><a href="./about.html">How SMC works</a><a href="./privacy.html">Privacy</a></nav></footer>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="donateModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="donateTitle">
+    <div class="modal-card crypto-modal">
+      <button type="button" id="donateCloseBtn" class="modal-close" aria-label="Close donation window">×</button>
+      <div class="donate-modal-head"><span class="donate-modal-logo">₿</span><div><div class="eyebrow">SUPPORT THE PROJECT</div><h2 id="donateTitle">Donate with Crypto</h2></div></div>
+      <p>Help keep TradingFiew charts and free Smart Money tools available to everyone. Cryptocurrency donations are voluntary.</p>
+      <div class="donate-networks" id="donateNetworks" role="group" aria-label="Select cryptocurrency and network">
+        <button type="button" class="active" data-donate-network="BTC">₿ BTC</button>
+        <button type="button" data-donate-network="ETH">Ξ ETH</button>
+        <button type="button" data-donate-network="USDT_TRC20">₮ USDT · TRC20</button>
+        <button type="button" data-donate-network="USDT_ERC20">₮ USDT · ERC20</button>
+      </div>
+      <div class="donate-address-box"><div class="donate-field-head"><span id="donateChain">Bitcoin network</span><span id="donateAvailability" class="donate-unavailable">Not configured</span></div>
+      <div id="donateAddress" class="donate-address" aria-live="polite">Donation wallet not configured yet</div>
+      <button type="button" id="copyDonateBtn" class="donate-copy" disabled>Copy wallet address</button></div>
+      <p class="donate-warning">Always check that the asset and blockchain network match before sending. Crypto transfers are normally irreversible. No donation is possible until the project owner adds a verified receiving address.</p>
+      <button type="button" id="donateDoneBtn" class="donate-dismiss">Close</button>
+    </div>
+  </div>
   <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a crypto pair and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical candles come from public Binance Spot uses public exchange candles and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
 </body>
 </html>

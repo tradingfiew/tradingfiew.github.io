@@ -73,3 +73,115 @@ body.light .side-donate{color:#7c4f06}
 @media(max-width:990px){.donate-crypto{display:none}.donate-header{padding:6px 9px}.topbar{gap:14px}}
 @media(max-width:730px){.topbar{gap:7px}.header-actions{gap:6px}.donate-header{padding:6px 8px;font-size:11px}.donate-symbol{width:17px;height:17px;font-size:12px}.ad-placement-banner{margin:12px 10px 15px}.ad-placement-sidebar{min-height:140px}.ad-placement-sidebar .ad-reserved{min-height:104px}}
 @media(max-width:380px){.header-button{padding:0 7px}.donate-header{gap:4px;padding:6px}.donate-networks{grid-template-columns:1fr 1fr}.crypto-modal{padding:18px}}
+
+/* TradingFiew mobile overhaul v1.3: full-width and readable, no clipped chart controls */
+html,body{max-width:100%;overflow-x:clip}
+.mobile-jump-nav{display:none}
+@media(min-width:731px) and (max-width:960px){
+ .topbar{gap:12px;padding-inline:14px}.topnav{gap:10px}
+ .topnav a,.topnav .nav-link{font-size:11px}
+ .header-actions{gap:7px}.chart-toolbar{height:auto;flex-wrap:wrap;padding-block:6px}
+}
+@media(max-width:730px){
+ .app-shell,.workspace,.center-pane{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+ .topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:6px;height:auto;min-height:62px;padding:8px max(9px,env(safe-area-inset-left))}
+ .brand{flex:0 1 auto;max-width:calc(100% - 137px);min-width:0;gap:6px}
+ .brand-symbol{width:28px;height:28px;flex:none;border-radius:8px}
+ .brand-symbol svg{width:21px;height:21px}
+ .brand-title{font-size:clamp(11px,3.3vw,14px);white-space:nowrap;letter-spacing:-.6px}
+ .brand-title small{font-size:6px;letter-spacing:.5px;white-space:nowrap;margin-top:3px}
+ .header-actions{flex:0 0 auto;gap:4px;margin-left:auto}
+ .header-actions .session-tag{display:none}
+ .donate-header{height:34px;padding:6px 7px;font-size:11px;gap:4px}
+ .donate-crypto{display:none}.donate-symbol{width:17px;height:17px}
+ .header-actions .icon-button,.header-actions .header-button{height:34px;min-width:30px;padding:0 7px}
+ .header-actions .icon-button{width:30px}
+ .left-sidebar{width:100%;min-height:0;padding:0 9px 7px;overflow:hidden}
+ .search-box{width:100%;margin:8px 0 6px;padding:7px 11px}
+ .search-box input{font-size:16px;min-height:21px}
+ .left-sidebar .market-categories{display:flex;flex-wrap:nowrap;width:100%;gap:5px;overflow-x:auto;overflow-y:hidden;padding:6px 1px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ .market-categories::-webkit-scrollbar{display:none}
+ .market-categories button{flex:0 0 auto;min-height:33px;padding:6px 10px;font-size:10px}
+ .market-list{display:flex;flex-wrap:nowrap;align-items:stretch;gap:6px;max-height:94px;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:5px 0 3px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+ .market-row{flex:0 0 146px;width:146px;min-width:146px;max-width:146px;scroll-snap-align:start;border-radius:8px;padding:8px 7px;gap:7px}
+ .market-name b{font-size:10px}.market-name small{font-size:9px}
+ .coin-symbol{width:26px;height:26px}
+ .mobile-jump-nav{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid var(--stroke);background:var(--shell)}
+ .mobile-jump-nav a{flex:1;border-radius:7px;padding:7px 8px;text-align:center;border:1px solid var(--stroke);color:var(--muted);font-size:10px;font-weight:700;white-space:nowrap}
+ .mobile-jump-nav a:first-child{background:var(--mintwash);color:var(--green);border-color:rgba(64,219,161,.25)}
+ .instrument-header{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:7px;row-gap:8px;height:auto;min-height:0;padding:11px 10px 9px;align-items:center}
+ .instrument-main{grid-column:1;grid-row:1;min-width:0;gap:7px}
+ .asset-icon{height:31px;width:31px;font-size:17px}
+ .asset-titles{min-width:0}
+ .asset-titles h1{font-size:16px;white-space:nowrap;letter-spacing:-.5px}
+ .asset-titles span{display:block;max-width:100%;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .spot-pill{font-size:8px;padding:3px 4px}
+ .instrument-price{grid-column:2;grid-row:1;margin:0;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-wrap:nowrap}
+ .instrument-price strong{font-size:clamp(14px,4.2vw,19px);letter-spacing:-.6px;line-height:1.15}
+ .change-label{font-size:10px;white-space:nowrap;max-width:100%}
+ .instrument-stats{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:4px;padding:8px 0 0;margin:0;border-top:1px solid var(--stroke)}
+ .instrument-stats div{min-width:0;gap:2px}
+ .instrument-stats div:last-child{display:flex}
+ .instrument-stats small{font-size:8px;letter-spacing:.2px}
+ .instrument-stats b{font-size:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+ .chart-toolbar{width:100%;height:auto;min-height:83px;display:flex;flex-wrap:wrap;align-items:center;gap:5px 4px;padding:7px 8px;overflow:visible}
+ .timeframes{order:0;flex:0 0 100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;width:100%}
+ .timeframes button{width:100%;min-width:0;min-height:34px;padding:6px 3px;font-size:11px}
+ .toolbar-divider{display:none}
+ .toolbar-menu{order:1;flex:0 0 auto}
+ .toolbar-menu .toolbar-button{min-height:32px;padding:7px 7px;font-size:10px}
+ .toolbar-button.active-tool{order:2;min-height:32px;padding:7px 7px;font-size:10px}
+ .toolbar-spacer{order:3;flex:1}
+ .toolbar-icon{order:4;min-height:32px;min-width:31px;height:32px;width:31px}
+ .dropdown{top:38px;left:0;max-width:min(240px,calc(100vw - 25px))}
+ .dropdown label{min-height:36px;font-size:12px}
+ .chart-space{width:100%;height:auto;min-height:0;flex:none}
+ .draw-tools{width:34px;gap:5px;padding:10px 1px 0}
+ .draw-button{height:34px;width:30px;font-size:18px}
+ .chart-inner{min-height:0;min-width:0;overflow:hidden}
+ .ohlc-strip{height:auto;min-height:30px;flex-wrap:wrap;align-content:center;gap:3px 8px;padding:6px 5px 2px;font-size:9px;line-height:1.4;overflow:visible}
+ .ohlc-strip .strip-r{font-size:9px}
+ .legend-strip{padding:5px 5px 4px;gap:7px;font-size:9px}
+ .legend-strip>span:nth-child(n+4){display:none}
+ .chart-holder{width:100%;height:clamp(340px,50svh,455px);min-height:340px;flex:0 0 auto;overflow:hidden}
+ .chart-host{width:100%;height:100%;inset:0;min-width:0}
+ .rsi-panel{height:82px}
+ .chart-footer{height:auto;min-height:32px;gap:5px;padding:5px 7px;font-size:9px}
+ .chart-footer>span{min-width:0;white-space:nowrap}
+ .chart-footer>span:nth-child(2){flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis}
+ .bottom-panel{height:218px;width:100%;overflow:hidden}
+ .bottom-title{height:41px;padding-right:7px}
+ .tabs .tab{font-size:10px;padding:0 11px}
+ .muted-small{max-width:112px;font-size:9px;line-height:1.2;text-align:right}
+ .table-scroller{height:176px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .data-table th,.data-table td{padding:9px 10px}
+ .right-sidebar{display:block;max-height:none;width:100%;border-left:0;overflow:visible;padding:17px 12px;min-width:0}
+ .metric span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+ .ad-placement-banner{margin:10px 10px 15px;min-height:100px}
+ .footer{padding:14px 12px max(20px,env(safe-area-inset-bottom));gap:8px;font-size:10px}
+ .footer>span,.footer .legal-links{width:100%;min-width:0;overflow-wrap:anywhere}
+ .modal-backdrop{padding:12px max(10px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom))}
+ .modal-card{max-width:100%;max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:20px}
+ .donate-networks button{min-height:42px}
+ .donate-address{word-break:break-all}
+ .draw-hint{max-width:calc(100% - 20px);white-space:normal;text-align:center}
+}
+@media(max-width:370px){
+ .topbar{padding-inline:8px}
+ .brand{max-width:calc(100% - 123px);gap:4px}
+ .brand-symbol{width:26px;height:26px}
+ .brand-title{font-size:11px;letter-spacing:-.6px}
+ .brand-title small{font-size:5.5px;letter-spacing:.2px}
+ .header-actions{gap:3px}
+ .donate-header{font-size:10px;padding:6px;gap:3px}
+ .header-actions .icon-button,.header-actions .header-button{min-width:28px;width:28px}
+ .asset-titles h1{font-size:15px}
+ .spot-pill{display:none}
+ .chart-toolbar{padding-inline:5px}
+ .toolbar-menu .toolbar-button,.toolbar-button.active-tool{font-size:9px;padding-inline:5px}
+ .chart-holder{height:340px}
+ .legend-strip>span:nth-child(3){display:none}
+ .rsi-panel{height:74px}
+ .modal-card{padding:16px}
+}
+@media(orientation:landscape) and (max-height:550px) and (max-width:960px){.chart-holder{height:330px;min-height:310px}}

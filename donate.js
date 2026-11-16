@@ -8,11 +8,11 @@
   const CONFIG = Object.freeze({
     BTC: {label:"Bitcoin · BTC",chain:"Bitcoin mainnet",address:""},
     ETH: {label:"Ethereum · ETH",chain:"Ethereum mainnet",address:""},
-    USDT_TRC20: {label:"Tether · USDT",chain:"Tron TRC-20",address:""},
+    USDT_TRC20: {label:"Tether · USDT",chain:"Tron TRC-20",address:"TBZuH1prYTYh8btnWEW9Der1KwpmGVq4yw"},
     USDT_ERC20: {label:"Tether · USDT",chain:"Ethereum ERC-20",address:""}
   });
   const $=id=>document.getElementById(id);
-  let network="BTC",lastTrigger=null;
+  let network="USDT_TRC20",lastTrigger=null;
   function validAddress(asset,address){
     const value=String(address||"").trim();
     if(!value||/[ \t\r\n]/.test(value))return false;

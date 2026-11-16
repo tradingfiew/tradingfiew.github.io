@@ -31,7 +31,7 @@ function chartOptions(height,primary=false){
 const c=themeColors();
 return {autoSize:true,width:700,height,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'IBM Plex Mono, monospace',fontSize:10,attributionLogo:false},
 grid:{vertLines:{color:c.grid,style:1},horzLines:{color:c.grid,style:1}},
-crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{color:'#7592ae',style:2,labelBackgroundColor:'#243a54'},horzLine:{color:'#7592ae',style:2,labelBackgroundColor:'#243a54'}},
+crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{color:'#7592ae',style:2,labelBackgroundColor:'#243a54'},horzLine:{visible:false,labelVisible:false}},
 rightPriceScale:{borderColor:c.grid,scaleMargins:{top:.08,bottom:primary ? .18 : .06}},
 timeScale:{borderColor:c.grid,timeVisible:true,secondsVisible:false,barSpacing:window.innerWidth<=730?6:8,minBarSpacing:2,rightOffset:window.innerWidth<=730?4:8},
 handleScroll:true,handleScale:true,localization:{locale:'en-US'}};
@@ -40,7 +40,7 @@ function addLine(color,width=1){return chart.addSeries(LW.LineSeries,{color,line
 function setupCharts(){
 if(!LW||!LW.createChart||!LW.CandlestickSeries||!Engine||!Markets)throw new Error('Chart or analysis library unavailable. Check your network and reload.');
 chart=LW.createChart($('chartHost'),chartOptions(405,true));
-candles=chart.addSeries(LW.CandlestickSeries,{upColor:'#36cba1',downColor:'#f2647e',borderUpColor:'#36cba1',borderDownColor:'#f2647e',wickUpColor:'#36cba1',wickDownColor:'#f2647e',priceLineVisible:false});
+candles=chart.addSeries(LW.CandlestickSeries,{upColor:'#36cba1',downColor:'#f2647e',borderUpColor:'#36cba1',borderDownColor:'#f2647e',wickUpColor:'#36cba1',wickDownColor:'#f2647e',priceLineVisible:false,lastValueVisible:false});
 vol=chart.addSeries(LW.HistogramSeries,{priceScaleId:'volume',priceFormat:{type:'volume'},lastValueVisible:false,priceLineVisible:false});
 chart.priceScale('volume').applyOptions({scaleMargins:{top:.82,bottom:0}});
 ema20=addLine('#699cf6',2);ema50=addLine('#ecae53',1);ema200=addLine('#a28df0',1);

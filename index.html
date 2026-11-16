@@ -102,12 +102,26 @@
             <button class="draw-button" data-draw="trend" title="Trend line">╱</button>
             <button class="draw-button" data-draw="fib" title="Fibonacci retracement">⅔</button>
             <div class="vertical-separator"></div>
-            <button id="clearDrawingsBtn" class="draw-button" title="Clear drawings">⌫</button>
+            <button id="drawingManagerBtn" class="draw-button draw-manager-button" title="Manage drawings (select, delete)" aria-label="Manage drawings" aria-expanded="false" aria-controls="drawingsPanel">☷<span id="drawingCount" class="drawing-count">0</span></button>
+            <button id="undoDrawingBtn" class="draw-button" title="Undo latest drawing" aria-label="Undo latest drawing" disabled>↶</button>
+            <button id="clearDrawingsBtn" class="draw-button" title="Clear ALL drawings" aria-label="Clear all drawings" disabled>⌫</button>
           </div>
           <div class="chart-inner">
             <div class="ohlc-strip" id="ohlcStrip"><span>O <b id="oVal">—</b></span><span>H <b id="hVal">—</b></span><span>L <b id="lVal">—</b></span><span>C <b id="cVal">—</b></span><span class="strip-r" id="stripRSI">RSI 14 —</span></div>
             <div class="legend-strip"><span><i class="legend-dot ema20"></i>EMA 20</span><span><i class="legend-dot ema50"></i>EMA 50</span><span><i class="legend-dot ema200"></i>EMA 200</span><span><i class="legend-dot bullish"></i>Bullish FVG</span><span><i class="legend-dot bearish"></i>Bearish FVG</span></div>
-            <div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div></div>
+            <div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div>
+              <div id="selectedDrawingBar" class="selected-drawing-bar hidden" role="group" aria-label="Selected chart drawing">
+                <span id="selectedDrawingLabel">Selected drawing</span>
+                <button type="button" id="deleteSelectedDrawingBtn" class="selected-delete" title="Delete selected line or Fibonacci">Delete ✕</button>
+                <button type="button" id="deselectDrawingBtn" class="selected-dismiss" title="Deselect drawing" aria-label="Deselect drawing">×</button>
+              </div>
+              <section id="drawingsPanel" class="drawings-panel hidden" aria-label="Manage your drawings">
+                <header class="drawings-panel-header"><strong>My drawings <span id="drawingsTotal">0</span></strong><button type="button" id="closeDrawingsPanelBtn" aria-label="Close drawings panel">×</button></header>
+                <p class="drawings-panel-help">Tap a line on the chart to select it, or use the list below. Delete Fibonacci as a group or remove each level separately.</p>
+                <div id="drawingList" class="drawing-list"></div>
+                <button type="button" id="clearAllDrawingsBtn" class="drawing-clear-all" disabled>Clear all drawings</button>
+              </section>
+            </div>
             <div id="rsiPanel" class="rsi-panel"><span class="rsi-label">RSI <b id="rsiValue">—</b></span><div id="rsiHost"></div></div>
             <div class="chart-footer"><span><span id="feedStatusDot" class="status-dot"></span> <span id="feedText">Loading candles...</span></span><span id="updatedAt">—</span><span>UTC</span></div>
           </div>
@@ -198,6 +212,6 @@
       <button type="button" id="donateDoneBtn" class="donate-dismiss">Close</button>
     </div>
   </div>
-  <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a crypto pair and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical crypto candles use Binance Spot data; the prices and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
+  <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a market and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Tap any custom drawing to select it and press Delete, or open Manage Drawings (☷) to delete an individual line or Fibonacci level. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical crypto candles use Binance Spot data; the prices and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
 </body>
 </html>

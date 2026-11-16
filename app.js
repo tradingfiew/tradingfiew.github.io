@@ -8,11 +8,11 @@ const activeMarket=()=>Markets.get(state.symbol)||coins[0];
 const coins=Markets.instruments;
 let state={
 symbol:'XAUUSD',category:'all',tf:'1h',data:[],analysis:null,htf:null,request:0,ws:null,controller:null,refreshTimer:null,
-heartbeat:null,analysisTimer:null,reconnectTimer:null,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],
+heartbeat:null,analysisTimer:null,reconnectTimer:null,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false;
-let lastPriceLine=null,srGuides=[];
+let lastPriceLine=null,srGuides=[],drawingSeq=0;
 const preference=key=>{try{return localStorage.getItem('smct_'+key);}catch{return null;}};
 const remember=(key,value)=>{try{localStorage.setItem('smct_'+key,value);}catch{}};
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -291,34 +291,227 @@ const items=[...a.activeZones,...a.liquidity].sort((x,y)=>(y.i||0)-(x.i||0)).sli
 root.innerHTML=items.length?'<table class="data-table"><thead><tr><th>DETECTED</th><th>TYPE</th><th>SIDE</th><th>LOW</th><th>HIGH</th></tr></thead><tbody>'+items.map(x=>`<tr><td>${date(x.created||x.time)}</td><td>${x.kind}</td><td class="${x.direction==='bull'?'text-green':x.direction==='bear'?'text-red':''}">${x.direction.toUpperCase()}</td><td>${fmt(x.low??x.price)}</td><td>${fmt(x.high??x.price)}</td></tr>`).join('')+'</tbody></table>':'<div class="table-empty">No active levels detected.</div>';
 }
 }
+
+/* User-created drawings: chart selection, Fibonacci-level selection,
+ * delete selected, manage grouped levels, undo and mobile chart taps.
+ * Automated SMC zones and pivots remain separate from user drawings. */
+function drawingTitle(d){
+  if(d.kind==='fib')return 'Fibonacci '+d.levels.length+' levels';
+  if(d.kind==='series')return 'Trend line';
+  return 'Horizontal '+fmt(d.price);
+}
+function getSelectedDrawing(){
+  return state.drawings.find(d=>d.id===state.selectedDrawingId)||null;
+}
+function resetDrawingSelection(){
+  state.selectedDrawingId=null;state.selectedFibLevel=null;
+}
+function drawSelectionOptions(){
+  for(const d of state.drawings){
+    const active=d.id===state.selectedDrawingId;
+    try{
+      if(d.kind==='price')d.line.applyOptions({color:active?'#ffd668':'#62aeff',lineWidth:active?3:2});
+      else if(d.kind==='series')d.line.applyOptions({color:active?'#ffd668':'#64b7ff',lineWidth:active?3:2});
+      else if(d.kind==='fib')for(const level of d.levels){
+        const chosen=active&&(state.selectedFibLevel===null||state.selectedFibLevel===level.fraction);
+        level.line.applyOptions({
+          color:chosen?'#ffd668':level.fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
+          lineWidth:chosen?3:1
+        });
+      }
+    }catch(error){console.warn('Drawing highlight skipped',error);}
+  }
+}
+function renderDrawingPanel(){
+  const count=state.drawings.length;
+  $('drawingCount').textContent=count;
+  $('drawingsTotal').textContent=count;
+  $('undoDrawingBtn').disabled=!count;
+  $('clearDrawingsBtn').disabled=!count;
+  $('clearAllDrawingsBtn').disabled=!count;
+  const selected=getSelectedDrawing();
+  const show=!!selected;
+  $('selectedDrawingBar').classList.toggle('hidden',!show);
+  if(show){
+    const fibLevel=selected.kind==='fib'&&state.selectedFibLevel!==null?
+      ' · '+(state.selectedFibLevel*100).toFixed(1)+'%':'';
+    $('selectedDrawingLabel').textContent=drawingTitle(selected)+fibLevel;
+    $('deleteSelectedDrawingBtn').textContent=fibLevel?'Delete level ✕':'Delete ✕';
+  }
+  const parent=$('drawingList');
+  parent.replaceChildren();
+  if(!count){
+    const p=document.createElement('p');p.className='drawing-empty';
+    p.textContent='No drawings yet. Add a horizontal line, trend line or Fibonacci to manage it here.';
+    parent.appendChild(p);
+  }
+  for(const d of [...state.drawings].reverse()){
+    const group=document.createElement('div');group.className='drawing-row';
+    const select=document.createElement('button');
+    select.type='button';select.className='drawing-select'+(d.id===state.selectedDrawingId?' selected':'');
+    select.dataset.selectDrawing=String(d.id);select.setAttribute('aria-pressed',String(d.id===state.selectedDrawingId));
+    select.textContent=drawingTitle(d);
+    group.appendChild(select);
+    const del=document.createElement('button');del.type='button';
+    del.className='drawing-item-delete';del.dataset.deleteDrawing=String(d.id);
+    del.textContent='✕';del.title='Delete '+drawingTitle(d);del.setAttribute('aria-label','Delete '+drawingTitle(d));
+    group.appendChild(del);
+    parent.appendChild(group);
+    if(d.kind==='fib'){
+      for(const level of d.levels){
+        const row=document.createElement('div');row.className='drawing-row fib-level-row';
+        const selectLevel=document.createElement('button');selectLevel.type='button';
+        selectLevel.className='drawing-select'+(d.id===state.selectedDrawingId&&state.selectedFibLevel===level.fraction?' selected':'');
+        selectLevel.dataset.selectDrawing=String(d.id);selectLevel.dataset.fibLevel=String(level.fraction);
+        selectLevel.setAttribute('aria-pressed',String(d.id===state.selectedDrawingId&&state.selectedFibLevel===level.fraction));
+        selectLevel.textContent='↳ '+(level.fraction*100).toFixed(1)+'% · '+fmt(level.price);
+        row.appendChild(selectLevel);
+        const deleteLevel=document.createElement('button');deleteLevel.type='button';deleteLevel.className='drawing-item-delete';
+        deleteLevel.dataset.deleteDrawing=String(d.id);deleteLevel.dataset.fibLevel=String(level.fraction);
+        deleteLevel.textContent='✕';deleteLevel.title='Delete only Fibonacci '+(level.fraction*100).toFixed(1)+'%';
+        deleteLevel.setAttribute('aria-label',deleteLevel.title);
+        row.appendChild(deleteLevel);parent.appendChild(row);
+      }
+    }
+  }
+  drawSelectionOptions();
+}
+function selectDrawing(id,fraction=null){
+  if(!state.drawings.some(d=>d.id===id)){resetDrawingSelection();renderDrawingPanel();return;}
+  state.selectedDrawingId=id;
+  state.selectedFibLevel=fraction===null?null:Number(fraction);
+  setDrawMode('cursor');
+  renderDrawingPanel();
+}
+function removeDrawing(id,fraction=null){
+  const index=state.drawings.findIndex(d=>d.id===id);
+  if(index<0)return;
+  const d=state.drawings[index];
+  const deletingOnlyLevel=d.kind==='fib'&&fraction!==null;
+  if(deletingOnlyLevel){
+    const entry=d.levels.find(l=>l.fraction===Number(fraction));
+    if(!entry)return;
+    try{candles.removePriceLine(entry.line);}catch(e){console.warn('Cannot remove Fibonacci level',e);}
+    d.levels=d.levels.filter(l=>l!==entry);
+    d.lines=d.levels.map(l=>l.line);
+    if(!d.levels.length)state.drawings.splice(index,1);
+  }else{
+    try{
+      if(d.kind==='price')candles.removePriceLine(d.line);
+      else if(d.kind==='fib')d.levels.forEach(l=>candles.removePriceLine(l.line));
+      else if(d.kind==='series')chart.removeSeries(d.line);
+    }catch(e){console.warn('Drawing deletion failed',e);}
+    state.drawings.splice(index,1);
+  }
+  resetDrawingSelection();
+  renderDrawingPanel();
+  toast(deletingOnlyLevel?'Fibonacci level deleted.':'Drawing deleted.');
+}
+function deleteSelectedDrawing(){
+  const d=getSelectedDrawing();
+  if(!d){toast('Select a drawing first.',true);return;}
+  removeDrawing(d.id,state.selectedFibLevel);
+}
+function undoDrawing(){
+  if(!state.drawings.length)return;
+  removeDrawing(state.drawings.at(-1).id);
+}
+function drawingHitTest(point){
+  if(!point||!candles||!chart)return null;
+  const threshold=window.innerWidth<=730?16:11;
+  let best=null;
+  const consider=(id,level,distance)=>{
+    if(Number.isFinite(distance)&&distance<=threshold&&(!best||distance<best.distance))
+      best={id,fraction:level,distance};
+  };
+  for(const d of state.drawings){
+    try{
+      if(d.kind==='price'){
+        const y=candles.priceToCoordinate(d.price);
+        if(y!==null)consider(d.id,null,Math.abs(y-point.y));
+      }else if(d.kind==='fib'){
+        for(const l of d.levels){
+          const y=candles.priceToCoordinate(l.price);
+          if(y!==null)consider(d.id,l.fraction,Math.abs(y-point.y));
+        }
+      }else if(d.kind==='series'&&d.points?.length===2){
+        const [a,b]=d.points;
+        const x1=chart.timeScale().timeToCoordinate(a.time),x2=chart.timeScale().timeToCoordinate(b.time);
+        const y1=candles.priceToCoordinate(a.value),y2=candles.priceToCoordinate(b.value);
+        if([x1,x2,y1,y2].some(x=>x===null)||Math.abs(x2-x1)<1)continue;
+        const t=((point.x-x1)*(x2-x1)+(point.y-y1)*(y2-y1))/((x2-x1)**2+(y2-y1)**2);
+        if(t<-.04||t>1.04)continue;
+        consider(d.id,null,Math.hypot(point.x-(x1+t*(x2-x1)),point.y-(y1+t*(y2-y1))));
+      }
+    }catch(e){console.warn('Drawing hit-test skipped',e);}
+  }
+  return best;
+}
 function onChartClick(param){
-if(state.drawMode==='cursor'||!param?.point)return;
-const price=candles.coordinateToPrice(param.point.y),time=param.time||chart.timeScale().coordinateToTime(param.point.x);
-if(!Number.isFinite(price)||!time)return;
-if(state.drawMode==='horizontal'){
-const line=candles.createPriceLine({price,color:'#62aeff',lineWidth:2,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'USER LEVEL'});state.drawings.push({kind:'price',line});toast('Horizontal level added at '+fmt(price));setDrawMode('cursor');return;
-}
-if(!state.drawStart){state.drawStart={time,price};$('drawHint').textContent='Select the second point on the chart';return;}
-const start=state.drawStart;state.drawStart=null;
-if(state.drawMode==='trend'){
-if(start.time===time){toast('Choose two different candles.',true);return;}
-const line=addLine('#64b7ff',2);const pts=[{time:start.time,value:start.price},{time,value:price}].sort((a,b)=>a.time>b.time?1:-1);line.setData(pts);state.drawings.push({kind:'series',line});toast('Trend line added.');
-}else if(state.drawMode==='fib'){
-const prices=[0,.236,.382,.5,.618,.786,1];const lines=[];
-for(const level of prices){const p=start.price+(price-start.price)*level;lines.push(candles.createPriceLine({price:p,color:level===.618?'#f9bd66':'rgba(158,133,246,.65)',lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'FIB '+(level*100).toFixed(1)+'%'}));}
-state.drawings.push({kind:'fib',lines});toast('Fibonacci levels added.');
-}
-setDrawMode('cursor');
+  if(!param?.point)return;
+  if(state.drawMode==='cursor'){
+    const hit=drawingHitTest(param.point);
+    if(hit)selectDrawing(hit.id,hit.fraction);
+    else if(state.selectedDrawingId!==null){resetDrawingSelection();renderDrawingPanel();}
+    return;
+  }
+  const price=candles.coordinateToPrice(param.point.y);
+  const time=param.time||chart.timeScale().coordinateToTime(param.point.x);
+  if(!Number.isFinite(price)||!time)return;
+  if(state.drawMode==='horizontal'){
+    const line=candles.createPriceLine({price,color:'#62aeff',lineWidth:2,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'USER LEVEL'});
+    const drawing={id:++drawingSeq,kind:'price',price,line};
+    state.drawings.push(drawing);
+    selectDrawing(drawing.id);
+    toast('Horizontal level added at '+fmt(price));
+    return;
+  }
+  if(!state.drawStart){
+    state.drawStart={time,price};
+    $('drawHint').textContent='Select the second point on the chart';
+    return;
+  }
+  const start=state.drawStart;state.drawStart=null;
+  if(state.drawMode==='trend'){
+    if(start.time===time){toast('Choose two different candles.',true);return;}
+    const line=addLine('#64b7ff',2);
+    const points=[{time:start.time,value:start.price},{time,value:price}].sort((a,b)=>a.time>b.time?1:-1);
+    line.setData(points);
+    const drawing={id:++drawingSeq,kind:'series',line,points};
+    state.drawings.push(drawing);selectDrawing(drawing.id);toast('Trend line added.');
+  }else if(state.drawMode==='fib'){
+    if(start.price===price){toast('Choose two different prices.',true);return;}
+    const levels=[];
+    for(const fraction of [0,.236,.382,.5,.618,.786,1]){
+      const p=start.price+(price-start.price)*fraction;
+      const line=candles.createPriceLine({
+        price:p,color:fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
+        lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'FIB '+(fraction*100).toFixed(1)+'%'
+      });
+      levels.push({fraction,price:p,line});
+    }
+    const drawing={id:++drawingSeq,kind:'fib',lines:levels.map(l=>l.line),levels};
+    state.drawings.push(drawing);selectDrawing(drawing.id);toast('Fibonacci added. Tap a level or Manage drawings to delete it.');
+  }
 }
 function setDrawMode(mode){
-state.drawMode=mode;state.drawStart=null;
-document.querySelectorAll('[data-draw]').forEach(b=>b.classList.toggle('active',b.dataset.draw===mode));
-$('drawHint').classList.toggle('hidden',mode==='cursor');
-if(mode!=='cursor')$('drawHint').textContent=mode==='horizontal'?'Click chart to add horizontal level':'Click the first point on the chart';
+  state.drawMode=mode;state.drawStart=null;
+  document.querySelectorAll('[data-draw]').forEach(b=>b.classList.toggle('active',b.dataset.draw===mode));
+  $('drawHint').classList.toggle('hidden',mode==='cursor');
+  if(mode!=='cursor')$('drawHint').textContent=mode==='horizontal'?'Tap chart to add a horizontal level':'Tap the first point on the chart';
 }
 function clearDrawings(){
-for(const d of state.drawings){try{if(d.kind==='price')candles.removePriceLine(d.line);else if(d.kind==='fib')d.lines.forEach(x=>candles.removePriceLine(x));else chart.removeSeries(d.line);}catch{}}
-state.drawings=[];setDrawMode('cursor');toast('Drawings cleared.');
+  const toRemove=[...state.drawings];
+  for(const d of toRemove){
+    try{
+      if(d.kind==='price')candles.removePriceLine(d.line);
+      else if(d.kind==='fib')d.levels.forEach(l=>candles.removePriceLine(l.line));
+      else chart.removeSeries(d.line);
+    }catch(e){console.warn('Drawing clear skipped',e);}
+  }
+  state.drawings=[];resetDrawingSelection();
+  renderDrawingPanel();setDrawMode('cursor');
+  if(toRemove.length)toast('All drawings cleared.');
 }
 function downloadCsv(){
 if(!state.data.length){toast('No candles to export yet',true);return;}
@@ -351,12 +544,47 @@ $('toggleSR').addEventListener('change',renderSupportResistance);
 $('autoSmcBtn').addEventListener('click',()=>{state.autoSmc=!state.autoSmc;$('autoSmcBtn').classList.toggle('active-tool',state.autoSmc);$('smcSwitchDot').style.opacity=state.autoSmc?'1':'.1';drawZones();renderMarkers();toast(state.autoSmc?'Auto SMC overlays on':'Auto SMC overlays hidden');});
 document.querySelectorAll('[data-draw]').forEach(b=>b.addEventListener('click',()=>setDrawMode(b.dataset.draw)));
 $('clearDrawingsBtn').addEventListener('click',clearDrawings);
+$('undoDrawingBtn').addEventListener('click',undoDrawing);
+$('clearAllDrawingsBtn').addEventListener('click',clearDrawings);
+$('drawingManagerBtn').addEventListener('click',()=>{
+  const panel=$('drawingsPanel');const opening=panel.classList.contains('hidden');
+  panel.classList.toggle('hidden',!opening);
+  $('drawingManagerBtn').setAttribute('aria-expanded',opening?'true':'false');
+  renderDrawingPanel();
+});
+$('closeDrawingsPanelBtn').addEventListener('click',()=>{
+  $('drawingsPanel').classList.add('hidden');
+  $('drawingManagerBtn').setAttribute('aria-expanded','false');
+});
+$('deleteSelectedDrawingBtn').addEventListener('click',deleteSelectedDrawing);
+$('deselectDrawingBtn').addEventListener('click',()=>{resetDrawingSelection();renderDrawingPanel();});
+$('drawingList').addEventListener('click',e=>{
+  const remove=e.target.closest('[data-delete-drawing]');
+  const select=e.target.closest('[data-select-drawing]');
+  const target=remove||select;if(!target)return;
+  const id=Number(target.dataset.deleteDrawing||target.dataset.selectDrawing);
+  const fraction=target.hasAttribute('data-fib-level')?Number(target.dataset.fibLevel):null;
+  if(remove)removeDrawing(id,fraction);
+  else selectDrawing(id,fraction);
+});
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{state.tableTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n===b));renderBottom();}));
 const close=()=>{$('guideModal').classList.add('hidden');};
 $('guideBtn').addEventListener('click',()=>{$('guideModal').classList.remove('hidden');});
 $('closeGuideBtn').addEventListener('click',close);$('guideDoneBtn').addEventListener('click',close);
 $('guideModal').addEventListener('click',e=>{if(e.target===$('guideModal'))close();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){close();setDrawMode('cursor');}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    close();setDrawMode('cursor');
+    $('drawingsPanel').classList.add('hidden');
+    $('drawingManagerBtn').setAttribute('aria-expanded','false');
+    resetDrawingSelection();renderDrawingPanel();
+  }else if((e.key==='Delete'||e.key==='Backspace')&&getSelectedDrawing()){
+    const t=e.target,tag=t?.tagName?.toLowerCase();
+    if(tag==='input'||tag==='textarea'||tag==='select'||t?.isContentEditable)return;
+    if(!$('donateModal').classList.contains('hidden'))return;
+    e.preventDefault();deleteSelectedDrawing();
+  }
+});
 }
 function start(){
 try{
@@ -367,7 +595,7 @@ if(coins.some(c=>c.symbol===requested))state.symbol=requested;
 if(Object.hasOwn(intervals,tf))state.tf=tf;
 try{state.favorites=new Set(JSON.parse(preference('favorites')||'[]'));}catch{}
 state.dark=preference('theme')!=='light';
-bind();renderMarkets();updateTheme();setupCharts();showInstrument();loadMarket();
+bind();renderMarkets();updateTheme();setupCharts();renderDrawingPanel();showInstrument();loadMarket();
 }catch(e){loading('Unable to start the chart',e.message,true);connection('OFFLINE','Chart library missing');console.error(e);}
 }
 window.addEventListener('DOMContentLoaded',start);

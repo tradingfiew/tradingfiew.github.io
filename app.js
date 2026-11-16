@@ -8,7 +8,7 @@ const activeMarket=()=>Markets.get(state.symbol)||coins[0];
 const coins=Markets.instruments;
 let state={
 symbol:'XAUUSD',category:'all',tf:'1h',data:[],analysis:null,htf:null,request:0,ws:null,controller:null,refreshTimer:null,
-heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,quoteBusy:false,quoteAt:null,quotePrice:null,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
+heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,quoteBusy:false,quoteAt:null,quotePrice:null,quoteIsFresh:false,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false;
@@ -125,6 +125,7 @@ const validPrice=Number.isFinite(t.price)&&t.price>0;
 const quoteAt=Number.isFinite(t.quoteAt)?t.quoteAt:null;
 const newer=quoteAt===null||state.quoteAt===null||quoteAt>=state.quoteAt;
 const fresh=quoteFresh(t);
+state.quoteIsFresh=fresh;
 if(validPrice&&newer){
   state.quoteAt=quoteAt;
   state.quotePrice=t.price;
@@ -164,7 +165,7 @@ function startQuotePolling(request){
 function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
-try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;connection('CONNECTING','Fetching historical candles...');
+try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
 $('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
 try{
@@ -233,7 +234,7 @@ for(const c of rows){const last=state.data.at(-1);if(c.time===last?.time)state.d
 if(state.data.length>650)state.data=state.data.slice(-650);
 setCandleData();
 const candle=state.data.at(-1);
-if(activeMarket().provider==='biquote'&&Number.isFinite(state.quotePrice)&&Number.isFinite(state.quoteAt)&&quoteFresh({marketState:'open',stale:false,quoteAt:state.quoteAt})){
+if(activeMarket().provider==='biquote'&&state.quoteIsFresh&&Number.isFinite(state.quotePrice)&&Number.isFinite(state.quoteAt)&&Math.abs(Date.now()/1000-state.quoteAt)<120){
   syncIndicativeQuoteToChart(state.quotePrice,state.quoteAt);
 }
 if(!Number.isFinite(state.quoteAt)||candle.time>state.quoteAt){

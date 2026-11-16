@@ -24,6 +24,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./market-data.js"></script>
+  <script defer src="./workspace.js"></script>
   <script defer src="./app.js"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js"></script>
@@ -41,6 +42,7 @@
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
+        <button type="button" id="workspaceBtn" class="workspace-entry" title="My saved browser workspace" aria-haspopup="dialog" aria-controls="workspaceModal"><span aria-hidden="true">◉</span><span class="workspace-name">My Space</span></button>
         <button type="button" id="donateBtn" class="donate-header" aria-haspopup="dialog" aria-controls="donateModal"><span class="donate-symbol">₿</span><span>Donate</span><span class="donate-crypto">Crypto</span></button>
         <span class="session-tag"><span id="liveDot" class="status-dot"></span><span id="connectionState">CONNECTING</span></span>
         <button class="icon-button" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">☾</button>
@@ -194,6 +196,18 @@
     <footer class="footer"><span>© 2026 TradingFiew by RibhLab <span class="footer-sep">•</span> Independent chart research</span><span>Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a> · Data: Binance Spot + indicative biquote feeds · Not financial advice</span><nav class="legal-links" aria-label="Legal and analysis links"><a href="./about.html">How SMC works</a><a href="./privacy.html">Privacy</a></nav></footer>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="workspaceModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="workspaceTitle">
+    <div class="modal-card workspace-modal">
+      <button type="button" id="workspaceCloseBtn" class="modal-close" aria-label="Close workspace details">×</button>
+      <div class="eyebrow">NO ACCOUNT · NO PASSWORD</div>
+      <h2 id="workspaceTitle">My saved workspace</h2>
+      <div class="workspace-status"><span class="workspace-dot"></span><div><strong id="workspaceState">Saved on this browser</strong><small id="workspaceLabel">Your preferences and drawings are automatically saved here</small></div></div>
+      <p>TradingFiew remembers your favorite markets, chart settings, selected symbol, timeframes, technical indicators and custom lines/Fibonacci drawings on this browser.</p>
+      <div class="workspace-privacy-note"><strong>Privacy boundary</strong><p>Each browser profile has its own local workspace. No data is uploaded to a TradingFiew account. Anyone using <b>this same browser profile</b> can view its saved charts; for separate people sharing a device, use separate browser profiles or private browser windows. Clearing browser data removes these settings. There is no cross-device sync.</p></div>
+      <button type="button" id="workspaceEraseBtn" class="workspace-erase">Erase saved workspace on this browser</button>
+      <button type="button" id="workspaceDoneBtn" class="donate-dismiss">Close</button>
+    </div>
+  </div>
   <div id="donateModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="donateTitle">
     <div class="modal-card crypto-modal">
       <button type="button" id="donateCloseBtn" class="modal-close" aria-label="Close donation window">×</button>

@@ -198,3 +198,63 @@ html,body{max-width:100%;overflow-x:clip}
 .seo-disclaimer{max-width:1080px}
 @media(max-width:890px){.seo-features{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.seo-overview{padding:24px 14px 28px}.seo-features{grid-template-columns:1fr;gap:9px}.seo-features article{padding:15px}.seo-overview h2{font-size:22px}.seo-overview p{font-size:12px}}
+
+/* Drawing management interface v1.4 — touch-friendly and independent of Auto SMC */
+.draw-tools .draw-manager-button{position:relative}
+.draw-count{position:absolute;right:-5px;top:-7px;background:var(--green);color:#082119;border-radius:10px;padding:1px 4px;min-width:15px;font:800 9px 'DM Sans',sans-serif}
+.draw-button:disabled{opacity:.32;cursor:not-allowed}
+.draw-tools button:focus-visible,.drawing-row button:focus-visible,.selected-drawing-bar button:focus-visible{
+ outline:2px solid var(--green);outline-offset:2px
+}
+.selected-drawing-bar{
+ position:absolute;top:7px;left:9px;right:60px;z-index:12;
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+ padding:7px 9px;border-radius:8px;
+ background:rgba(13,27,43,.96);border:1px solid rgba(252,213,98,.65);
+ color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.24);
+ backdrop-filter:blur(7px);font:700 11px 'DM Sans',sans-serif
+}
+.selected-drawing-bar.hidden,.drawings-panel.hidden{display:none!important}
+.selected-drawing-bar span{flex:1;min-width:75px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selected-drawing-bar button{min-height:31px;border-radius:6px;border:1px solid var(--stroke);background:var(--elev);color:var(--text);padding:5px 8px;font-size:11px}
+.selected-drawing-bar .selected-delete{border-color:rgba(251,108,134,.52);background:rgba(245,94,123,.15);color:#ff8398;font-weight:800}
+.selected-drawing-bar .selected-dismiss{font-size:20px;padding:0 10px;line-height:1}
+.drawings-panel{
+ position:absolute;z-index:18;top:8px;left:8px;
+ width:min(360px,calc(100% - 65px));max-height:calc(100% - 18px);
+ overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+ background:var(--panel);border:1px solid var(--stroke);
+ color:var(--text);box-shadow:0 12px 35px rgba(0,0,0,.40);
+ border-radius:10px;padding:11px
+}
+.drawings-panel-header{position:sticky;top:-11px;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);padding:3px 0 9px;border-bottom:1px solid var(--stroke)}
+.drawings-panel-header strong{font-size:13px;letter-spacing:.2px}
+.drawings-panel-header span{color:var(--green)}
+.drawings-panel-header button{border:0;background:var(--elev);color:var(--text);min-width:29px;height:29px;border-radius:6px;font-size:19px}
+.drawings-panel-help{font-size:10px!important;line-height:1.6;color:var(--muted);margin:10px 0}
+.drawing-list{display:flex;flex-direction:column;gap:5px}
+.drawing-row{display:flex;align-items:stretch;gap:5px;min-width:0}
+.drawing-row button{border-radius:6px;border:1px solid var(--stroke);background:var(--shell);color:var(--text)}
+.drawing-row .drawing-select{flex:1;min-width:0;text-align:left;padding:9px 10px;font:700 11px 'DM Sans',sans-serif;overflow-wrap:anywhere}
+.drawing-row .drawing-select.selected{border-color:var(--green);color:var(--green);background:var(--mintwash)}
+.drawing-row .drawing-item-delete{flex:0 0 38px;width:38px;min-height:36px;color:#ff8498;font-size:16px}
+.drawing-row .drawing-item-delete:hover{border-color:var(--red);background:rgba(247,93,122,.12)}
+.drawing-row.fib-level-row{padding-left:12px}
+.drawing-row.fib-level-row .drawing-select{font:500 10px 'IBM Plex Mono',monospace}
+.drawing-empty{padding:16px 10px;text-align:center;color:var(--muted);font-size:11px;line-height:1.7}
+.drawing-clear-all{display:block;width:100%;margin-top:11px;padding:10px;border-radius:7px;border:1px solid rgba(251,108,134,.4);background:rgba(251,108,134,.08);color:var(--red);font-size:11px;font-weight:800}
+.drawing-clear-all:disabled{opacity:.35}
+body.light .drawings-panel{background:var(--panel);box-shadow:0 12px 28px rgba(16,32,55,.22)}
+body.light .selected-drawing-bar{background:rgba(244,248,253,.97)}
+@media(max-width:730px){
+ .draw-tools{width:39px;gap:4px}
+ .draw-tools .draw-button{min-height:36px;height:36px;width:34px}
+ .draw-tools .draw-manager-button{font-size:17px}
+ .drawings-panel{left:5px;top:5px;width:calc(100% - 12px);max-height:calc(100% - 10px);padding:9px}
+ .selected-drawing-bar{left:5px;right:5px;top:6px;gap:5px;padding:5px 6px}
+ .selected-drawing-bar span{font-size:10px}
+ .selected-drawing-bar button{min-height:34px;font-size:10px}
+ .drawings-panel-help{font-size:11px!important}
+ .drawing-row .drawing-select{min-height:39px}
+ .drawing-row .drawing-item-delete{min-height:39px}
+}

@@ -33,3 +33,28 @@ The website is built as static HTML/CSS/JS without build tools. Pages should use
 **GitHub Pages publishes a public website.** A private development repository can be kept separately, but the public static deployment source lives in this public repository.
 
 The application is independent from, and not endorsed by, TradingView, Binance or market-data providers. Open-source TradingView Lightweight Charts attribution is preserved.
+
+## AdSense inventory and activation
+
+Two clearly labeled and reserved ad spaces exist in the terminal: one in the Smart Money analysis sidebar, and one responsive horizontal banner below the chart workspace. No ad is currently served. Google's AdSense ownership meta and /ads.txt are already present for this publisher account.
+
+To activate **after the exact domain tradingfiew.github.io appears as Ready in AdSense > Sites**, use Google Privacy & messaging or another certified CMP as required, create your real AdSense display units, then edit `adsense.js`:
+
+- Set `siteReady: true` only after the site's approval.
+- Set `cmpReady: true` only when the relevant visitor consent setup is working.
+- Put the real ten-digit `data-ad-slot` values in `units.sidebar` and `units.banner`.
+
+Never use dummy IDs or trick visitors into clicking on ads. Ad placeholders are visible independently of approval and explicitly say they are reserved spaces. No ads are embedded inside the price chart or over its drawing tools.
+
+## Donate with Crypto
+
+A prominent **Donate ₿** button is in the header, plus a secondary button in the sidebar. It opens a network-specific donation panel supporting:
+
+- Bitcoin (BTC) — Bitcoin mainnet
+- Ether (ETH) — Ethereum mainnet
+- USDT — Tron TRC-20
+- USDT — Ethereum ERC-20
+
+The wallet addresses are intentionally blank. **No donation is possible until the verified owner supplies the actual receiving address for each network.** To enable, edit the corresponding `address` value in `donate.js` and validate it against your wallet or exchange's deposit address. The application verifies the basic format before allowing address copying, but the operator must still verify network and wallet ownership, including that token deposits are supported. Crypto transfers may be irreversible.
+
+The donation button is independent of AdSense and must never be used to induce advertisement clicks.

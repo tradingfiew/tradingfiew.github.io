@@ -64,7 +64,11 @@
         <a href="#donateBtn">Donate ₿</a>
       </nav>
 
-      <section class="center-pane">
+      <section class="center-pane" id="chartWindow" aria-label="TradingFiew interactive chart window">
+        <div class="chart-window-bar" id="chartWindowBar">
+          <div class="chart-window-title"><span class="chart-window-icon">↗</span><div><strong>CHART WINDOW</strong><small>Live chart · Drawing tools · Smart Money</small></div></div>
+          <button type="button" id="chartWindowCloseBtn" class="chart-window-close" aria-label="Close chart window" title="Close chart window">✕ Close</button>
+        </div>
         <div class="instrument-header">
           <div class="instrument-main">
             <div class="asset-icon" id="assetIcon">₿</div>
@@ -94,7 +98,8 @@
           <button id="autoSmcBtn" class="toolbar-button active-tool">✧ Auto SMC <span id="smcSwitchDot" class="small-green-dot"></span></button>
           <div class="toolbar-spacer"></div>
           <button id="csvBtn" class="toolbar-icon" title="Export OHLCV CSV" aria-label="Export CSV">⇩</button>
-          <button id="fitBtn" class="toolbar-icon" title="Fit chart" aria-label="Fit chart">⤢</button>
+          <button id="fitBtn" class="toolbar-icon" title="Fit chart" aria-label="Fit chart">⇤</button>
+          <button id="chartWindowBtn" class="toolbar-icon chart-window-trigger" title="Open chart window (full screen)" aria-label="Open interactive chart window">⤢</button>
         </div>
 
         <div class="chart-space">

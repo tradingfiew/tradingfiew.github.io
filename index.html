@@ -39,10 +39,10 @@
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
   <script defer src="./market-data.js"></script>
   <script defer src="./workspace.js"></script>
-  <script defer src="./alerts.js?v=20261117-alerts5"></script>
+  <script defer src="./alerts.js?v=20261117-click1"></script>
   <script defer src="./market-panels.js?v=20261117-terminal1"></script>
   <script defer src="./terminal-ui.js?v=20261117-layout2"></script>
-  <script defer src="./app.js?v=20261117-alerts4"></script>
+  <script defer src="./app.js?v=20261117-click1"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
   <script defer src="./share.js?v=20261117-3"></script>
@@ -169,6 +169,7 @@
           <div class="draw-tools" role="toolbar" aria-label="Drawing tools">
             <button class="draw-button active" data-draw="cursor" title="Cursor">⌖</button>
             <button class="draw-button" data-draw="horizontal" title="Horizontal price level">━</button>
+            <button class="draw-button alert-draw-button" data-draw="alert" title="Tap any price on the chart to create a sounding alert" aria-label="Tap chart to set price alert" aria-pressed="false">🔔</button>
             <button class="draw-button" data-draw="trend" title="Trend line">╱</button>
             <button class="draw-button" data-draw="fib" title="Fibonacci retracement">⅔</button>
             <div class="vertical-separator"></div>
@@ -333,6 +334,7 @@
           <div class="alerts-form-grid">
             <label>Market <select id="alertSymbol" required aria-label="Market for new alert"></select></label>
             <label>Condition <select id="alertCondition" required>
+              <option value="price_touch">Price reaches level (either direction)</option>
               <option value="price_above">Price crosses above</option>
               <option value="price_below">Price crosses below</option>
               <option value="smc_any">Any confirmed SMC break</option>
@@ -347,6 +349,7 @@
           <label class="alerts-setting alerts-repeat"><input id="alertNotify" type="checkbox" checked> Phone / browser notification for this alert (when allowed)</label>
           <button type="submit" id="alertAddBtn" class="alert-add">+ Create alert</button>
         </form>
+        <p class="alerts-chart-help"><strong>Fastest way:</strong> tap 🔔 in the left chart toolbar, then tap any price on the chart to save an alert instantly. On desktop, right-click the chart at any price. The alert is saved without reopening this form. A thin dotted yellow line marks your alert level.</p>
         <p class="alerts-scope-note">Alerts only work while TradingFiew is running in your browser. Delivery with the site fully closed requires a separate push server, which is not configured. Phone settings may suppress sounds or notifications.</p>
       </div>
       <div class="alerts-manager-heading"><h3>My alerts <span id="alertsActiveSummary">0 active</span></h3><button id="alertsDeleteAllBtn" type="button">Delete all</button></div>

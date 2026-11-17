@@ -72,32 +72,28 @@
    * After the donor explicitly requests credit, the owner must manually confirm
    * the donation and publish only the chosen name in supporters.json. */
   async function loadSupporters(){
-    const list=$("supportersList");
-    if(!list)return;
+    const targets=[$("supportersList"),$("supportersPublicList")].filter(Boolean);
+    if(!targets.length)return;
+    let names=[];
     try{
       const response=await fetch("./supporters.json",{cache:"no-store"});
       if(!response.ok)throw Error("Supporter records unavailable");
       const data=await response.json();
       if(!Array.isArray(data.supporters))throw Error("Invalid supporter list");
-      list.replaceChildren();
-      const names=data.supporters.filter(p=>
+      names=data.supporters.filter(p=>
         p&&p.approved===true&&p.consent===true&&typeof p.name==="string"&&
         p.name.trim().length>=1&&p.name.length<=42).slice(0,150);
+    }catch(error){console.warn("Supporter credits could not load",error);}
+    for(const list of targets){
+      list.replaceChildren();
       if(!names.length){
         const empty=document.createElement("span");empty.className="supporters-empty";
-        empty.textContent="No public supporters yet · You can donate anonymously";
+        empty.textContent="No publicly credited supporters yet · Anonymous donations are welcome";
         list.appendChild(empty);
-        return;
+      }else for(const item of names){
+        const tag=document.createElement("span");tag.className="supporter-name";
+        tag.textContent=item.name.trim();list.appendChild(tag);
       }
-      for(const item of names){
-        const tag=document.createElement("span");
-        tag.className="supporter-name";
-        tag.textContent=item.name.trim();
-        list.appendChild(tag);
-      }
-    }catch(error){
-      list.textContent="Supporters will appear here after consent and verification.";
-      console.warn("Supporter records could not load",error);
     }
   }
   function updateSupporterOptIn(){
@@ -140,6 +136,7 @@
     const modal=$("donateModal");
     if(!modal)return;
     $("donateBtn")?.addEventListener("click",open);
+    $("supportersPublicDonate")?.addEventListener("click",open);
     $("sideDonateBtn")?.addEventListener("click",open);
     $("donateCloseBtn")?.addEventListener("click",close);
     $("donateDoneBtn")?.addEventListener("click",close);

@@ -1,0 +1,40 @@
+name: TradingFiew real website screenshots for Play Store
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/tradingfiew-store-screenshots.yml'
+      - 'scripts/capture-tradingfiew-screenshots.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real Chromium screenshot runner
+        run: |
+          mkdir -p .capture-deps
+          cd .capture-deps
+          npm init -y
+          npm install --no-audit --no-fund playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Capture real live TradingFiew UI in Android-sized viewport
+        env:
+          NODE_PATH: ${{ github.workspace }}/.capture-deps/node_modules
+        run: node scripts/capture-tradingfiew-screenshots.mjs
+      - name: Upload truthful screenshots and QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradingFiew-Play-Real-UI-Screenshots
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            publishing/screenshots/**

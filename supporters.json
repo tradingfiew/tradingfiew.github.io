@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "supporters": [],
+  "description": "Only donations confirmed by the operator AND donors who explicitly consented to publishing their chosen display name. Never include wallet addresses, GitHub usernames, transaction IDs or amounts without separately explicit consent."
+}

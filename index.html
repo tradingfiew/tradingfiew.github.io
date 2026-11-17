@@ -52,7 +52,7 @@
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
-        <button type="button" id="shareBtn" class="share-header" aria-haspopup="dialog" aria-controls="shareModal" title="Share TradingFiew chart"><span aria-hidden="true">↗</span><span class="share-header-text">Share</span></button>
+        <button type="button" id="shareBtn" class="share-header" aria-label="Share this TradingFiew chart" aria-haspopup="dialog" aria-controls="shareModal" title="Share TradingFiew chart"><span aria-hidden="true">↗</span><span class="share-header-text">Share</span></button>
         <button type="button" id="workspaceBtn" class="workspace-entry" title="My saved browser workspace" aria-haspopup="dialog" aria-controls="workspaceModal"><span aria-hidden="true">◉</span><span class="workspace-name">My Space</span></button>
         <button type="button" id="donateBtn" class="donate-header" aria-haspopup="dialog" aria-controls="donateModal"><span class="donate-symbol">₿</span><span>Donate</span><span class="donate-crypto">Crypto</span></button>
         <span class="session-tag"><span id="liveDot" class="status-dot"></span><span id="connectionState">CONNECTING</span></span>
@@ -127,7 +127,7 @@
             <button id="clearDrawingsBtn" class="draw-button" title="Clear ALL drawings" aria-label="Clear all drawings" disabled>⌫</button>
           </div>
           <div class="chart-inner">
-            <div class="ohlc-strip" id="ohlcStrip"><span>O <b id="oVal">—</b></span><span>H <b id="hVal">—</b></span><span>L <b id="lVal">—</b></span><span>C <b id="cVal">—</b></span><span class="strip-r" id="stripRSI">RSI 14 —</span></div>
+            <div class="ohlc-strip" id="ohlcStrip"><span>O <b id="oVal">—</b></span><span>H <b id="hVal">—</b></span><span>L <b id="lVal">—</b></span><span>C <b id="cVal">—</b></span><span class="strip-v"><span id="volumeStripLabel">VOL</span> <b id="volumeStripValue">—</b></span><span class="strip-r" id="stripRSI">RSI 14 —</span></div>
             <div class="legend-strip"><span><i class="legend-dot ema20"></i>EMA 20</span><span><i class="legend-dot ema50"></i>EMA 50</span><span><i class="legend-dot ema200"></i>EMA 200</span><span><i class="legend-dot bullish"></i>Bullish FVG</span><span><i class="legend-dot bearish"></i>Bearish FVG</span></div>
             <div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div>
               <div id="selectedDrawingBar" class="selected-drawing-bar hidden" role="group" aria-label="Selected chart drawing">

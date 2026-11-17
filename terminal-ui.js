@@ -10,7 +10,7 @@ const read=(name,fallback)=>{try{return Space?.get("terminal:"+name)||fallback;}
 const save=(name,value)=>{try{Space?.set("terminal:"+name,value);}catch{}};
 const mobileViews=["chart","markets","analysis","depth"];
 let mobileView="chart";
-let marketOpen=false,analysisOpen=true;
+let marketOpen=true,analysisOpen=true,leftTab="markets";
 function resize(){
   root.requestAnimationFrame(()=>{
     root.TradingFiewChartAPI?.resize?.();
@@ -26,10 +26,29 @@ function syncPanelLabels(){
   workspace.dataset.marketWatch=marketOpen?"open":"collapsed";
   workspace.dataset.analysisPanel=analysisOpen?"open":"collapsed";
 }
+
+function setLeftTab(tab,{saveChoice=true}={}){
+  if(!["markets","trends","book"].includes(tab))return;
+  leftTab=tab;
+  workspace.dataset.leftTab=tab;
+  for(const item of ["markets","trends","book"]){
+    const pane=$("leftPane"+item.charAt(0).toUpperCase()+item.slice(1));
+    const button=$("leftPanelTabs").querySelector('[data-left-tab="'+item+'"]');
+    const active=item===tab;
+    pane.hidden=!active;
+    pane.classList.toggle("active",active);
+    button.classList.toggle("active",active);
+    button.setAttribute("aria-selected",String(active));
+    button.tabIndex=active?0:-1;
+  }
+  if(saveChoice)save("leftTab",tab);
+}
 function switchView(view){
   if(!mobileViews.includes(view))return;
   mobileView=view;
   workspace.dataset.mobileView=view;
+  if(view==="depth")setLeftTab("book",{saveChoice:false});
+  else if(view==="markets")setLeftTab("markets",{saveChoice:false});
   document.querySelectorAll("[data-terminal-view]").forEach(button=>{
     const active=button.dataset.terminalView===view;
     button.classList.toggle("selected",active);
@@ -40,7 +59,7 @@ function switchView(view){
 }
 function showMarkets(){
   if(isMobile()){switchView("markets");return;}
-  marketOpen=!marketOpen;save("marketWatch",marketOpen?"open":"collapsed");syncPanelLabels();resize();
+  marketOpen=!marketOpen;save("marketWatchV2",marketOpen?"open":"collapsed");syncPanelLabels();resize();
 }
 function showAnalysis(view){
   if(isMobile()){switchView(view||"analysis");return;}
@@ -103,16 +122,30 @@ function restoreRange(){
 }
 function initialLayout(){
   document.body.classList.add("terminal-mode");
-  marketOpen=read("marketWatch","collapsed")==="open";
+  marketOpen=read("marketWatchV2","open")==="open";
   // On tablets the SMC panel starts folded to keep the chart wide.
   analysisOpen=read("analysisPanel",root.innerWidth<=1100?"collapsed":"open")==="open";
   syncPanelLabels();
+  setLeftTab(read("leftTab","markets"),{saveChoice:false});
   const view=read("mobileView","chart");
   switchView(mobileViews.includes(view)?view:"chart");
   setEvents(read("events","false")==="true");
 }
 function init(){
   initialLayout();
+  $("leftPanelTabs").addEventListener("click",e=>{
+    const button=e.target.closest("[data-left-tab]");
+    if(button)setLeftTab(button.dataset.leftTab);
+  });
+  $("leftPanelTabs").addEventListener("keydown",e=>{
+    if(!["ArrowLeft","ArrowRight","Home","End"].includes(e.key))return;
+    e.preventDefault();
+    const items=["markets","trends","book"];
+    const at=items.indexOf(leftTab),next=e.key==="Home"?0:e.key==="End"?2:
+      (at+(e.key==="ArrowRight"?1:2))%items.length;
+    setLeftTab(items[next]);
+    $("leftPanelTabs").querySelector('[data-left-tab="'+items[next]+'"]').focus();
+  });
   $("toggleMarketsBtn").addEventListener("click",showMarkets);
   $("toggleAnalysisBtn").addEventListener("click",()=>showAnalysis("analysis"));
   $("terminalMobileDock").addEventListener("click",e=>{

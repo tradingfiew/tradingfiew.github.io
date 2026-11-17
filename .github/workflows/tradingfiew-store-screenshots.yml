@@ -22,7 +22,7 @@ jobs:
         run: |
           mkdir -p .capture-deps
           cd .capture-deps
-          npm init -y
+          printf '{"name":"tradingfiew-capture","private":true}\n' > package.json
           npm install --no-audit --no-fund playwright@1.58.2
           npx playwright install --with-deps chromium
       - name: Capture real live TradingFiew UI in Android-sized viewport

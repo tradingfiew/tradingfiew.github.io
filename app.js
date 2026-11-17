@@ -723,6 +723,7 @@ const row=e.target.closest('[data-pair]');if(row&&row.dataset.pair!==state.symbo
 $('symbolSearch').addEventListener('input',()=>{remember('search',$('symbolSearch').value);renderMarkets();});
 $('timeframes').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b&&b.dataset.tf!==state.tf){clearDrawings({forget:false,notice:false});state.tf=b.dataset.tf;loadMarket();}});
 $('refreshBtn').addEventListener('click',()=>loadMarket(false));
+$('refreshChartBtn').addEventListener('click',()=>loadMarket(false));
 $('fitBtn').addEventListener('click',focusRecentCandles);
 $('chartWindowBtn').addEventListener('click',()=>setChartWindow(!state.chartWindow));
 $('chartWindowCloseBtn').addEventListener('click',()=>setChartWindow(false));

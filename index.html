@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="./styles.css?v=20261117-layout2">
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
+  <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
   <script defer src="./market-data.js"></script>
   <script defer src="./workspace.js"></script>
   <script defer src="./market-panels.js?v=20261117-terminal1"></script>
@@ -144,6 +145,7 @@
               <label><input type="checkbox" id="toggleZones" checked> SMC Zones</label>
               <label><input type="checkbox" id="toggleMarkers" checked> Structure markers</label>
               <label><input type="checkbox" id="toggleSR" checked> Support / Resistance</label>
+              <label class="optional-alert-menu"><input type="checkbox" id="toggleBreakoutAlerts"> SMC zone breakout alerts (optional)</label>
             </div>
           </div>
           <button id="autoSmcBtn" class="toolbar-button active-tool">✧ Auto SMC <span id="smcSwitchDot" class="small-green-dot"></span></button>
@@ -220,6 +222,25 @@
           <div class="bias-meter"><span id="biasMeterFill"></span></div>
           <div class="bias-bottom"><span id="biasReason">Based on confirmed swing breaks</span><b id="biasScore">—</b></div>
         </div>
+        <section class="smc-breakout-panel" id="smcBreakoutPanel" aria-labelledby="smcBreakoutTitle">
+          <div class="smc-breakout-head">
+            <div><span class="eyebrow">OPTIONAL TECHNICAL ALERTS</span><h3 id="smcBreakoutTitle">SMC Zone Breakouts</h3></div>
+            <label class="smc-alert-toggle" title="Enable or disable automatic breakout scenario alerts">
+              <input type="checkbox" id="smcBreakoutEnabled">
+              <span>Enable</span>
+            </label>
+          </div>
+          <p class="smc-breakout-explain">Red zone breaks upward → bullish scenario. Green zone breaks downward → bearish scenario. A completed candle must close beyond the boundary.</p>
+          <div id="smcBreakoutStatus" class="smc-breakout-status" role="status" aria-live="polite">Off — enable to receive new alerts</div>
+          <div id="smcBreakoutResult" class="smc-breakout-result" hidden>
+            <div class="smc-breakout-action"><strong id="smcBreakoutAction">—</strong><span id="smcBreakoutTime">—</span></div>
+            <strong id="smcBreakoutHeadline">—</strong>
+            <p id="smcBreakoutReason"></p>
+            <p id="smcBreakoutPlan"></p>
+            <p id="smcBreakoutContext"></p>
+          </div>
+          <p class="smc-breakout-legal">Automated educational analysis, not financial advice. No guaranteed results. TradingFiew accepts no responsibility for individual trading decisions or losses. You bear the risk of any trade.</p>
+        </section>
         <div class="analysis-section">
           <h3>STRUCTURE & ORDER FLOW <span id="smcAsOf">—</span></h3>
           <div class="metric-grid">
@@ -283,6 +304,12 @@
     <footer class="footer"><span>© 2026 TradingFiew by RibhLab <span class="footer-sep">•</span> Independent chart research</span><span>Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a> · Data: Binance Spot + indicative biquote feeds · Not financial advice</span><nav class="legal-links" aria-label="Legal and analysis links"><a href="./about.html">How SMC works</a><a href="./privacy.html">Privacy</a></nav></footer>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <section id="smcBreakoutBanner" class="smc-breakout-banner hidden" role="alert" aria-label="Optional Smart Money breakout signal" aria-live="assertive">
+    <div class="smc-banner-title"><strong id="smcBannerAction">—</strong><button type="button" id="smcBannerCloseBtn" aria-label="Dismiss breakout alert">✕</button></div>
+    <p id="smcBannerReason">—</p>
+    <p id="smcBannerPlan">—</p>
+    <small>Educational scenario only · TradingFiew is not responsible for trading decisions or losses.</small>
+  </section>
   <div id="terminalInfoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="terminalInfoTitle">
     <div class="modal-card terminal-info-modal">
       <button type="button" id="terminalInfoCloseBtn" class="modal-close" aria-label="Close terminal information">×</button>

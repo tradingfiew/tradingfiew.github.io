@@ -273,7 +273,7 @@ function layoutLivePriceBadge(){
     const range=y<minY?'above':y>maxY?'below':'visible';
     const number=fmt(state.activePrice),last=state.data.at(-1);
     const market=activeMarket(),countdown=candleCountdownData();
-    const fresh=countdown.status!=='paused'&&countdown.status!=='waiting';
+    const fresh=countdown.active;
     const direction=Number.isFinite(last?.open)&&state.activePrice<last.open?'down':'up';
     badge.querySelector('.axis-price').textContent=(range==='above'?'▲ ':range==='below'?'▼ ':'')+number;
     badge.querySelector('.axis-countdown').textContent=countdown.text;
@@ -287,7 +287,7 @@ function layoutLivePriceBadge(){
       ': '+number+' · '+(countdown.active?'Candle closes in '+countdown.text:
         countdown.status==='paused'?'Market feed paused':'Current candle not confirmed');
     badge.setAttribute('aria-label',market.symbol+' current price '+number+
-      (countdown.active+', candle closes in '+countdown.text));
+      (countdown.active?', candle closes in '+countdown.text:', '+(countdown.status==='paused'?'market paused':'current candle unavailable')));
     badge.hidden=false;
   }catch(error){badge.hidden=true;console.warn('Price badge layout unavailable',error);}
 }

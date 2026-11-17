@@ -1,38 +1,126 @@
-/* Official TradingView economic calendar with the US filter.
- * The provider controls live releases and their timing; no fake Actual values. */
-(function(){
-'use strict';
-const $=id=>document.getElementById(id);
-let lastTheme='',pending=false;
-function render(){
-  const host=$('usEconomicWidget');
-  if(!host||pending)return;
-  pending=true;
-  const theme=document.body.classList.contains('light')?'light':'dark';
-  lastTheme=theme;
-  host.replaceChildren();
-  const wrap=document.createElement('div');
-  wrap.className='tradingview-widget-container';
-  const slot=document.createElement('div');
-  slot.className='tradingview-widget-container__widget';
-  wrap.appendChild(slot);host.appendChild(wrap);
-  const script=document.createElement('script');
-  script.async=true;
-  script.src='https://s3.tradingview.com/external-embedding/embed-widget-events.js';
-  script.textContent=JSON.stringify({colorTheme:theme,isTransparent:false,locale:'en',countryFilter:'us',importanceFilter:'-1,0,1',width:'100%',height:510});
-  script.onload=()=>{pending=false;};
-  script.onerror=()=>{pending=false;host.insertAdjacentText('beforeend','Economic calendar is unavailable. Follow the TradingView link above to see releases.');};
-  wrap.appendChild(script);
-  const status=$('usCalendarUpdated');
-  if(status)status.textContent='Refreshed '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-}
-function start(){
- $('refreshUsCalendar')?.addEventListener('click',render);
- render();
- setInterval(()=>{if(!document.hidden)render();},180000);
- $('themeBtn')?.addEventListener('click',()=>requestAnimationFrame(()=>{
-   if((document.body.classList.contains('light')?'light':'dark')!==lastTheme)render();
- }));
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+/* TradingFiew US economic calendar. Accessible, lazy-loaded modal:
+ * - Hidden calendar never participates in flex/grid page layout.
+ * - Opening is user-directed; scrolling, resizing and chart drawing remain intact.
+ * - TradingView is the source of schedule, forecast and actual figures.
+ */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  let opener = null;
+  let refreshHandle = null;
+  let lastRendered = 0;
+  let lastTheme = null;
+  let lastSize = null;
+  let resizing = null;
+  const UPDATE_MS = 180000;
+  const dialog = $('usEconomicCalendar');
+
+  function isOpen() { return Boolean(dialog?.open); }
+  function theme() { return document.body.classList.contains('light') ? 'light' : 'dark'; }
+  function setExpanded(expanded) {
+    document.querySelectorAll('.us-calendar-trigger').forEach(control => {
+      control.setAttribute('aria-expanded', String(expanded));
+      control.classList.toggle('active', expanded);
+    });
+  }
+  function renderCalendar(force = false) {
+    if (!isOpen()) return;
+    const host = $('usEconomicWidget');
+    if (!host) return;
+    const mode = theme();
+    const size = {
+      width: Math.round(host.clientWidth),
+      height: Math.max(240, Math.round(host.clientHeight))
+    };
+    const needsResize = lastSize && (Math.abs(lastSize.width - size.width) > 60 ||
+      Math.abs(lastSize.height - size.height) > 80);
+    if (!force && lastRendered && mode === lastTheme && !needsResize &&
+        Date.now() - lastRendered < UPDATE_MS) return;
+    lastTheme = mode;
+    lastRendered = Date.now();
+    lastSize = size;
+    host.replaceChildren();
+    const wrap = document.createElement('div');
+    wrap.className = 'tradingview-widget-container';
+    const slot = document.createElement('div');
+    slot.className = 'tradingview-widget-container__widget';
+    wrap.appendChild(slot);
+    host.appendChild(wrap);
+    const loader = document.createElement('script');
+    loader.async = true;
+    loader.src = 'https://s3.tradingview.com/external-embedding/embed-widget-events.js';
+    loader.textContent = JSON.stringify({
+      colorTheme: mode,
+      isTransparent: false,
+      locale: 'en',
+      countryFilter: 'us',
+      importanceFilter: '-1,0,1',
+      width: '100%',
+      height: size.height
+    });
+    loader.onerror = () => {
+      $('usCalendarUpdated').textContent = 'Calendar provider unavailable';
+      const message = document.createElement('p');
+      message.className = 'us-calendar-provider-error';
+      message.textContent = 'The data provider could not load. Open TradingView using Source above.';
+      host.appendChild(message);
+    };
+    wrap.appendChild(loader);
+    const stamp = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    $('usCalendarUpdated').textContent = 'Checked ' + stamp;
+  }
+  function refresh() {
+    lastRendered = 0;
+    renderCalendar(true);
+  }
+  function open(event) {
+    if (!dialog || isOpen()) return;
+    opener = event?.currentTarget || document.activeElement;
+    dialog.showModal();
+    setExpanded(true);
+    $('closeUsCalendar')?.focus({preventScroll:true});
+    renderCalendar(true);
+    refreshHandle = window.setInterval(() => {
+      if (isOpen() && !document.hidden) renderCalendar();
+    }, UPDATE_MS);
+  }
+  function close() {
+    if (isOpen()) dialog.close();
+  }
+  function onClose() {
+    clearInterval(refreshHandle);
+    refreshHandle = null;
+    setExpanded(false);
+    if (opener?.isConnected && typeof opener.focus === 'function')
+      opener.focus({preventScroll:true});
+    opener = null;
+  }
+  function init() {
+    if (!dialog) return;
+    document.querySelectorAll('.us-calendar-trigger').forEach(el => {
+      el.addEventListener('click',open);
+    });
+    $('closeUsCalendar')?.addEventListener('click',close);
+    $('refreshUsCalendar')?.addEventListener('click',refresh);
+    dialog.addEventListener('close',onClose);
+    dialog.addEventListener('click',e => {
+      if (e.target !== dialog) return;
+      const r = dialog.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close();
+    });
+    $('themeBtn')?.addEventListener('click',() => {
+      if (isOpen()) window.requestAnimationFrame(() => renderCalendar(true));
+    });
+    document.addEventListener('visibilitychange',() => {
+      if (isOpen() && !document.hidden) renderCalendar();
+    });
+    window.addEventListener('resize',() => {
+      if (!isOpen()) return;
+      clearTimeout(resizing);
+      resizing = setTimeout(() => renderCalendar(),240);
+    }, {passive:true});
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
 })();

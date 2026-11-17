@@ -77,12 +77,15 @@ $('assetClassBadge').textContent=c.category.toUpperCase();
 $('assetIcon').textContent=c.icon;$('assetIcon').style.background=c.color;
 $('marketSourceName').textContent=c.provider==='binance'?'BINANCE SPOT':'INDICATIVE CFD/FX';
 $('volumeLabel').textContent=c.provider==='binance'?'24H TURNOVER':'QUOTE SOURCE';
+$('volumeStripLabel').textContent=c.provider==='binance'?'VOL':'TICKS';
 $('biasTimeframe').textContent=state.tf.toUpperCase();$('htfInterval').textContent='Higher TF: '+intervals[state.tf];
 document.querySelectorAll('#timeframes button').forEach(b=>b.classList.toggle('active',b.dataset.tf===state.tf));
 renderMarkets();
 }
 function setOhlc(c){
 for(const [id,key] of [['oVal','open'],['hVal','high'],['lVal','low'],['cVal','close']])$(id).textContent=fmt(c[key]);
+const original=state.data.findLast?.(x=>x.time===c.time)||state.data.at(-1);
+$('volumeStripValue').textContent=Number.isFinite(original?.volume)?compact(original.volume):'—';
 }
 function priceGuideColor(){return document.body.classList.contains('light')?'#008f88':'#22d7c1';}
 function updatePrice(v){if(!Number.isFinite(v)||v<=0)return;

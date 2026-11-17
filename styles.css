@@ -1399,3 +1399,17 @@ body.terminal-mode .chart-holder{overflow:hidden!important}
  body.terminal-mode .center-pane .chart-toolbar{flex:0 0 38px!important;height:38px!important}
  body.terminal-mode .center-pane .chart-holder{min-height:60px!important}
 }
+
+
+/* A shared time cursor physically connects price candles and RSI across panes. */
+body.terminal-mode .chart-inner{position:relative}
+.synced-crosshair-guide{
+ position:absolute;width:1px;min-height:0;display:block;pointer-events:none;
+ z-index:9;opacity:.88;
+ background:repeating-linear-gradient(to bottom,#6d8dab 0px,#6d8dab 4px,transparent 4px,transparent 8px)
+}
+.synced-crosshair-guide[hidden]{display:none!important}
+body.light .synced-crosshair-guide{
+ opacity:.75;
+ background:repeating-linear-gradient(to bottom,#6480a4 0px,#6480a4 4px,transparent 4px,transparent 8px)
+}

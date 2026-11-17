@@ -1,34 +1,69 @@
-/* TradingFiew AdSense integrations and reserved placements.
- * Verified publisher ID and ads.txt are published for review.
- * DO NOT enable siteReady until TradingFiew is "Ready" in AdSense > Sites.
- * DO NOT enable cmpReady until certified CMP / applicable consent is configured.
- * Provide real AdSense ad unit slot IDs copied from your own AdSense account.
- * Reserved ad placeholders remain visible until activation.
+/* TradingFiew AdSense policy.
+ * Desktop: inline ad placements may be activated only after AdSense approval,
+ * appropriate consent and valid AdSense slot IDs are confirmed.
+ * Mobile browsers and Android TWA: only Google AdSense Auto Ads VIGNETTES
+ * (full-screen interstitials) are permitted. NO banner, anchor, in-page,
+ * side rail, intent, or manually injected inline advertising on mobile.
+ *
+ * IMPORTANT: HTML/JavaScript cannot reliably restrict the ad formats that
+ * AdSense Auto Ads delivers. The AdSense account/site settings must be set
+ * to Vignette-only before mobile delivery can be enabled by an operator.
+ * Keep mobileVignetteOnlyConfirmed false until that independent check.
  */
 (function(){
 "use strict";
 const config=Object.freeze({
   publisherId:"ca-pub-7945572016731367",
-  siteReady:false,            // must be approved for tradingfiew.github.io
-  cmpReady:false,             // certified consent solution / applicable requirements
+  siteReady:false,             // Only after AdSense > Sites says Ready.
+  cmpReady:false,              // Only after the necessary consent setup.
+  mobileVignetteOnlyConfirmed:false,
   units:Object.freeze({
-    sidebar:"",               // real data-ad-slot from your own AdSense
-    banner:""                 // real data-ad-slot from your own AdSense
+    sidebar:"",
+    banner:""
   })
 });
 const validSlot=x=>typeof x==="string"&&/^\d{10}$/.test(x);
-function init(){
-  if(!config.siteReady||!config.cmpReady)return;
-  const containers=[...document.querySelectorAll("[data-ad-placement]")];
-  const eligible=containers.map(element=>({
-    element,slot:config.units[element.dataset.adPlacement]||""
-  })).filter(x=>validSlot(x.slot));
-  if(!eligible.length)return;
+function isMobile(){
+  const ua=navigator.userAgent||"";
+  const pointer=window.matchMedia?.("(pointer: coarse)")?.matches===true;
+  const compact=window.matchMedia?.("(max-width: 730px)")?.matches===true;
+  const androidTwa=(document.referrer||"").startsWith("android-app://");
+  return compact||pointer||androidTwa||/Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+}
+function removeMobilePlacements(){
+  document.querySelectorAll("[data-ad-placement]").forEach(element=>{
+    element.setAttribute("hidden","");
+    element.setAttribute("aria-hidden","true");
+    element.classList.remove("is-serving");
+    element.replaceChildren();
+  });
+}
+function loadAdSense(onLoad){
   const script=document.createElement("script");
   script.async=true;
   script.crossOrigin="anonymous";
   script.src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client="+config.publisherId;
-  script.addEventListener("load",()=>{
+  if(typeof onLoad==="function")script.addEventListener("load",onLoad,{once:true});
+  script.addEventListener("error",()=>console.warn("TradingFiew: AdSense script unavailable"),{once:true});
+  document.head.appendChild(script);
+}
+function init(){
+  if(isMobile()){
+    // This is enforced even while ads are disabled/pending approval so there
+    // are never empty advertisement placeholders occupying the phone screen.
+    removeMobilePlacements();
+    if(!config.siteReady||!config.cmpReady||!config.mobileVignetteOnlyConfirmed)return;
+    // ONLY the Auto Ads loader: never create <ins class="adsbygoogle"> here.
+    // AdSense site-level Auto Ads must be VIGNETTES ONLY for mobile.
+    loadAdSense();
+    return;
+  }
+  if(!config.siteReady||!config.cmpReady)return;
+  const eligible=[...document.querySelectorAll("[data-ad-placement]")].map(element=>({
+    element,slot:config.units[element.dataset.adPlacement]||""
+  })).filter(x=>validSlot(x.slot));
+  if(!eligible.length)return;
+  loadAdSense(()=>{
     for(const {element,slot} of eligible){
       const ins=document.createElement("ins");
       ins.className="adsbygoogle";
@@ -40,12 +75,13 @@ function init(){
       element.appendChild(ins);
       element.classList.add("is-serving");
       try{(window.adsbygoogle=window.adsbygoogle||[]).push({});}
-      catch(error){console.warn("AdSense unit activation failed",error);element.classList.remove("is-serving");}
+      catch(error){
+        console.warn("TradingFiew: AdSense desktop placement failed",error);
+        element.classList.remove("is-serving");
+      }
     }
   });
-  script.addEventListener("error",()=>console.warn("Google AdSense script could not load"));
-  document.head.appendChild(script);
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});
 else init();
 })();

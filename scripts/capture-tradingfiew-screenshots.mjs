@@ -3,7 +3,9 @@
  * These are Chromium Android-mobile viewport captures, not native APK emulator captures.
  * UI and quotes are never fabricated. No mock screenshots or painted price candles.
  */
-import { chromium } from 'playwright';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { chromium } = require('../.capture-deps/node_modules/playwright');
 import fs from 'node:fs/promises';
 import path from 'node:path';
 

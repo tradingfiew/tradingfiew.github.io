@@ -15,6 +15,7 @@ let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanva
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
 let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=88,sharedCrosshairTime=null,livePriceBadgePending=false;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
+let drawingDrag=null,suppressDrawingClickUntil=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -176,6 +177,7 @@ rsiChart.subscribeCrosshairMove(p=>{
 });
 chart.subscribeClick(onChartClick);
 installChartContextHandlers();
+installLineDragging();
 document.addEventListener('tradingfiew:alerts-changed',renderAlertPriceLines);
 zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{
   scheduleAlertLayout();
@@ -398,7 +400,7 @@ function startQuotePolling(request){
 function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.tabTickerTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.tabTickerTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 hideChartContextMenu();
-const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
+const request=++state.request;drawingDrag=null;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
 try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
 try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;$('livePriceBadge').hidden=true;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;state.tabChangePct=null;state.tabQuoteStatus=null;updateBrowserTabTitle();connection('CONNECTING','Fetching historical candles...');
@@ -895,6 +897,148 @@ function drawingHitTest(point){
   return best;
 }
 
+
+function installLineDragging(){
+  const host=$('chartHost'),coords=e=>{
+    const r=host.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+    return x>=0&&x<r.width&&y>=0&&y<r.height?{x,y}:null;
+  };
+  const barIndex=x=>{
+    const n=chart.timeScale().coordinateToLogical(x);
+    return Number.isFinite(n)?Math.max(0,Math.min(state.data.length-1,Math.round(n))):-1;
+  };
+  const findIndex=time=>{
+    let index=state.data.findIndex(d=>d.time===time);
+    if(index>=0)return index;
+    return state.data.reduce((best,item,i)=>Math.abs(item.time-time)<Math.abs(state.data[best].time-time)?i:best,0);
+  };
+  const hitAt=p=>{
+    const drawing=drawingHitTest(p);
+    let hit=drawing?{type:'drawing',id:drawing.id,fraction:drawing.fraction,distance:drawing.distance}:null;
+    if($('toggleAlertLines').checked)for(const a of window.TradingFiewAlerts?.getPriceLevels?.(state.symbol)||[]){
+      const y=candles.priceToCoordinate(a.target),distance=Math.abs(y-p.y);
+      if(Number.isFinite(y)&&distance<=(window.innerWidth<=730?13:8)&&(!hit||distance<hit.distance))
+        hit={type:'alert',id:a.id,distance};
+    }
+    return hit;
+  };
+  const rollback=d=>{
+    if(d.type==='alert'){renderAlertPriceLines();return;}
+    const item=state.drawings.find(x=>x.id===d.id);
+    if(!item)return;
+    if(item.kind==='price'){item.price=d.copy.price;item.line.applyOptions({price:item.price});}
+    else if(item.kind==='fib')for(const line of item.levels){
+      const saved=d.copy.levels.find(l=>l.fraction===line.fraction);
+      if(saved){line.price=saved.price;line.line.applyOptions({price:line.price});}
+    }else if(item.kind==='series'){item.points=d.copy.points;item.line.setData(item.points);}
+  };
+  const move=(d,p,shift)=>{
+    const py=candles.coordinateToPrice(Math.max(1,Math.min(host.clientHeight-4,p.y)));
+    if(!Number.isFinite(py)||py<=0)return;
+    const offset=py-d.startPrice;
+    if(d.type==='alert'){
+      d.newPrice=py;
+      alertPriceLines.get(d.id)?.applyOptions({price:py});
+      const node=[...$('alertLineHandles').children].find(v=>v.dataset.alertId===d.id);
+      if(node){
+        node.style.top=(host.getBoundingClientRect().top-$('alertLineHandles').getBoundingClientRect().top+p.y)+'px';
+        const label=node.querySelector('.alert-handle-label');if(label)label.textContent='🔔 '+fmt(py);
+      }
+      return;
+    }
+    const item=state.drawings.find(x=>x.id===d.id);if(!item)return;
+    if(item.kind==='price'){
+      const next=d.copy.price+offset;if(next<=0)return;
+      item.price=next;item.line.applyOptions({price:next});
+    }else if(item.kind==='fib'){
+      for(const level of item.levels){
+        if(!shift&&level.fraction!==d.fraction)continue;
+        const old=d.copy.levels.find(v=>v.fraction===level.fraction);
+        if(!old||old.price+offset<=0)continue;
+        level.price=old.price+offset;level.line.applyOptions({price:level.price});
+      }
+    }else if(item.kind==='series'){
+      let points=d.copy.points.map(v=>({...v}));
+      if(d.endpoint>=0){
+        const idx=barIndex(p.x);if(idx<0)return;
+        const time=state.data[idx].time;if(time===points[1-d.endpoint].time)return;
+        points[d.endpoint]={time,value:py};
+      }else{
+        const from=barIndex(d.start.x),to=barIndex(p.x);
+        if(from<0||to<0)return;
+        const a=findIndex(points[0].time),b=findIndex(points[1].time);
+        const shiftBars=Math.max(-Math.min(a,b),Math.min(state.data.length-1-Math.max(a,b),to-from));
+        points=points.map((v,i)=>({time:state.data[(i===0?a:b)+shiftBars].time,value:v.value+offset}));
+        if(points.some(v=>v.value<=0))return;
+      }
+      points.sort((a,b)=>a.time-b.time);
+      try{item.line.setData(points);item.points=points;}catch(error){console.warn('Trend move failed',error);}
+    }
+  };
+  host.addEventListener('pointerdown',e=>{
+    if(e.button!==0||state.drawMode!=='cursor'||!state.data.length||drawingDrag||alertDrag)return;
+    const p=coords(e);if(!p)return;
+    const hit=hitAt(p);if(!hit)return;
+    const item=state.drawings.find(v=>v.id===hit.id);
+    const alert=hit.type==='alert'?window.TradingFiewAlerts?.getAlert?.(hit.id):null;
+    if(hit.type==='alert'&&!alert)return;
+    let endpoint=-1;
+    if(item?.kind==='series')for(let i=0;i<2;i++){
+      const point=item.points[i],x=chart.timeScale().timeToCoordinate(point.time),y=candles.priceToCoordinate(point.value);
+      if(Number.isFinite(x)&&Number.isFinite(y)&&Math.hypot(x-p.x,y-p.y)<(window.innerWidth<=730?22:14)){endpoint=i;break;}
+    }
+    drawingDrag={...hit,start:p,startPrice:candles.coordinateToPrice(p.y),startX:e.clientX,startY:e.clientY,
+      pointerId:e.pointerId,request:state.request,moved:false,endpoint,newPrice:alert?.target,
+      copy:item?.kind==='price'?{price:item.price}:item?.kind==='fib'?{levels:item.levels.map(v=>({fraction:v.fraction,price:v.price}))}:
+        item?.kind==='series'?{points:item.points.map(v=>({...v}))}:null};
+    if(item)selectDrawing(item.id,hit.fraction);
+    hideChartContextMenu();
+    chart.applyOptions({handleScroll:false,handleScale:false});
+    host.classList.add('chart-line-dragging');
+    try{host.setPointerCapture(e.pointerId);}catch{}
+    e.preventDefault();e.stopPropagation();
+  },true);
+  host.addEventListener('pointermove',e=>{
+    if(!drawingDrag){
+      if(e.pointerType==='mouse'&&state.drawMode==='cursor'&&state.data.length){
+        const p=coords(e);host.classList.toggle('chart-line-hover',!!p&&!!hitAt(p));
+      }else host.classList.remove('chart-line-hover');
+      return;
+    }
+    const d=drawingDrag;if(d.pointerId!==e.pointerId||d.request!==state.request)return;
+    const p=coords(e);if(!p)return;
+    if(Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>3)d.moved=true;
+    if(d.moved)move(d,p,e.shiftKey);
+    e.preventDefault();e.stopPropagation();
+  },true);
+  const finish=(e,cancel)=>{
+    const d=drawingDrag;if(!d||e.pointerId!==d.pointerId)return;
+    drawingDrag=null;host.classList.remove('chart-line-dragging','chart-line-hover');
+    try{host.releasePointerCapture(e.pointerId);}catch{}
+    chart.applyOptions({handleScroll:true,handleScale:true});
+    if(d.request!==state.request)return;
+    if(cancel)rollback(d);
+    else if(d.moved){
+      if(d.type==='alert'){
+        const ok=window.TradingFiewAlerts?.setAlertPrice?.(d.id,d.newPrice,state.activePrice);
+        toast(ok?'🔔 Alert moved to '+fmt(d.newPrice)+' · saved.':'Alert position could not be saved.',!ok);
+        renderAlertPriceLines();
+      }else{persistDrawings();renderDrawingPanel();toast('Drawing moved and saved.');}
+      suppressDrawingClickUntil=Date.now()+400;
+    }else if(d.type==='alert')openAlertContextMenu(d.id,e.clientX,e.clientY);
+    e.preventDefault();e.stopPropagation();
+  };
+  host.addEventListener('pointerup',e=>finish(e,false),true);
+  host.addEventListener('pointercancel',e=>finish(e,true),true);
+  window.addEventListener('blur',()=>{
+    if(!drawingDrag)return;
+    const d=drawingDrag;drawingDrag=null;
+    host.classList.remove('chart-line-dragging','chart-line-hover');
+    try{host.releasePointerCapture(d.pointerId);}catch{}
+    chart.applyOptions({handleScroll:true,handleScale:true});rollback(d);
+  });
+}
+
 /* User price alerts are separate from manually drawn lines.
  * Thin dotted amber guides have no right-axis price labels, avoiding a
  * second LAST price or overlapping S1 / R1 labels. */
@@ -1195,7 +1339,7 @@ function installChartContextHandlers(){
   window.addEventListener('resize',hideChartContextMenu,{passive:true});
 }
 function onChartClick(param){
-  if(!param?.point||Date.now()<suppressAlertClickUntil)return;
+  if(!param?.point||Date.now()<suppressAlertClickUntil||Date.now()<suppressDrawingClickUntil)return;
   if(state.drawMode==='alert'){
     // SubscribeClick covers both mouse and touch. No candle timestamp needed:
     // tap any visible vertical price level, even on empty future chart space.

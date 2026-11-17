@@ -1270,3 +1270,132 @@ body.light .alert-handle-label{background:#fff5e2;color:#855918}
  body.terminal-mode .range-presets button{padding-inline:4px!important}
  body.terminal-mode .range-tools button{padding-inline:4px!important}
 }
+
+
+/* TradingFiew synchronized RSI and native mobile layout v4
+ * Keep the viewport still while allowing price/time interaction and
+ * independently scrolling panels. Respect phone notches and soft-keyboard. */
+html{min-height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body.terminal-mode{
+ height:100vh!important;height:100dvh!important;
+ max-height:100dvh!important;overflow:hidden!important;
+ overscroll-behavior:contain
+}
+body.terminal-mode .app-shell{
+ height:100vh!important;height:100dvh!important;
+ max-height:100dvh!important;min-height:0!important;min-width:0;
+ overflow:hidden!important
+}
+body.terminal-mode .workspace,body.terminal-mode .chart-inner,
+body.terminal-mode .center-pane,body.terminal-mode .chart-space{min-height:0!important;min-width:0!important}
+body.terminal-mode .theme-switch{
+ display:inline-flex!important;align-items:center;justify-content:center;gap:5px;
+ min-width:73px!important;width:auto!important;min-height:34px;padding:6px 9px!important;
+ border:1px solid rgba(85,184,160,.45);border-radius:8px;
+ font:800 11px 'DM Sans',sans-serif;white-space:nowrap;
+ background:rgba(31,135,115,.12);color:#75e0c2
+}
+body.terminal-mode .theme-switch:hover{border-color:var(--green);background:var(--mintwash)}
+body.terminal-mode .theme-switch #themeIcon{font-size:16px;line-height:1}
+body.terminal-mode .theme-switch #themeLabel{font-size:11px;line-height:1}
+body.light.terminal-mode .theme-switch{background:#fff4d5;border-color:#d9a84b;color:#855714}
+body.light.terminal-mode .theme-switch:hover{background:#f5e9be}
+body.light.terminal-mode .left-panel-tabs{background:#f3f6fc}
+body.light.terminal-mode .header-actions .alerts-header{background:#eff8f6}
+body.light.terminal-mode .chart-holder,body.light.terminal-mode .draw-tools{background:#f7f9fc}
+body.light.terminal-mode .draw-button{color:#59697f}
+body.light.terminal-mode .ohlc-strip,body.light.terminal-mode .legend-strip{color:#53647c}
+body.light.terminal-mode .terminal-rangebar{background:#f7f9fc}
+body.light.terminal-mode .right-sidebar{background:#f7f9fc}
+body.light.terminal-mode .terminal-mobile-dock{background:#fff}
+.indicator-group-heading{
+ font:800 9px 'IBM Plex Mono',monospace;letter-spacing:.65px;
+ text-transform:uppercase;color:var(--muted);margin:5px 0 2px;
+ padding:8px 4px 3px;border-top:1px solid var(--stroke)
+}
+.indicator-price-note{
+ font-size:10px;color:var(--muted);line-height:1.4;margin:5px 4px 3px;
+ padding:5px 3px;border-top:1px solid var(--stroke)
+}
+.legend-strip span.indicator-hidden,.ohlc-strip span.indicator-hidden{display:none!important}
+#indicatorMenu{max-height:min(70dvh,480px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#indicatorMenu label{min-height:31px;display:flex;align-items:center;gap:6px;white-space:normal}
+#indicatorMenu input{accent-color:var(--green);flex:none}
+body.terminal-mode #rsiHost{width:100%;height:100%;min-height:0}
+body.terminal-mode .rsi-panel{overflow:hidden!important}
+body.terminal-mode .chart-holder{overflow:hidden!important}
+@media(max-width:1050px){
+ body.terminal-mode .topbar .session-tag{display:none!important}
+ body.terminal-mode .theme-switch{min-width:66px!important}
+}
+@media(max-width:730px){
+ body.terminal-mode .topbar{
+  padding-left:max(6px,env(safe-area-inset-left))!important;
+  padding-right:max(6px,env(safe-area-inset-right))!important;
+  gap:4px!important;
+ }
+ body.terminal-mode .topbar .brand{flex:0 1 auto;min-width:75px}
+ body.terminal-mode .topbar .brand-title{font-size:12px}
+ body.terminal-mode .topbar .brand-title small{display:none}
+ body.terminal-mode .topbar .header-actions{margin-left:auto;gap:4px!important;flex:0 0 auto;min-width:0}
+ body.terminal-mode .topbar #shareBtn,
+ body.terminal-mode .topbar #workspaceBtn,
+ body.terminal-mode .topbar #refreshBtn{display:none!important}
+ body.terminal-mode .topbar #alertsBtn,
+ body.terminal-mode .topbar #donateBtn,
+ body.terminal-mode .topbar #themeBtn{display:inline-flex!important}
+ body.terminal-mode .topbar #donateBtn{max-width:78px;min-width:0;padding-inline:5px}
+ body.terminal-mode .topbar .donate-crypto{display:none}
+ body.terminal-mode .theme-switch{min-width:60px!important;padding:6px!important;gap:4px}
+ body.terminal-mode .theme-switch #themeLabel{font-size:10px}
+ body.terminal-mode .theme-switch #themeIcon{font-size:15px}
+ body.terminal-mode .chart-toolbar{max-width:100%;overflow:visible!important}
+ body.terminal-mode .toolbar-menu{position:relative}
+ body.terminal-mode #indicatorMenu{
+  position:fixed;top:calc(50px + env(safe-area-inset-top));left:6px;right:6px;
+  width:auto;max-width:none;max-height:min(75dvh,500px);
+  z-index:180;box-shadow:0 18px 35px rgba(0,0,0,.35)
+ }
+ body.terminal-mode .chart-space,.chart-inner{overflow:hidden!important}
+ body.terminal-mode .rsi-panel{touch-action:pan-x pan-y}
+ body.terminal-mode .terminal-mobile-dock{
+  padding-bottom:max(3px,env(safe-area-inset-bottom))!important;
+  flex-basis:calc(54px + env(safe-area-inset-bottom))!important;
+  height:calc(54px + env(safe-area-inset-bottom))!important;
+  min-height:0!important
+ }
+ body.terminal-mode .modal-card{max-height:calc(100dvh - 22px);overflow-y:auto;overscroll-behavior:contain}
+}
+@media(max-width:730px) and (max-height:710px){
+ body.terminal-mode .topbar{flex:0 0 46px!important;height:46px!important;min-height:46px!important}
+ body.terminal-mode .center-pane .instrument-header{flex:0 0 48px!important;height:48px!important;min-height:0!important}
+ body.terminal-mode .center-pane .chart-toolbar{flex:0 0 67px!important;height:67px!important;min-height:0!important;padding:3px 5px!important}
+ body.terminal-mode .center-pane .chart-toolbar .timeframes button{min-height:26px}
+ body.terminal-mode .center-pane .draw-tools{padding-top:3px!important;gap:2px!important}
+ body.terminal-mode .center-pane .draw-button{height:28px!important;min-height:28px!important;width:29px}
+ body.terminal-mode .center-pane .rsi-panel{flex:0 0 60px!important;height:60px!important;min-height:0!important}
+ body.terminal-mode .center-pane .chart-footer{flex:0 0 21px!important;height:21px!important;min-height:0!important}
+ body.terminal-mode .center-pane .terminal-rangebar{flex:0 0 32px!important;height:32px!important;min-height:0!important}
+ body.terminal-mode .terminal-mobile-dock{
+  flex-basis:calc(44px + env(safe-area-inset-bottom))!important;
+  height:calc(44px + env(safe-area-inset-bottom))!important;
+ }
+ body.terminal-mode .terminal-mobile-dock button{font-size:9px;gap:1px}
+ body.terminal-mode .terminal-mobile-dock button span{font-size:17px}
+ body.terminal-mode .center-pane .chart-holder{min-height:90px!important}
+}
+@media(max-width:350px){
+ body.terminal-mode .topbar .brand-symbol{width:26px;height:26px}
+ body.terminal-mode .topbar .brand-title{font-size:10px}
+ body.terminal-mode .topbar #donateBtn{max-width:65px}
+ body.terminal-mode .topbar #donateBtn span.donate-symbol{font-size:13px}
+ body.terminal-mode .theme-switch{min-width:55px!important}
+ body.terminal-mode .alerts-header{min-width:27px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ body.terminal-mode .topbar{flex:0 0 39px!important;height:39px!important;min-height:39px!important}
+ body.terminal-mode .center-pane .instrument-header{flex:0 0 39px!important;height:39px!important;min-height:0!important}
+ body.terminal-mode .center-pane .rsi-panel{flex:0 0 45px!important;height:45px!important}
+ body.terminal-mode .center-pane .chart-toolbar{flex:0 0 38px!important;height:38px!important}
+ body.terminal-mode .center-pane .chart-holder{min-height:60px!important}
+}

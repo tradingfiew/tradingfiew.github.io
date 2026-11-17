@@ -1399,7 +1399,25 @@ window.TradingFiewChartAPI=Object.freeze({
   resize:()=>resizeChartWindow(),
   setRange:terminalRange,
   getSnapshot:terminalSnapshot,
-  saveScreenshot:terminalScreenshot
+  saveScreenshot:terminalScreenshot,
+  getAlignmentDiagnostics:()=>{
+    if(!chart||!rsiChart||!state.data.length)return null;
+    const sample=state.data[Math.max(0,state.data.length-12)]?.time;
+    const mainX=sample?chart.timeScale().timeToCoordinate(sample):null;
+    const rsiX=sample?rsiChart.timeScale().timeToCoordinate(sample):null;
+    return {
+      sampleTime:sample,mainX,rsiX,
+      differencePx:Number.isFinite(mainX)&&Number.isFinite(rsiX)?Math.abs(mainX-rsiX):null,
+      mainAxisWidth:chart.priceScale('right').width(),
+      rsiAxisWidth:rsiChart.priceScale('right').width(),
+      mainLogicalRange:chart.timeScale().getVisibleLogicalRange(),
+      rsiLogicalRange:rsiChart.timeScale().getVisibleLogicalRange(),
+      mainCount:state.data.length,
+      rsiCount:rsiSeries.data().length,
+      rsiEnabled:$('toggleRSI').checked,
+      rsiTimelineReady
+    };
+  }
 });
 function start(){
 try{

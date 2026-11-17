@@ -421,7 +421,22 @@ const incoming={time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.
 if(!Number.isFinite(incoming.close))return;
 const last=state.data.at(-1);
 if(incoming.time===last?.time){state.data[state.data.length-1]=incoming;candles.update(incoming);if($('toggleVolume').checked)vol.update({time:incoming.time,value:incoming.volume,color:incoming.close>=incoming.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'});}
-else if(incoming.time>last?.time){state.data.push(incoming);if(state.data.length>650)state.data.shift();candles.update(incoming);if($('toggleVolume').checked)vol.update({time:incoming.time,value:incoming.volume,color:incoming.close>=incoming.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'});refreshEMAs();analyze();}
+else if(incoming.time>last?.time){
+  state.data.push(incoming);
+  const rolled=state.data.length>650;
+  if(rolled){
+    state.data=state.data.slice(-650);
+    // Keep candle, volume and RSI logical indexes identical when the 650-bar
+    // window rolls over. Updating only candles here used to leave 651 bars
+    // on the main chart, but 650 on RSI, progressively breaking alignment.
+    setCandleData(false);
+  }else{
+    candles.update(incoming);
+    if($('toggleVolume').checked)vol.update({time:incoming.time,value:incoming.volume,color:incoming.close>=incoming.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'});
+    refreshEMAs();
+  }
+  analyze();
+}
 updatePrice(incoming.close);setOhlc(incoming);
 if(k.x){refreshEMAs();analyze();fetchTicker(state.symbol,request);}
 }catch{}

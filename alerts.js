@@ -265,9 +265,12 @@ function evaluatePrice(symbol,price,{fresh=true}={}){
   let changed=false;
   for(const a of alerts){
     if(!a.enabled||a.triggered||a.symbol!==symbol||!a.condition.startsWith("price"))continue;
-    const crossed=a.condition==="price_above"?old<=a.target&&price>=a.target:
-      a.condition==="price_below"?old>=a.target&&price<=a.target:
-      (old<=a.target&&price>=a.target)||(old>=a.target&&price<=a.target);
+    // Strictly cross *toward* the selected level: don't fire a second
+    // alert simply because the last quote happened to equal the target
+    // and then moved away from it.
+    const crossed=a.condition==="price_above"?old<a.target&&price>=a.target:
+      a.condition==="price_below"?old>a.target&&price<=a.target:
+      (old<a.target&&price>=a.target)||(old>a.target&&price<=a.target);
     if(!crossed)continue;
     if(!a.repeat)a.triggered=true;
     a.lastFiredAt=Date.now();a.firedCount=(a.firedCount||0)+1;

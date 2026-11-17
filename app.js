@@ -12,7 +12,7 @@ heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,quoteBusy:
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
-let lastPriceLine=null,srGuides=[],drawingSeq=0;
+let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -51,6 +51,15 @@ rsiSeries.createPriceLine({price:30,color:'rgba(53,208,154,.35)',lineStyle:LW.Li
 chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{drawZones();try{const range=chart.timeScale().getVisibleRange();if(range&&state.data.length>14)rsiChart.timeScale().setVisibleRange(range);}catch{}clearTimeout(markerLayoutTimer);markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);});
 chart.subscribeCrosshairMove(p=>{const c=p.seriesData?.get(candles);if(c&&Number.isFinite(c.close))setOhlc(c);else if(state.data.length)setOhlc(state.data.at(-1));});
 chart.subscribeClick(onChartClick);
+// Right-click chart at any price on desktop for immediate alert creation.
+$('chartHost').addEventListener('contextmenu',event=>{
+  if(!state.data.length)return;
+  event.preventDefault();
+  const rect=$('chartHost').getBoundingClientRect(),y=event.clientY-rect.top;
+  if(y<0||y>=rect.height)return;
+  addChartPriceAlert(candles.coordinateToPrice(y));
+});
+document.addEventListener('tradingfiew:alerts-changed',renderAlertPriceLines);
 zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{
   drawZones();
   if(state.analysis){renderMarkers();renderSupportResistance();}
@@ -183,12 +192,12 @@ async function loadMarket(fit=true){
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
 try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
-try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
+try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
 $('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
 try{
 const rows=await fetchCandles(state.symbol,state.tf,650,state.controller.signal);if(request!==state.request)return;
-state.data=rows;setCandleData(true);restoreDrawings();setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
+state.data=rows;setCandleData(true);restoreDrawings();renderAlertPriceLines();setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
 analyze();fetchTicker(state.symbol,request);fetchHigherTimeframe(request);connectStream(request);
 if(fit)focusRecentCandles();
 try{window.TradingFiewTerminalUI?.restoreRange?.();}catch(error){console.warn('Saved history range could not be restored',error);}
@@ -635,8 +644,58 @@ function drawingHitTest(point){
   }
   return best;
 }
+
+/* User price alerts are separate from manually drawn lines.
+ * Thin dotted amber guides have no right-axis price labels, avoiding a
+ * second LAST price or overlapping S1 / R1 labels. */
+function clearAlertPriceLines(){
+  if(!candles){alertPriceLines.clear();return;}
+  for(const line of alertPriceLines.values()){
+    try{candles.removePriceLine(line);}catch{}
+  }
+  alertPriceLines.clear();
+}
+function renderAlertPriceLines(){
+  if(!candles||!state.data.length||!window.TradingFiewAlerts?.getPriceLevels)return;
+  const current=window.TradingFiewAlerts.getPriceLevels(state.symbol);
+  const liveIds=new Set(current.map(a=>a.id));
+  for(const [id,line] of alertPriceLines){
+    if(liveIds.has(id))continue;
+    try{candles.removePriceLine(line);}catch{}
+    alertPriceLines.delete(id);
+  }
+  for(const item of current){
+    if(alertPriceLines.has(item.id))continue;
+    try{
+      const line=candles.createPriceLine({
+        price:item.target,color:'#e6b968',lineWidth:1,
+        lineStyle:LW.LineStyle.Dotted,axisLabelVisible:false,
+        title:'ALERT'
+      });
+      alertPriceLines.set(item.id,line);
+    }catch(error){console.warn('Alert level guide unavailable',error);}
+  }
+}
+function addChartPriceAlert(price){
+  if(!Number.isFinite(price)||price<=0||!state.data.length){
+    toast('Select a valid price on a loaded chart.',true);
+    return false;
+  }
+  const result=window.TradingFiewAlerts?.createFromChart?.({
+    symbol:state.symbol,price,currentPrice:state.activePrice
+  });
+  if(result)renderAlertPriceLines();
+  return Boolean(result);
+}
 function onChartClick(param){
   if(!param?.point)return;
+  if(state.drawMode==='alert'){
+    // SubscribeClick covers both mouse and touch. No candle timestamp needed:
+    // tap any visible vertical price level, even on empty future chart space.
+    const price=candles.coordinateToPrice(param.point.y);
+    addChartPriceAlert(price);
+    return;
+  }
   if(state.drawMode==='cursor'){
     const hit=drawingHitTest(param.point);
     if(hit)selectDrawing(hit.id,hit.fraction);
@@ -684,9 +743,16 @@ function onChartClick(param){
 }
 function setDrawMode(mode){
   state.drawMode=mode;state.drawStart=null;
-  document.querySelectorAll('[data-draw]').forEach(b=>b.classList.toggle('active',b.dataset.draw===mode));
+  document.querySelectorAll('[data-draw]').forEach(b=>{
+    const enabled=b.dataset.draw===mode;
+    b.classList.toggle('active',enabled);
+    if(b.dataset.draw==='alert')b.setAttribute('aria-pressed',String(enabled));
+  });
+  $('chartHost').classList.toggle('chart-alert-mode',mode==='alert');
   $('drawHint').classList.toggle('hidden',mode==='cursor');
-  if(mode!=='cursor')$('drawHint').textContent=mode==='horizontal'?'Tap chart to add a horizontal level':'Tap the first point on the chart';
+  if(mode!=='cursor')$('drawHint').textContent=mode==='alert'?
+    '🔔 Tap anywhere on the chart to save a price alert · Tap cursor to finish':
+    mode==='horizontal'?'Tap chart to add a horizontal level':'Tap the first point on the chart';
 }
 function clearDrawings({forget=true,notice=true}={}){
   const toRemove=[...state.drawings];

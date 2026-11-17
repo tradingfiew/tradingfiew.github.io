@@ -1137,3 +1137,87 @@ body.terminal-mode .draw-button.alert-draw-button{flex:0 0 auto}
   width:30px;height:32px;font-size:17px
  }
 }
+
+
+/* TradingFiew draggable chart alert context menus v3 */
+.alert-line-handles{
+ position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden
+}
+.alert-hit-level{
+ position:absolute;left:0;width:calc(100% - 55px);
+ height:19px;transform:translateY(-50%);
+ pointer-events:auto;cursor:grab;touch-action:none;
+ background:transparent;display:flex;align-items:center;gap:4px;
+ padding-left:6px;user-select:none;-webkit-user-select:none;outline:none;
+ border:0;border-top:1px solid transparent;
+}
+.alert-hit-level:hover,.alert-hit-level:focus-visible{
+ background:rgba(226,174,78,.07);
+ border-top-color:rgba(242,194,108,.52)
+}
+.alert-hit-level.dragging{cursor:grabbing;background:rgba(226,174,78,.14);border-top-color:rgba(242,194,108,.85)}
+.alert-handle-grip{
+ display:grid;place-items:center;border-radius:4px;min-width:14px;
+ height:14px;padding:1px;color:#d7a957;background:rgba(22,30,43,.9);
+ font:800 12px sans-serif;line-height:1
+}
+.alert-handle-label{
+ white-space:nowrap;border-radius:4px;padding:3px 5px;
+ background:rgba(34,31,26,.93);border:1px solid rgba(230,183,104,.38);
+ color:#f1ca85;font:800 10px 'IBM Plex Mono',monospace;
+ line-height:1.05;box-shadow:0 2px 8px rgba(0,0,0,.18);
+ pointer-events:none
+}
+body.light .alert-handle-grip{background:rgba(252,248,238,.95);color:#9e6b1a}
+body.light .alert-handle-label{background:#fff5e2;color:#855918}
+.chart-context-menu{
+ position:fixed;z-index:2150;display:flex;flex-direction:column;gap:1px;
+ background:#1c2027;color:#f0f3f9;border:1px solid #383f4b;
+ border-radius:9px;width:min(325px,calc(100vw - 14px));
+ max-height:calc(100dvh - 16px);overflow-y:auto;
+ box-shadow:0 18px 45px rgba(0,0,0,.42);padding:5px;
+ overscroll-behavior:contain
+}
+.chart-context-menu.hidden{display:none!important}
+.chart-context-menu button[hidden]{display:none!important}
+.chart-context-title{
+ color:#abb4c6;font:800 10px 'IBM Plex Mono',monospace;
+ padding:9px 10px 7px;border-bottom:1px solid #393f49;
+ overflow-wrap:anywhere
+}
+.chart-context-menu button{
+ display:flex;align-items:center;text-align:left;min-height:36px;flex:0 0 auto;
+ background:transparent;color:inherit;border:0;border-radius:5px;
+ padding:8px 11px;font:650 12px 'DM Sans',sans-serif;line-height:1.3
+}
+.chart-context-menu button:hover,.chart-context-menu button:focus-visible{
+ background:#343c49;color:#fff;outline:none
+}
+.chart-context-menu button#ctxAlertAdd{color:#e5c087;font-weight:850}
+.chart-context-menu button.ctx-alert-delete{color:#ef8c9c}
+.chart-context-menu button.ctx-alert-delete:hover{background:rgba(246,94,120,.12)}
+.chart-context-divider{height:1px;background:#373d47;margin:5px 4px}
+.alert-edit-card{width:min(440px,calc(100vw - 18px));max-height:calc(100dvh - 24px);overflow-y:auto!important;padding:21px}
+.alert-edit-card h2{font-size:21px;margin:7px 0 4px}
+.alert-edit-caption{margin:4px 0 17px!important;font:800 12px 'IBM Plex Mono',monospace;color:var(--green)}
+.alert-edit-card form{display:flex;flex-direction:column;gap:10px}
+.alert-edit-card form>label:not(.alert-edit-check){font-size:11px;font-weight:800;color:var(--muted)}
+.alert-edit-card form>input,.alert-edit-card form>select{
+ width:100%;background:var(--shell);color:var(--text);border:1px solid var(--stroke);
+ border-radius:8px;padding:11px;font-size:13px;font-family:'IBM Plex Mono',monospace
+}
+.alert-edit-card form>input:focus,.alert-edit-card form>select:focus{outline:2px solid var(--green)}
+.alert-edit-check{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700;padding:3px 0;cursor:pointer}
+.alert-edit-check input{accent-color:var(--green);width:17px;height:17px;flex:0 0 17px}
+.alert-edit-actions{display:flex;gap:9px;margin-top:9px}
+.alert-edit-actions button{flex:1;min-height:40px;border-radius:8px;padding:9px;font-size:12px;font-weight:900}
+.alert-edit-remove{background:rgba(235,102,129,.1);color:var(--red);border:1px solid rgba(235,102,129,.4)}
+.alert-edit-save{background:var(--green);color:#092319;border:1px solid var(--green)}
+.alert-edit-note{font-size:10px!important;line-height:1.7;color:var(--muted);border-top:1px solid var(--stroke);padding-top:11px;margin-top:15px}
+@media(max-width:730px){
+ .chart-context-menu button{min-height:42px;font-size:13px}
+ .alert-edit-card{padding:15px}
+ .alert-hit-level{height:23px;width:calc(100% - 48px)}
+ .alert-handle-label{font-size:9px}
+ .alert-handle-grip{height:16px}
+}

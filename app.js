@@ -8,7 +8,7 @@ const activeMarket=()=>Markets.get(state.symbol)||coins[0];
 const coins=Markets.instruments;
 let state={
 symbol:'XAUUSD',category:'all',tf:'1h',data:[],analysis:null,htf:null,request:0,ws:null,controller:null,refreshTimer:null,
-heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,quoteBusy:false,quoteAt:null,quotePrice:null,quoteIsFresh:false,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
+heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,tabTickerTimer:null,quoteBusy:false,quoteAt:null,quotePrice:null,quoteIsFresh:false,tabChangePct:null,tabQuoteStatus:null,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
@@ -22,6 +22,25 @@ const decimals=v=>v<.01?6:v<5?5:v<100?3:2;
 const fmt=v=>num(v,decimals(Math.abs(v||1)));
 const compact=v=>Number.isFinite(v)?Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(v):'—';
 const sign=v=>Number.isFinite(v)?(v>=0?'+':'')+num(v,2)+'%':'—';
+
+/* Keep the browser tab like a compact TradingView ticker:
+ * SYMBOL + actual displayed price + genuine provider percentage change.
+ * Non-live/closed markets are labelled rather than appearing tradable.
+ * No percentage is derived from an unrelated chart interval.
+ */
+function updateBrowserTabTitle(){
+  const symbol=state.symbol||'TRADINGFIEW';
+  const price=Number.isFinite(state.activePrice)&&state.activePrice>0?
+    ' '+fmt(state.activePrice):'';
+  const pct=Number.isFinite(state.tabChangePct)?
+    ' '+(state.tabChangePct>0?'▲':state.tabChangePct<0?'▼':'•')+
+    ' '+(state.tabChangePct>0?'+':'')+state.tabChangePct.toFixed(2)+'%':'';
+  const status=state.tabQuoteStatus==='closed'?' · CLOSED':
+    state.tabQuoteStatus==='stale'?' · STALE':'';
+  const title=symbol+price+pct+status+' | TradingFiew';
+  if(document.title!==title)document.title=title;
+}
+
 const date=t=>new Date(t*1000).toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 const relative=(t)=>{const n=Math.round((Date.now()/1000-t)/60);return n<1?'just now':n<60?n+'m ago':n<1440?Math.floor(n/60)+'h ago':Math.floor(n/1440)+'d ago';};
 const themeColors=()=>document.body.classList.contains('light')?{bg:'#f7f9fc',text:'#6b7b91',grid:'#e9eef4'}:{bg:'#0c1322',text:'#75849a',grid:'#172236'};
@@ -206,6 +225,7 @@ $('volumeStripLabel').textContent=c.provider==='binance'?'VOL':'TICKS';
 $('biasTimeframe').textContent=state.tf.toUpperCase();$('htfInterval').textContent='Higher TF: '+intervals[state.tf];
 document.querySelectorAll('#timeframes button').forEach(b=>b.classList.toggle('active',b.dataset.tf===state.tf));
 renderMarkets();
+updateBrowserTabTitle();
 }
 function setOhlc(c){
 for(const [id,key] of [['oVal','open'],['hVal','high'],['lVal','low'],['cVal','close']])$(id).textContent=fmt(c[key]);
@@ -257,6 +277,7 @@ function scheduleLivePriceBadgeLayout(){
 
 function updatePrice(v){if(!Number.isFinite(v)||v<=0)return;
 state.activePrice=v;$('lastPrice').textContent=fmt(v);
+updateBrowserTabTitle();
 try{
   const market=activeMarket();
   window.TradingFiewAlerts?.onPrice(state.symbol,v,{
@@ -304,7 +325,13 @@ const validPrice=Number.isFinite(t.price)&&t.price>0;
 const quoteAt=Number.isFinite(t.quoteAt)?t.quoteAt:null;
 const newer=quoteAt===null||state.quoteAt===null||quoteAt>=state.quoteAt;
 const fresh=quoteFresh(t);
+if(newer){
+  state.tabChangePct=Number.isFinite(t.change)?t.change:null;
+  state.tabQuoteStatus=t.marketState==='closed'?'closed':
+    !fresh?'stale':'open';
+}
 state.quoteIsFresh=fresh;
+updateBrowserTabTitle();
 scheduleLivePriceBadgeLayout();
 if(validPrice&&newer){
   state.quoteAt=quoteAt;
@@ -346,13 +373,13 @@ function startQuotePolling(request){
     void fetchTicker(state.symbol,request);
   },5000);
 }
-function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
+function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.tabTickerTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.tabTickerTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 hideChartContextMenu();
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
 try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
-try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;$('livePriceBadge').hidden=true;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
+try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;$('livePriceBadge').hidden=true;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;state.tabChangePct=null;state.tabQuoteStatus=null;updateBrowserTabTitle();connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
 $('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
 try{
@@ -409,6 +436,11 @@ if(show)requestAnimationFrame(restoreSharedTimeScale);
 function connectStream(request){
 if(request!==state.request)return;
 if(activeMarket().provider!=='binance'){connection('REST FEED','Indicative candles (20s) · quotes (5s)');startPolling(request);startQuotePolling(request);return;}
+// Candlesticks stream tick by tick, but percent change comes from the
+// exchange's actual 24h ticker. Refresh it periodically in this tab.
+if(!state.tabTickerTimer)state.tabTickerTimer=setInterval(()=>{
+  if(request===state.request&&!document.hidden)void fetchTicker(state.symbol,request);
+},30000);
 let connected=false;
 try{
 const url='wss://data-stream.binance.vision/ws/'+state.symbol.toLowerCase()+'@kline_'+state.tf;
@@ -1516,7 +1548,7 @@ function start(){
 try{
 let responsiveTimer=null;
 window.addEventListener('resize',()=>{clearTimeout(responsiveTimer);responsiveTimer=setTimeout(()=>{resizeChartWindow();if(state.analysis){renderMarkers();drawZones();}},140);},{passive:true});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&activeMarket().provider==='biquote'&&state.data.length)void fetchTicker(state.symbol,state.request);});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.data.length)void fetchTicker(state.symbol,state.request);});
 restoreSettings();setupWorkspaceUi();
 const url=new URL(location.href),requested=url.searchParams.get('symbol'),tf=url.searchParams.get('tf');
 if(coins.some(c=>c.symbol===requested))state.symbol=requested;

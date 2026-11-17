@@ -1222,3 +1222,51 @@ body.light .alert-handle-label{background:#fff5e2;color:#855918}
  .alert-handle-label{font-size:9px}
  .alert-handle-grip{height:16px}
 }
+
+
+/* TradingFiew compact chart and menu refinements v3.1 */
+.alert-icon-svg{width:18px;height:18px;flex:0 0 auto;display:block;stroke:currentColor}
+.alerts-header .alert-icon-svg{width:19px;height:19px;color:var(--green)}
+.draw-button.alert-draw-button{display:flex;align-items:center;justify-content:center}
+.draw-button.alert-draw-button .alert-icon-svg{width:19px;height:19px}
+.toolbar-icon .alert-icon-svg{width:17px;height:17px}
+.alert-hit-level{height:16px}
+.alert-hit-level[hidden]{display:none!important}
+.alert-hit-level:focus-visible .alert-handle-label{outline:2px solid #f0c177}
+.chart-context-menu button{min-width:0;overflow-wrap:anywhere}
+.chart-context-menu:focus-visible{outline:2px solid var(--green)}
+.alert-edit-card form>input,.alert-edit-card form>select{max-width:100%;box-sizing:border-box}
+@media(max-width:730px){
+ .alert-icon-svg{width:17px;height:17px}
+ .alerts-header .alert-icon-svg{width:17px;height:17px}
+ .draw-button.alert-draw-button .alert-icon-svg{width:17px;height:17px}
+ .alert-hit-level{height:20px}
+ .chart-context-menu{max-width:calc(100vw - 12px)}
+ .chart-context-title{font-size:10px}
+}
+@media(max-width:730px) and (max-height:700px){
+ body.terminal-mode .topbar{flex-basis:47px!important;height:47px!important;min-height:47px!important}
+ body.terminal-mode .center-pane .instrument-header{flex-basis:50px!important;height:50px!important;min-height:0!important;padding-block:4px}
+ body.terminal-mode .center-pane .instrument-main .asset-titles>span{font-size:8px}
+ body.terminal-mode .center-pane .chart-toolbar{flex-basis:65px!important;height:65px!important;min-height:0!important;padding:3px 5px!important}
+ body.terminal-mode .center-pane .chart-toolbar .timeframes button{min-height:25px}
+ body.terminal-mode .center-pane .draw-tools{padding-top:3px!important;gap:2px!important}
+ body.terminal-mode .center-pane .draw-button{height:27px!important;min-height:27px!important;width:29px}
+ body.terminal-mode .center-pane .ohlc-strip{min-height:18px!important;font-size:8px;padding-top:2px}
+ body.terminal-mode .center-pane .legend-strip{min-height:16px!important;font-size:8px}
+ body.terminal-mode .center-pane .rsi-panel{flex-basis:47px!important;height:47px!important;min-height:0!important}
+ body.terminal-mode .center-pane .chart-footer{flex-basis:21px!important;height:21px!important}
+ body.terminal-mode .center-pane .terminal-rangebar{flex-basis:31px!important;height:31px!important;min-height:0!important}
+ body.terminal-mode .terminal-mobile-dock{flex-basis:45px!important;height:45px!important;min-height:45px!important}
+ body.terminal-mode .terminal-mobile-dock button span{font-size:17px}
+ body.terminal-mode .terminal-mobile-dock button{font-size:9px;gap:0}
+ body.terminal-mode .center-pane .chart-holder{min-height:95px!important}
+}
+@media(max-width:350px){
+ body.terminal-mode .topbar .header-actions{gap:2px!important}
+ body.terminal-mode .alerts-header{min-width:28px;padding-inline:3px}
+ body.terminal-mode .brand-title{font-size:11px}
+ body.terminal-mode .center-pane .chart-toolbar .toolbar-icon{min-width:22px!important;width:22px!important}
+ body.terminal-mode .range-presets button{padding-inline:4px!important}
+ body.terminal-mode .range-tools button{padding-inline:4px!important}
+}

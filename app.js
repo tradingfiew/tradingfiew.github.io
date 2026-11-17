@@ -11,7 +11,7 @@ symbol:'XAUUSD',category:'all',tf:'1h',data:[],analysis:null,htf:null,request:0,
 heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,quoteBusy:false,quoteAt:null,quotePrice:null,quoteIsFresh:false,autoSmc:true,drawMode:'cursor',drawStart:null,drawings:[],selectedDrawingId:null,selectedFibLevel:null,
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
-let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false;
+let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
 let lastPriceLine=null,srGuides=[],drawingSeq=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
@@ -48,7 +48,7 @@ rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:
 rsiSeries=rsiChart.addSeries(LW.LineSeries,{color:'#a998fc',lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
 rsiSeries.createPriceLine({price:70,color:'rgba(245,114,140,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
 rsiSeries.createPriceLine({price:30,color:'rgba(53,208,154,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
-chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{drawZones();try{const range=chart.timeScale().getVisibleRange();if(range&&state.data.length>14)rsiChart.timeScale().setVisibleRange(range);}catch{}});
+chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{drawZones();try{const range=chart.timeScale().getVisibleRange();if(range&&state.data.length>14)rsiChart.timeScale().setVisibleRange(range);}catch{}clearTimeout(markerLayoutTimer);markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);});
 chart.subscribeCrosshairMove(p=>{const c=p.seriesData?.get(candles);if(c&&Number.isFinite(c.close))setOhlc(c);else if(state.data.length)setOhlc(state.data.at(-1));});
 chart.subscribeClick(onChartClick);
 zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{

@@ -129,8 +129,41 @@ function initialLayout(){
   switchView(mobileViews.includes(view)?view:"chart");
   setEvents(read("events","false")==="true");
 }
+function setupChartMore(){
+  const button=$("chartMoreBtn"),menu=$("chartMoreMenu");
+  if(!button||!menu)return;
+  const close=({restoreFocus=false}={})=>{
+    if(menu.hidden)return;
+    menu.hidden=true;button.setAttribute("aria-expanded","false");
+    if(restoreFocus)button.focus();
+  };
+  button.addEventListener("click",()=>{
+    const next=menu.hidden;
+    menu.hidden=!next;
+    button.setAttribute("aria-expanded",String(next));
+    if(next)menu.querySelector('button[role="menuitem"]')?.focus();
+  });
+  menu.addEventListener("click",event=>{
+    const choice=event.target.closest("[data-more-chart-action]");
+    if(!choice)return;
+    const target=choice.dataset.moreChartAction;
+    close();
+    document.getElementById(target)?.click();
+    button.focus();
+  });
+  document.addEventListener("pointerdown",event=>{
+    if(!menu.hidden&&!event.target.closest("#chartMoreWrap"))close();
+  });
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"&&!menu.hidden){
+      event.preventDefault();event.stopPropagation();close({restoreFocus:true});
+    }
+  },true);
+}
+
 function init(){
   initialLayout();
+  setupChartMore();
   $("leftPanelTabs").addEventListener("click",e=>{
     const button=e.target.closest("[data-left-tab]");
     if(button)setLeftTab(button.dataset.leftTab);

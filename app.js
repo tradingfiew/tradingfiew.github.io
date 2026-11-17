@@ -13,7 +13,7 @@ tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
-let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=82,sharedCrosshairTime=null;
+let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=88,sharedCrosshairTime=null,livePriceBadgePending=false;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
@@ -26,15 +26,15 @@ const date=t=>new Date(t*1000).toLocaleString('en-GB',{timeZone:'UTC',day:'2-dig
 const relative=(t)=>{const n=Math.round((Date.now()/1000-t)/60);return n<1?'just now':n<60?n+'m ago':n<1440?Math.floor(n/60)+'h ago':Math.floor(n/1440)+'d ago';};
 const themeColors=()=>document.body.classList.contains('light')?{bg:'#f7f9fc',text:'#6b7b91',grid:'#e9eef4'}:{bg:'#0c1322',text:'#75849a',grid:'#172236'};
 function toast(message,error=false){const el=$('toast');el.textContent=message;el.classList.toggle('error',error);el.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),5000);}
-function connection(value,mode){$('connectionState').textContent=value;$('feedText').textContent=mode||value;const live=value==='LIVE'||value==='LIVE QUOTE';$('liveDot').className='status-dot '+(live?'online':value==='OFFLINE'?'offline':'');$('feedStatusDot').className='status-dot '+(live?'online':value==='OFFLINE'?'offline':'');state.live=live;}
+function connection(value,mode){$('connectionState').textContent=value;$('feedText').textContent=mode||value;const live=value==='LIVE'||value==='LIVE QUOTE';$('liveDot').className='status-dot '+(live?'online':value==='OFFLINE'?'offline':'');$('feedStatusDot').className='status-dot '+(live?'online':value==='OFFLINE'?'offline':'');state.live=live;scheduleLivePriceBadgeLayout();}
 function loading(message,sub,error=false){const el=$('chartState');el.classList.remove('hidden');el.classList.toggle('error',error);el.querySelector('strong').textContent=message;el.querySelector('span').textContent=sub;}
 function showChart(){ $('chartState').classList.add('hidden');}
 function chartOptions(height,primary=false){
 const c=themeColors();
 return {autoSize:true,width:700,height,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'IBM Plex Mono, monospace',fontSize:10,attributionLogo:false},
 grid:{vertLines:{color:c.grid,style:1},horzLines:{color:c.grid,style:1}},
-crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{color:'#7592ae',style:2,labelBackgroundColor:'#243a54'},horzLine:{visible:false,labelVisible:false}},
-rightPriceScale:{borderColor:c.grid,minimumWidth:82,scaleMargins:{top:.11,bottom:primary ? .23 : .06}},
+crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:false,labelVisible:false},horzLine:{visible:false,labelVisible:false}},
+rightPriceScale:{borderColor:c.grid,minimumWidth:88,scaleMargins:{top:.11,bottom:primary ? .23 : .06}},
 timeScale:{borderColor:c.grid,timeVisible:true,secondsVisible:false,barSpacing:window.innerWidth<=730?6:8,minBarSpacing:2,rightOffset:window.innerWidth<=730?4:8},
 handleScroll:true,handleScale:true,localization:{locale:'en-US'}};
 }
@@ -98,7 +98,7 @@ candles=chart.addSeries(LW.CandlestickSeries,{upColor:'#36cba1',downColor:'#f264
 vol=chart.addSeries(LW.HistogramSeries,{priceScaleId:'volume',priceFormat:{type:'volume'},lastValueVisible:false,priceLineVisible:false});
 chart.priceScale('volume').applyOptions({scaleMargins:{top:.82,bottom:0}});
 ema20=addLine('#699cf6',2);ema50=addLine('#ecae53',1);ema200=addLine('#a28df0',1);
-rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:{visible:true,borderVisible:false,minimumWidth:82,scaleMargins:{top:.10,bottom:.10}},timeScale:{visible:false,borderVisible:false},grid:{vertLines:{visible:false},horzLines:{color:themeColors().grid}},crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:true,color:'#718da8',style:LW.LineStyle.Dashed,width:1,labelVisible:false},horzLine:{visible:false,labelVisible:false}},handleScroll:true,handleScale:true});
+rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:{visible:true,borderVisible:false,minimumWidth:88,scaleMargins:{top:.10,bottom:.10}},timeScale:{visible:false,borderVisible:false},grid:{vertLines:{visible:false},horzLines:{color:themeColors().grid}},crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:false,labelVisible:false},horzLine:{visible:false,labelVisible:false}},handleScroll:true,handleScale:true});
 rsiSeries=rsiChart.addSeries(LW.LineSeries,{color:'#a998fc',lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
 rsiSeries.createPriceLine({price:70,color:'rgba(245,114,140,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
 rsiSeries.createPriceLine({price:30,color:'rgba(53,208,154,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
@@ -131,6 +131,7 @@ function linkedCrosshair(param,source){
 chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
   scheduleAlertLayout();drawZones();
   if(sharedCrosshairTime!==null)requestAnimationFrame(layoutSharedCrosshairGuide);
+  scheduleLivePriceBadgeLayout();
   synchronizeVisibleRange(chart,rsiChart,range);
   clearTimeout(markerLayoutTimer);
   markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);
@@ -178,9 +179,10 @@ let t=themeColors();chart.applyOptions({layout:{background:{type:'solid',color:t
 rsiChart.applyOptions({
  layout:{background:{type:'solid',color:t.bg},textColor:t.text},
  grid:{horzLines:{color:t.grid}},
- crosshair:{vertLine:{visible:true,color:state.dark?'#718da8':'#718da8',style:LW.LineStyle.Dashed,labelVisible:false}}
+ crosshair:{vertLine:{visible:false,labelVisible:false}}
 });
 if(lastPriceLine)lastPriceLine.applyOptions({color:priceGuideColor()});
+scheduleLivePriceBadgeLayout();
 drawZones();
 }
 remember('theme',state.dark?'dark':'light');
@@ -211,6 +213,48 @@ const original=state.data.findLast?.(x=>x.time===c.time)||state.data.at(-1);
 $('volumeStripValue').textContent=Number.isFinite(original?.volume)?compact(original.volume):'—';
 }
 function priceGuideColor(){return document.body.classList.contains('light')?'#008f88':'#22d7c1';}
+/* A single readable price badge replaces the chart library's small axis
+ * label. Both the solid live-price line and the badge use the SAME series
+ * coordinate, so the number cannot drift away from its actual level.
+ * If the price is outside the visible chart range, an arrow clearly marks
+ * the badge as off-screen rather than implying a different level. */
+function layoutLivePriceBadge(){
+  livePriceBadgePending=false;
+  const badge=$('livePriceBadge');
+  if(!badge)return;
+  if(!chart||!candles||!state.data.length||!Number.isFinite(state.activePrice)){
+    badge.hidden=true;return;
+  }
+  try{
+    const host=$('chartHost').getBoundingClientRect(),
+      holder=badge.parentElement.getBoundingClientRect(),
+      y=candles.priceToCoordinate(state.activePrice);
+    if(!Number.isFinite(y)||host.height<50){badge.hidden=true;return;}
+    const half=13,lowest=half+3,highest=host.height-half-3;
+    const pos=Math.max(lowest,Math.min(highest,y));
+    const range=y<lowest?'above':y>highest?'below':'visible';
+    const number=fmt(state.activePrice);
+    badge.textContent=(range==='above'?'▲ ':range==='below'?'▼ ':'')+number;
+    badge.style.top=(host.top-holder.top+pos)+'px';
+    badge.style.width=Math.ceil(Math.max(88,chart.priceScale('right').width()))+'px';
+    badge.dataset.range=range;
+    const market=activeMarket();
+    const fresh=market.provider==='binance'?state.live:state.quoteIsFresh;
+    badge.dataset.fresh=String(Boolean(fresh));
+    badge.title=(range==='above'?'Current quote ABOVE visible chart range':range==='below'?
+      'Current quote BELOW visible chart range':'Current market price at this chart level')+
+      ': '+number+(fresh?'':' · last available / not verified live');
+    badge.setAttribute('aria-label','Current '+market.symbol+' price '+number+
+      (range==='visible'?' at chart price level':' '+range+' current visible chart'));
+    badge.hidden=false;
+  }catch(error){badge.hidden=true;console.warn('Price badge layout unavailable',error);}
+}
+function scheduleLivePriceBadgeLayout(){
+  if(livePriceBadgePending)return;
+  livePriceBadgePending=true;
+  requestAnimationFrame(layoutLivePriceBadge);
+}
+
 function updatePrice(v){if(!Number.isFinite(v)||v<=0)return;
 state.activePrice=v;$('lastPrice').textContent=fmt(v);
 try{
@@ -221,9 +265,10 @@ try{
 }catch(error){console.warn('Optional price alert processing failed',error);}
 $('updatedAt').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 scheduleAlertLayout();
-if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:true,title:''};
+if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:false,title:''};
 if(!lastPriceLine)lastPriceLine=candles.createPriceLine(options);else lastPriceLine.applyOptions(options);
 }catch(e){console.warn('Last-price guide issue',e);}}
+scheduleLivePriceBadgeLayout();
 }
 
 const TF_SECONDS=Object.freeze({'5m':300,'15m':900,'1h':3600,'4h':14400,'1d':86400});
@@ -240,6 +285,7 @@ function syncIndicativeQuoteToChart(price,quoteAt){
   try{candles.update({time:revised.time,open:revised.open,high:revised.high,low:revised.low,close:revised.close});}
   catch(error){console.warn('Active candle synchronization failed',error);}
   setOhlc(revised);
+  scheduleLivePriceBadgeLayout();
 }
 function quoteFresh(t){
   return t.marketState==='open'&&!t.stale&&Number.isFinite(t.quoteAt)&&Math.abs(Date.now()/1000-t.quoteAt)<120;
@@ -259,6 +305,7 @@ const quoteAt=Number.isFinite(t.quoteAt)?t.quoteAt:null;
 const newer=quoteAt===null||state.quoteAt===null||quoteAt>=state.quoteAt;
 const fresh=quoteFresh(t);
 state.quoteIsFresh=fresh;
+scheduleLivePriceBadgeLayout();
 if(validPrice&&newer){
   state.quoteAt=quoteAt;
   state.quotePrice=t.price;
@@ -305,7 +352,7 @@ hideChartContextMenu();
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
 try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
-try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
+try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;$('livePriceBadge').hidden=true;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
 $('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
 try{
@@ -1244,6 +1291,7 @@ function resizeChartWindow(){
     alignPriceScaleWidths();
     if(rsiTimelineReady)restoreSharedTimeScale();
     if(sharedCrosshairTime!==null)layoutSharedCrosshairGuide();
+    scheduleLivePriceBadgeLayout();
     drawZones();
   }catch(error){console.warn('Chart window resizing issue',error);}
 }

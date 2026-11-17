@@ -1696,3 +1696,10 @@ dialog.us-calendar-dialog .us-calendar-provider-error{
   body.terminal-mode .center-pane #autoSmcBtn{padding-inline:2px!important}
   body.terminal-mode .center-pane .toolbar-menu .toolbar-button{padding-inline:2px!important}
 }
+
+/* Mobile AdSense invariant: 'hidden' must beat every reserved placement rule.
+   Prevent even an empty ad slot from consuming space in mobile Analysis. */
+.ad-placement[hidden],body .ad-placement[aria-hidden="true"]{display:none!important;min-height:0!important;height:0!important;padding:0!important;margin:0!important;border:0!important}
+@media(max-width:730px), (pointer:coarse){
+  body .ad-placement{display:none!important;min-height:0!important;height:0!important;padding:0!important;margin:0!important;border:0!important}
+}

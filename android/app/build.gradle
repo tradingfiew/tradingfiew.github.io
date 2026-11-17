@@ -1,0 +1,61 @@
+plugins {
+    id 'com.android.application'
+}
+
+def signedBuild = [
+    'TRADINGFIEW_KEYSTORE_PATH',
+    'TRADINGFIEW_STORE_PASSWORD',
+    'TRADINGFIEW_KEY_ALIAS',
+    'TRADINGFIEW_KEY_PASSWORD'
+].every { System.getenv(it)?.trim() }
+
+android {
+    namespace 'com.ribhlab.tradingfiew'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.ribhlab.tradingfiew'
+        minSdk 23
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    if (signedBuild) {
+        signingConfigs {
+            release {
+                storeFile file(System.getenv('TRADINGFIEW_KEYSTORE_PATH'))
+                storePassword System.getenv('TRADINGFIEW_STORE_PASSWORD')
+                keyAlias System.getenv('TRADINGFIEW_KEY_ALIAS')
+                keyPassword System.getenv('TRADINGFIEW_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (signedBuild) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+    implementation 'androidx.browser:browser:1.10.0'
+}

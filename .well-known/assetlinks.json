@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.ribhlab.tradingfiew",
+      "sha256_cert_fingerprints": [
+        "D4:EB:66:E3:3A:A0:54:C2:34:DB:19:6D:29:31:BA:38:9A:91:0B:C6:A9:FB:23:14:A8:4E:92:A0:B6:BD:2A:BC"
+      ]
+    }
+  }
+]

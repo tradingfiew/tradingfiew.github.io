@@ -82,15 +82,13 @@ function info(open){
 }
 function updateClock(){
   $("terminalClock").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"UTC",hour12:false})+" UTC";
-  const timer=$("candleCountdown"),snapshot=root.TradingFiewChartAPI?.getSnapshot?.();
-  if(!snapshot||!snapshot.candleTime||!snapshot.tf){timer.textContent="⏱ Waiting for candles";return;}
-  if(!snapshot.open){timer.textContent="⏱ Market paused";return;}
-  const seconds=({"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400})[snapshot.tf];
-  if(!seconds){timer.textContent="⏱ —";return;}
-  const now=Math.floor(Date.now()/1000),until=seconds-(now%seconds);
-  const hh=Math.floor(until/3600),mm=Math.floor((until%3600)/60),ss=until%60;
-  const pad=v=>String(v).padStart(2,"0");
-  timer.textContent="⏱ "+(hh?pad(hh)+":":"")+pad(mm)+":"+pad(ss)+" to close";
+  const timer=$("candleCountdown"),api=root.TradingFiewChartAPI;
+  const countdown=api?.getCandleCountdown?.();
+  if(!countdown){timer.textContent="⏱ Waiting for candles";return;}
+  timer.textContent=countdown.active?"⏱ "+countdown.text+" to close":
+    countdown.status==="paused"?"⏱ Market paused":
+    countdown.status==="waiting"?"⏱ Waiting for candles":"⏱ Waiting for current candle";
+  api?.refreshPriceBadge?.();
 }
 function updateBidAsk(e){
   const symbol=e?.detail?.symbol;

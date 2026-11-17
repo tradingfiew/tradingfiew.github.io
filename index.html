@@ -169,7 +169,7 @@
           <div class="draw-tools" role="toolbar" aria-label="Drawing tools">
             <button class="draw-button active" data-draw="cursor" title="Cursor">⌖</button>
             <button class="draw-button" data-draw="horizontal" title="Horizontal price level">━</button>
-            <button class="draw-button alert-draw-button" data-draw="alert" title="Tap any price on the chart to create a sounding alert" aria-label="Tap chart to set price alert" aria-pressed="false">🔔</button>
+            <button class="draw-button alert-draw-button" data-draw="alert" title="Choose alert tool, then tap a price; right-click chart for menu" aria-label="Set chart price alert" aria-pressed="false">🔔</button>
             <button class="draw-button" data-draw="trend" title="Trend line">╱</button>
             <button class="draw-button" data-draw="fib" title="Fibonacci retracement">⅔</button>
             <div class="vertical-separator"></div>
@@ -180,7 +180,7 @@
           <div class="chart-inner">
             <div class="ohlc-strip" id="ohlcStrip"><span>O <b id="oVal">—</b></span><span>H <b id="hVal">—</b></span><span>L <b id="lVal">—</b></span><span>C <b id="cVal">—</b></span><span class="strip-v"><span id="volumeStripLabel">VOL</span> <b id="volumeStripValue">—</b></span><span class="strip-r" id="stripRSI">RSI 14 —</span></div>
             <div class="legend-strip"><span><i class="legend-dot ema20"></i>EMA 20</span><span><i class="legend-dot ema50"></i>EMA 50</span><span><i class="legend-dot ema200"></i>EMA 200</span><span><i class="legend-dot bullish"></i>Bullish FVG</span><span><i class="legend-dot bearish"></i>Bearish FVG</span></div>
-            <div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div>
+            <div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><div id="alertLineHandles" class="alert-line-handles" aria-label="Draggable chart alert levels"></div><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div>
               <div id="selectedDrawingBar" class="selected-drawing-bar hidden" role="group" aria-label="Selected chart drawing">
                 <span id="selectedDrawingLabel">Selected drawing</span>
                 <button type="button" id="deleteSelectedDrawingBtn" class="selected-delete" title="Delete selected line or Fibonacci">Delete ✕</button>
@@ -319,6 +319,45 @@
     <p id="smcBannerPlan">—</p>
     <small>Educational scenario only · TradingFiew is not responsible for trading decisions or losses.</small>
   </section>
+  <div id="chartContextMenu" class="chart-context-menu hidden" role="menu" aria-label="Chart price menu" tabindex="-1">
+    <div id="chartContextTitle" class="chart-context-title">Chart menu</div>
+    <button type="button" id="ctxAlertAdd" role="menuitem">🔔 Add alert at selected price</button>
+    <button type="button" id="ctxAlertEdit" role="menuitem" hidden>✎ Edit alert…</button>
+    <button type="button" id="ctxAlertToggle" role="menuitem" hidden>Ⅱ Pause alert</button>
+    <button type="button" id="ctxAlertSound" role="menuitemcheckbox" aria-checked="true" hidden>♫ Sound</button>
+    <button type="button" id="ctxAlertNotify" role="menuitemcheckbox" aria-checked="true" hidden>▣ Notification</button>
+    <button type="button" id="ctxAlertDelete" class="ctx-alert-delete" role="menuitem" hidden>✕ Delete alert</button>
+    <div class="chart-context-divider" role="separator"></div>
+    <button type="button" id="ctxCopyPrice" role="menuitem">⧉ Copy price</button>
+    <button type="button" id="ctxManageAlerts" role="menuitem">☷ Manage alerts</button>
+    <button type="button" id="ctxResetView" role="menuitem">⟲ Reset chart view</button>
+  </div>
+  <div id="alertEditModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="alertEditTitle">
+    <div class="modal-card alert-edit-card">
+      <button type="button" id="alertEditCloseBtn" class="modal-close" aria-label="Close alert settings">×</button>
+      <span class="eyebrow">CHART ALERT SETTINGS</span>
+      <h2 id="alertEditTitle">Edit price alert</h2>
+      <p id="alertEditSymbolLabel" class="alert-edit-caption">Market</p>
+      <form id="alertEditForm" autocomplete="off">
+        <label for="alertEditPrice">Target price</label>
+        <input id="alertEditPrice" type="number" step="any" min="0.00000001" inputmode="decimal" required>
+        <label for="alertEditCondition">Trigger condition</label>
+        <select id="alertEditCondition">
+          <option value="price_touch">Price reaches level (either direction)</option>
+          <option value="price_above">Price crosses above</option>
+          <option value="price_below">Price crosses below</option>
+        </select>
+        <label class="alert-edit-check"><input type="checkbox" id="alertEditRepeat"> Repeat when crossed again</label>
+        <label class="alert-edit-check"><input type="checkbox" id="alertEditSound"> Play sound</label>
+        <label class="alert-edit-check"><input type="checkbox" id="alertEditNotify"> Phone / computer notification (when allowed)</label>
+        <div class="alert-edit-actions">
+          <button type="button" id="alertEditRemove" class="alert-edit-remove">Delete alert</button>
+          <button type="submit" id="alertEditSave" class="alert-edit-save">Save changes</button>
+        </div>
+      </form>
+      <p class="alert-edit-note">Drag the yellow alert line vertically to change its target price, or edit it here. Alerts are local to this browser and work while the site is running.</p>
+    </div>
+  </div>
   <div id="alertsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="alertsTitle">
     <div class="modal-card alerts-modal">
       <button type="button" id="alertsCloseBtn" class="modal-close" aria-label="Close alert manager">×</button>
@@ -349,7 +388,7 @@
           <label class="alerts-setting alerts-repeat"><input id="alertNotify" type="checkbox" checked> Phone / browser notification for this alert (when allowed)</label>
           <button type="submit" id="alertAddBtn" class="alert-add">+ Create alert</button>
         </form>
-        <p class="alerts-chart-help"><strong>Fastest way:</strong> tap 🔔 in the left chart toolbar, then tap any price on the chart to save an alert instantly. On desktop, right-click the chart at any price. The alert is saved without reopening this form. A thin dotted yellow line marks your alert level.</p>
+        <p class="alerts-chart-help"><strong>From chart menu:</strong> right-click any price and choose “Add alert”. On mobile, hold your finger on the chart for the menu, or select the 🔔 tool and tap a level. Click an existing amber alert line to edit, pause, mute, turn notifications on or off, or delete it. Drag a line up or down to change its price; the new price saves when released.</p>
         <p class="alerts-scope-note">Alerts only work while TradingFiew is running in your browser. Delivery with the site fully closed requires a separate push server, which is not configured. Phone settings may suppress sounds or notifications.</p>
       </div>
       <div class="alerts-manager-heading"><h3>My alerts <span id="alertsActiveSummary">0 active</span></h3><button id="alertsDeleteAllBtn" type="button">Delete all</button></div>

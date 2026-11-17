@@ -66,6 +66,76 @@
       $("donateAddress").focus?.();
     }
   }
+
+  /* Public recognition is opt-in, NEVER inferred from on-chain addresses.
+   * Static GitHub Pages has no secure payment verification or anonymous write API.
+   * After the donor explicitly requests credit, the owner must manually confirm
+   * the donation and publish only the chosen name in supporters.json. */
+  async function loadSupporters(){
+    const list=$("supportersList");
+    if(!list)return;
+    try{
+      const response=await fetch("./supporters.json",{cache:"no-store"});
+      if(!response.ok)throw Error("Supporter records unavailable");
+      const data=await response.json();
+      if(!Array.isArray(data.supporters))throw Error("Invalid supporter list");
+      list.replaceChildren();
+      const names=data.supporters.filter(p=>
+        p&&p.approved===true&&p.consent===true&&typeof p.name==="string"&&
+        p.name.trim().length>=1&&p.name.length<=42).slice(0,150);
+      if(!names.length){
+        const empty=document.createElement("span");empty.className="supporters-empty";
+        empty.textContent="No public supporters yet · You can donate anonymously";
+        list.appendChild(empty);
+        return;
+      }
+      for(const item of names){
+        const tag=document.createElement("span");
+        tag.className="supporter-name";
+        tag.textContent=item.name.trim();
+        list.appendChild(tag);
+      }
+    }catch(error){
+      list.textContent="Supporters will appear here after consent and verification.";
+      console.warn("Supporter records could not load",error);
+    }
+  }
+  function updateSupporterOptIn(){
+    const allowed=$("supporterNameOptIn").checked;
+    $("supporterForm").hidden=!allowed;
+    if(!allowed){
+      $("supporterDisplayName").value="";
+      $("supporterFormStatus").textContent="";
+    }
+  }
+  function requestPublicCredit(){
+    const checkbox=$("supporterNameOptIn"),name=$("supporterDisplayName").value.trim();
+    const status=$("supporterFormStatus");
+    if(!checkbox.checked){status.textContent="Consent must be selected first.";return;}
+    if(name.length<2||name.length>42||/[\r\n<>]/.test(name)){
+      status.textContent="Enter a public display name of 2–42 characters.";return;
+    }
+    const networkLabel=CONFIG[network]?.chain||"Not specified";
+    // No wallet address, amount or transaction history is exposed here.
+    const title="Optional TradingFiew supporter credit: "+name;
+    const body=[
+      "I donated to support TradingFiew and voluntarily request public credit.",
+      "",
+      "Chosen public display name: "+name,
+      "Donation network: "+networkLabel,
+      "",
+      "[x] I explicitly agree to publishing ONLY the chosen display name on TradingFiew's public supporters list.",
+      "[x] I understand the request itself is a public GitHub issue associated with my GitHub account.",
+      "[x] I understand my request is not automatically accepted; the project owner must verify the donation before publishing any credit.",
+      "",
+      "Do not post wallet recovery phrases, private keys or sensitive personal information."
+    ].join("\n");
+    const url="https://github.com/tradingfiew/tradingfiew.github.io/issues/new?title="+encodeURIComponent(title)+"&body="+encodeURIComponent(body);
+    // Do not claim submission without the visitor completing the external form.
+    status.textContent="A new GitHub page will open; review and submit your optional request there. Your name is not publicly listed yet.";
+    const tab=window.open(url,"_blank","noopener,noreferrer");
+    if(!tab)status.textContent="Your browser blocked the new page. Open the GitHub Issues link in another tab to submit your request.";
+  }
   function initialize(){
     const modal=$("donateModal");
     if(!modal)return;
@@ -74,6 +144,9 @@
     $("donateCloseBtn")?.addEventListener("click",close);
     $("donateDoneBtn")?.addEventListener("click",close);
     $("copyDonateBtn")?.addEventListener("click",copy);
+    $("supporterNameOptIn")?.addEventListener("change",updateSupporterOptIn);
+    $("requestPublicCreditBtn")?.addEventListener("click",requestPublicCredit);
+    void loadSupporters();
     $("donateNetworks")?.addEventListener("click",e=>{
       const button=e.target.closest("[data-donate-network]");
       if(button&&CONFIG[button.dataset.donateNetwork]){

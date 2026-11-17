@@ -52,7 +52,7 @@ function chartOptions(height,primary=false){
 const c=themeColors();
 return {autoSize:true,width:700,height,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'IBM Plex Mono, monospace',fontSize:10,attributionLogo:false},
 grid:{vertLines:{color:c.grid,style:1},horzLines:{color:c.grid,style:1}},
-crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:false,labelVisible:false},horzLine:{visible:false,labelVisible:false}},
+crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:false,labelVisible:false},horzLine:{visible:primary,labelVisible:primary,color:'#8da3c1',width:1,style:LW.LineStyle.Dashed,labelBackgroundColor:'#374151'}},
 rightPriceScale:{borderColor:c.grid,minimumWidth:88,scaleMargins:{top:.11,bottom:primary ? .23 : .06}},
 timeScale:{borderColor:c.grid,timeVisible:true,secondsVisible:false,barSpacing:window.innerWidth<=730?6:8,minBarSpacing:2,rightOffset:window.innerWidth<=730?4:8},
 handleScroll:true,handleScale:true,localization:{locale:'en-US'}};

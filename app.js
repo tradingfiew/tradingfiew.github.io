@@ -117,10 +117,23 @@ zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{
 try{markersApi=LW.createSeriesMarkers?LW.createSeriesMarkers(candles,[]):null;}catch{markersApi=null;}
 }
 function updateTheme(){
-document.body.classList.toggle('light',!state.dark);$('themeBtn').textContent=state.dark?'☀':'☾';
+document.body.classList.toggle('light',!state.dark);
+document.documentElement.style.colorScheme=state.dark?'dark':'light';
+$('themeIcon').textContent=state.dark?'☀':'☾';
+$('themeLabel').textContent=state.dark?'Day':'Night';
+$('themeBtn').setAttribute('aria-label',state.dark?'Switch to Day theme':'Switch to Night theme');
+$('themeBtn').setAttribute('aria-pressed',String(!state.dark));
+$('themeBtn').title=state.dark?'Switch to Day theme':'Switch to Night theme';
+document.querySelector('meta[name="theme-color"]')?.setAttribute('content',state.dark?'#0a1020':'#f7f9fc');
 if(chart){
 let t=themeColors();chart.applyOptions({layout:{background:{type:'solid',color:t.bg},textColor:t.text},grid:{vertLines:{color:t.grid},horzLines:{color:t.grid}},rightPriceScale:{borderColor:t.grid},timeScale:{borderColor:t.grid}});
-rsiChart.applyOptions({layout:{background:{type:'solid',color:t.bg},textColor:t.text},grid:{horzLines:{color:t.grid}}});if(lastPriceLine)lastPriceLine.applyOptions({color:priceGuideColor()});drawZones();
+rsiChart.applyOptions({
+ layout:{background:{type:'solid',color:t.bg},textColor:t.text},
+ grid:{horzLines:{color:t.grid}},
+ crosshair:{vertLine:{visible:true,color:state.dark?'#718da8':'#718da8',style:LW.LineStyle.Dashed,labelVisible:false}}
+});
+if(lastPriceLine)lastPriceLine.applyOptions({color:priceGuideColor()});
+drawZones();
 }
 remember('theme',state.dark?'dark':'light');
 }
@@ -1097,7 +1110,21 @@ const content=[header,...state.data.map(c=>[new Date(c.time*1000).toISOString(),
 const blob=new Blob([content],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');
 link.href=url;link.download='RibhLab_'+state.symbol+'_'+state.tf+'_OHLCV.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast('OHLCV CSV exported.');
 }
-const INDICATOR_IDS=['toggleEMA','toggleVolume','toggleRSI','toggleZones','toggleMarkers','toggleSR'];
+const INDICATOR_IDS=['toggleEMA20','toggleEMA50','toggleEMA200','toggleVolume','toggleRSI','toggleZones','toggleBullishFvg','toggleBearishFvg','toggleMarkers','toggleSR','toggleAlertLines'];
+function syncIndicatorLegend(){
+  const switches=[
+    ['ema20','toggleEMA20'],['ema50','toggleEMA50'],['ema200','toggleEMA200'],
+    ['bullish','toggleBullishFvg'],['bearish','toggleBearishFvg']
+  ];
+  for(const [cls,id] of switches){
+    const visible=$(id).checked;
+    document.querySelectorAll('.legend-strip span').forEach(item=>{
+      if(item.querySelector('.legend-dot.'+cls))item.classList.toggle('indicator-hidden',!visible);
+    });
+  }
+  const enabled=$('toggleRSI').checked;
+  $('stripRSI').classList.toggle('indicator-hidden',!enabled);
+}
 function saveIndicators(){
   const prefs={};for(const id of INDICATOR_IDS)prefs[id]=$(id).checked;
   remember('indicators',JSON.stringify(prefs));
@@ -1114,7 +1141,14 @@ function restoreSettings(){
   $('smcSwitchDot').style.opacity=state.autoSmc?'1':'.1';
   $('symbolSearch').value=(preference('search')||'').slice(0,90);
   const indicators=Space.getJSON('indicators',{});
+  // Preserve preferences of older TradingFiew sessions which had one EMA switch.
+  if(typeof indicators.toggleEMA==='boolean'){
+    for(const id of ['toggleEMA20','toggleEMA50','toggleEMA200']){
+      if(typeof indicators[id]!=='boolean')indicators[id]=indicators.toggleEMA;
+    }
+  }
   for(const id of INDICATOR_IDS)if(typeof indicators[id]==='boolean')$(id).checked=indicators[id];
+  syncIndicatorLegend();
   document.querySelectorAll('[data-category]').forEach(b=>b.classList.toggle('active',b.dataset.category===state.category));
   $('marketCategoryName').textContent=state.category==='all'?'ALL MARKETS':state.category.toUpperCase();
   document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tableTab));
@@ -1184,13 +1218,18 @@ $('themeBtn').addEventListener('click',()=>{state.dark=!state.dark;updateTheme()
 $('reAnalyzeBtn').addEventListener('click',()=>{analyze();fetchHigherTimeframe(state.request);toast('SMC analysis refreshed.');});
 $('indicatorsBtn').addEventListener('click',e=>{e.stopPropagation();$('indicatorMenu').classList.toggle('open');});
 document.addEventListener('click',e=>{if(!e.target.closest('.toolbar-menu'))$('indicatorMenu').classList.remove('open');});
-$('toggleEMA').addEventListener('change',refreshEMAs);
+for(const id of ['toggleEMA20','toggleEMA50','toggleEMA200'])
+  $(id).addEventListener('change',refreshEMAs);
 $('toggleVolume').addEventListener('change',()=>{if(state.data.length)vol.setData($('toggleVolume').checked?state.data.map(d=>({time:d.time,value:d.volume,color:d.close>=d.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'})):[]);});
-$('toggleRSI').addEventListener('change',refreshRsi);
+$('toggleRSI').addEventListener('change',()=>{refreshRsi();syncIndicatorLegend();});
 $('toggleZones').addEventListener('change',drawZones);
+for(const id of ['toggleBullishFvg','toggleBearishFvg']){
+  $(id).addEventListener('change',()=>{drawZones();syncIndicatorLegend();});
+}
+$('toggleAlertLines').addEventListener('change',renderAlertPriceLines);
 $('toggleMarkers').addEventListener('change',renderMarkers);
 $('toggleSR').addEventListener('change',renderSupportResistance);
-for(const id of ['toggleEMA','toggleVolume','toggleRSI','toggleZones','toggleMarkers','toggleSR']){
+for(const id of INDICATOR_IDS){
   $(id).addEventListener('change',saveIndicators);
 }
 $('autoSmcBtn').addEventListener('click',()=>{state.autoSmc=!state.autoSmc;$('autoSmcBtn').classList.toggle('active-tool',state.autoSmc);$('smcSwitchDot').style.opacity=state.autoSmc?'1':'.1';remember('autoSmc',String(state.autoSmc));drawZones();renderMarkers();toast(state.autoSmc?'Auto SMC overlays on':'Auto SMC overlays hidden');});

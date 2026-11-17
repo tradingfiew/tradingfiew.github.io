@@ -13,6 +13,7 @@ tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
+let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map();
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
@@ -45,12 +46,66 @@ candles=chart.addSeries(LW.CandlestickSeries,{upColor:'#36cba1',downColor:'#f264
 vol=chart.addSeries(LW.HistogramSeries,{priceScaleId:'volume',priceFormat:{type:'volume'},lastValueVisible:false,priceLineVisible:false});
 chart.priceScale('volume').applyOptions({scaleMargins:{top:.82,bottom:0}});
 ema20=addLine('#699cf6',2);ema50=addLine('#ecae53',1);ema200=addLine('#a28df0',1);
-rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:{visible:true,borderVisible:false,scaleMargins:{top:.10,bottom:.10}},timeScale:{visible:false,borderVisible:false},grid:{vertLines:{visible:false},horzLines:{color:themeColors().grid}},crosshair:{vertLine:{visible:false},horzLine:{visible:false}},handleScroll:false,handleScale:false});
+rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:{visible:true,borderVisible:false,scaleMargins:{top:.10,bottom:.10}},timeScale:{visible:false,borderVisible:false},grid:{vertLines:{visible:false},horzLines:{color:themeColors().grid}},crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:true,color:'#718da8',style:LW.LineStyle.Dashed,width:1,labelVisible:false},horzLine:{visible:false,labelVisible:false}},handleScroll:true,handleScale:true});
 rsiSeries=rsiChart.addSeries(LW.LineSeries,{color:'#a998fc',lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
 rsiSeries.createPriceLine({price:70,color:'rgba(245,114,140,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
 rsiSeries.createPriceLine({price:30,color:'rgba(53,208,154,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
-chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{scheduleAlertLayout();drawZones();try{const range=chart.timeScale().getVisibleRange();if(range&&state.data.length>14)rsiChart.timeScale().setVisibleRange(range);}catch{}clearTimeout(markerLayoutTimer);markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);});
-chart.subscribeCrosshairMove(p=>{scheduleAlertLayout();const c=p.seriesData?.get(candles);if(c&&Number.isFinite(c.close))setOhlc(c);else if(state.data.length)setOhlc(state.data.at(-1));});
+function linkedTimeRange(from,to,range){
+  if(syncingTimeRanges||!range||!Number.isFinite(range.from)||!Number.isFinite(range.to)||!state.data.length)return;
+  try{
+    const existing=to.timeScale().getVisibleLogicalRange();
+    if(existing&&Math.abs(existing.from-range.from)<.015&&Math.abs(existing.to-range.to)<.015)return;
+    syncingTimeRanges=true;
+    to.timeScale().setVisibleLogicalRange(range);
+  }catch(error){console.warn('Linked chart time range unavailable',error);}
+  finally{syncingTimeRanges=false;}
+}
+function linkedCrosshair(param,source){
+  if(syncingCrosshair)return;
+  const target=source==='main'?rsiChart:chart;
+  if(!param?.time||!state.data.length){
+    try{syncingCrosshair=true;target.clearCrosshairPosition();}catch{}
+    finally{syncingCrosshair=false;}
+    return;
+  }
+  const time=typeof param.time==='number'?param.time:null;
+  const rsiPoint=source==='main'?rsiPointsByTime.get(time):null;
+  const candlePoint=source==='rsi'?state.data.find(d=>d.time===time):null;
+  const value=source==='main'?rsiPoint?.value:candlePoint?.close;
+  const series=source==='main'?rsiSeries:candles;
+  if(!Number.isFinite(value)){
+    try{syncingCrosshair=true;target.clearCrosshairPosition();}catch{}
+    finally{syncingCrosshair=false;}
+    return;
+  }
+  try{
+    syncingCrosshair=true;
+    target.setCrosshairPosition(value,param.time,series);
+  }catch(error){console.warn('Linked RSI crosshair unavailable',error);}
+  finally{syncingCrosshair=false;}
+}
+chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
+  scheduleAlertLayout();drawZones();
+  linkedTimeRange(chart,rsiChart,range);
+  clearTimeout(markerLayoutTimer);
+  markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);
+});
+rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
+  linkedTimeRange(rsiChart,chart,range);
+});
+chart.subscribeCrosshairMove(p=>{
+  scheduleAlertLayout();
+  const c=p.seriesData?.get(candles);
+  if(c&&Number.isFinite(c.close))setOhlc(c);
+  else if(state.data.length)setOhlc(state.data.at(-1));
+  linkedCrosshair(p,'main');
+});
+rsiChart.subscribeCrosshairMove(p=>{
+  const c=p.time&&state.data.find(d=>d.time===p.time);
+  if(c)setOhlc(c);
+  else if(state.data.length)setOhlc(state.data.at(-1));
+  linkedCrosshair(p,'rsi');
+});
 chart.subscribeClick(onChartClick);
 installChartContextHandlers();
 document.addEventListener('tradingfiew:alerts-changed',renderAlertPriceLines);
@@ -105,7 +160,7 @@ try{
 }catch(error){console.warn('Optional price alert processing failed',error);}
 $('updatedAt').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 scheduleAlertLayout();
-if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:true,title:'LAST'};
+if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:true,title:''};
 if(!lastPriceLine)lastPriceLine=candles.createPriceLine(options);else lastPriceLine.applyOptions(options);
 }catch(e){console.warn('Last-price guide issue',e);}}
 }
@@ -216,14 +271,23 @@ refreshEMAs();
 if(fit)focusRecentCandles();
 }
 function refreshEMAs(){
-const show=$('toggleEMA').checked;
 const data=state.data.slice(0,-1);
-ema20.setData(show?Engine.ema(data,20):[]);ema50.setData(show?Engine.ema(data,50):[]);ema200.setData(show?Engine.ema(data,200):[]);
+ema20.setData($('toggleEMA20').checked?Engine.ema(data,20):[]);
+ema50.setData($('toggleEMA50').checked?Engine.ema(data,50):[]);
+ema200.setData($('toggleEMA200').checked?Engine.ema(data,200):[]);
+syncIndicatorLegend();
 }
 function refreshRsi(){
-const show=$('toggleRSI').checked;$('rsiPanel').classList.toggle('hidden',!show);
-rsiSeries.setData(show&&state.analysis?state.analysis.rsis.map(p=>({time:p.time,value:p.value})):[]);
-if(show)try{const range=chart.timeScale().getVisibleRange();if(range)rsiChart.timeScale().setVisibleRange(range);}catch{}
+const show=$('toggleRSI').checked;
+$('rsiPanel').classList.toggle('hidden',!show);
+const points=show&&state.analysis?state.analysis.rsis.map(p=>({time:p.time,value:p.value})):[];
+rsiPointsByTime=new Map(points.map(p=>[p.time,p]));
+rsiSeries.setData(points);
+if(show)try{
+  const range=chart.timeScale().getVisibleLogicalRange();
+  if(range)linkedTimeRange(chart,rsiChart,range);
+}catch(error){console.warn('RSI chart relinking unavailable',error);}
+resizeChartWindow();
 }
 function connectStream(request){
 if(request!==state.request)return;
@@ -400,7 +464,10 @@ if(!w||!h)return;zoneCanvas.width=Math.floor(w*dpr);zoneCanvas.height=Math.floor
 if(state.autoSmc&&$('toggleZones').checked&&state.analysis){
 const price=state.activePrice||state.analysis.last.close;const zones=[];
 const sorted=[...state.analysis.activeZones].sort((a,b)=>Math.abs((a.high+a.low)/2-price)-Math.abs((b.high+b.low)/2-price));
-for(const z of sorted){if(zones.length>=(w<500?1:w<900?2:3))break;const mid=(z.high+z.low)/2;if(Math.abs(mid-price)>state.analysis.atr*18)continue;if(zones.some(other=>Math.abs((other.high+other.low)/2-mid)<state.analysis.atr*.45))continue;zones.push(z);}
+for(const z of sorted){
+if(z.direction==='bull'&&!$('toggleBullishFvg').checked)continue;
+if(z.direction==='bear'&&!$('toggleBearishFvg').checked)continue;
+if(zones.length>=(w<500?1:w<900?2:3))break;const mid=(z.high+z.low)/2;if(Math.abs(mid-price)>state.analysis.atr*18)continue;if(zones.some(other=>Math.abs((other.high+other.low)/2-mid)<state.analysis.atr*.45))continue;zones.push(z);}
 const time=chart.timeScale();
 for(const z of zones){
 const x=time.timeToCoordinate(z.startTime),y1=candles.priceToCoordinate(z.high),y2=candles.priceToCoordinate(z.low);
@@ -755,6 +822,7 @@ function bindAlertHitTarget(node){
 }
 function renderAlertPriceLines(){
   if(!candles||!state.data.length||!window.TradingFiewAlerts?.getPriceLevels)return;
+  if(!$('toggleAlertLines').checked){clearAlertPriceLines();return;}
   const current=window.TradingFiewAlerts.getPriceLevels(state.symbol);
   const liveIds=new Set(current.map(a=>a.id));
   for(const [id,line] of alertPriceLines){

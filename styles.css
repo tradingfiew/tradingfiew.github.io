@@ -1143,6 +1143,7 @@ body.terminal-mode .draw-button.alert-draw-button{flex:0 0 auto}
 .alert-line-handles{
  position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden
 }
+.alert-hit-level[hidden]{display:none!important}
 .alert-hit-level{
  position:absolute;left:0;width:calc(100% - 55px);
  height:19px;transform:translateY(-50%);

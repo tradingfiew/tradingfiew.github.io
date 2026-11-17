@@ -80,6 +80,14 @@ Trend by timeframe independently downloads completed market candles for **5m / 1
 
 Sources: [Binance Spot WebSocket partial-depth streams](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md), [Binance market data only](https://github.com/binance/binance-spot-api-docs/blob/master/faqs/market_data_only.md).
 
+## One-tap price alerts directly on the chart
+
+The left-hand chart toolbar contains a **🔔 Alert** drawing mode: select it, then click or tap **any vertical price position on the candlestick chart**, including the future/empty chart area. TradingFiew converts the chart coordinate using Lightweight Charts' `candles.coordinateToPrice(point.y)` and **immediately** saves a local one-shot **price reaches target (either direction)** alert. An amber 1px dotted price guide marks each armed alert without adding another right-axis price label. Multiple alerts can coexist, persist after reload, and remain separately controllable from the 🔔 Alerts manager.
+
+**Desktop quick shortcut:** right-click any price in the chart, even when another drawing tool is selected. Right-clicking outside the chart does not create an alert. Activate Cursor to exit alert placement. Price alerts always compare **new live market updates** rather than historic cursor candle prices; clicking a past candle's x position does not select its past quote, just the indicated y-level price.
+
+Chart alert creation opts the new rule into local sound and permitted system notifications; if browser permission is not yet granted, the browser will request permission on the user-triggered click where supported. The manager's **Test sound** and **Test notification** actions help validate device permissions. A local notification is **not** guaranteed after all TradingFiew tabs/browser sessions are fully closed, or when OS/browser background throttling or device mute settings prevent delivery; no remote push backend has been set up.
+
 ## Optional SMC zone scenarios and user-managed alerts
 
 TradingFiew offers two separate, optional alert functions:

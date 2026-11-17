@@ -911,3 +911,106 @@ body.terminal-mode .modal-backdrop{z-index:2000}
  body.terminal-mode .center-pane .chart-holder{min-height:65px!important}
  body.terminal-mode .center-pane .legend-strip>span:nth-child(n+4){display:none}
 }
+
+
+/* TradingFiew terminal v2.6 — persistent left sidebar with selectable market tools.
+ * Markets never move to SMC column. Trend/Book are alternatives, not stacked cards. */
+.left-panel-tabs{
+ flex:0 0 41px;min-height:41px;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:3px;padding:5px 7px;border-bottom:1px solid var(--stroke);
+ background:var(--panel)
+}
+.left-panel-tabs button{
+ min-width:0;min-height:29px;padding:5px 3px;
+ font:800 10px 'DM Sans',sans-serif;
+ color:var(--muted);background:transparent;
+ border:1px solid transparent;border-radius:7px;
+ white-space:nowrap
+}
+.left-panel-tabs button.active,.left-panel-tabs button[aria-selected="true"]{
+ color:var(--green);border-color:rgba(51,204,156,.23);background:var(--mintwash)
+}
+.left-panel-tabs button:focus-visible{outline:2px solid var(--green);outline-offset:-1px}
+.left-panel-content{display:flex;flex:1 1 0;min-height:0;min-width:0;overflow:hidden}
+.left-panel-pane{
+ flex:1 1 0;min-height:0;min-width:0;
+ width:100%;display:none;flex-direction:column;overflow-x:hidden;overflow-y:auto;
+ overscroll-behavior:contain;scrollbar-width:thin
+}
+.left-panel-pane.active:not([hidden]){display:flex}
+.left-panel-pane[hidden]{display:none!important}
+.market-watch-pane{overflow:hidden}
+body.terminal-mode .market-watch-pane .sidebar-title{padding:13px 12px 9px}
+body.terminal-mode .market-watch-pane .search-box{margin:8px 10px}
+body.terminal-mode .market-watch-pane .market-list{
+ flex:1 1 0!important;max-height:none!important;
+ min-height:0!important;overflow-y:auto!important;
+ scrollbar-width:thin
+}
+body.terminal-mode .left-trends-pane,body.terminal-mode .left-book-pane{
+ padding:7px;min-height:0;overflow-y:auto;overflow-x:hidden
+}
+body.terminal-mode .left-trends-pane .market-panel,
+body.terminal-mode .left-book-pane .market-panel{
+ margin:0;flex:0 0 auto;padding:9px 7px;
+ border:0;background:transparent;border-radius:0;
+ width:100%;min-width:0
+}
+body.terminal-mode .left-trends-pane .timeframe-trends-grid{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:6px
+}
+body.terminal-mode .left-trends-pane .timeframe-trend:first-child{
+ grid-column:1/-1;display:grid;grid-template-columns:40px minmax(0,1fr);
+ grid-template-rows:1fr 1fr
+}
+body.terminal-mode .left-trends-pane .timeframe-trend:first-child .tf-name{grid-row:1/-1}
+body.terminal-mode .left-trends-pane .timeframe-trend{padding:8px 5px;gap:5px}
+body.terminal-mode .left-trends-pane .tf-direction{font-size:10px}
+body.terminal-mode .left-trends-pane .tf-detail{font-size:8px}
+body.terminal-mode .left-book-pane .orderbook-level{font-size:9px;gap:2px;padding-inline:1px}
+body.terminal-mode .left-book-pane .orderbook-colheads{gap:2px;font-size:7px}
+body.terminal-mode .left-book-pane .orderbook-tag{display:block;margin-top:3px}
+body.terminal-mode .left-book-pane .market-panel-note{font-size:10px}
+body.terminal-mode .left-book-pane .orderbook-spread strong{font-size:15px}
+body.terminal-mode .left-book-pane .orderbook-balance{gap:4px;font-size:8px}
+body.terminal-mode .right-sidebar .analysis-section{margin-top:13px}
+body.terminal-mode .right-sidebar .analysis-section:first-of-type{margin-top:7px}
+@media(min-width:1200px){
+ body.terminal-mode .workspace{grid-template-columns:minmax(0,1fr) minmax(270px,290px)}
+ body.terminal-mode .workspace[data-market-watch="open"]{
+  grid-template-columns:minmax(210px,230px) minmax(0,1fr) minmax(270px,290px)
+ }
+ body.terminal-mode .workspace[data-market-watch="open"][data-analysis-panel="collapsed"]{
+  grid-template-columns:minmax(210px,230px) minmax(0,1fr)
+ }
+}
+@media(min-width:731px) and (max-width:1199px){
+ body.terminal-mode .workspace[data-market-watch="open"]{
+  grid-template-columns:minmax(170px,205px) minmax(0,1fr)!important
+ }
+}
+@media(max-width:730px){
+ body.terminal-mode .left-panel-tabs{flex:0 0 46px;min-height:46px;padding:6px 10px;gap:7px}
+ body.terminal-mode .left-panel-tabs button{font-size:12px;min-height:32px}
+ body.terminal-mode .workspace[data-mobile-view="depth"] .right-sidebar{display:none!important}
+ body.terminal-mode .workspace[data-mobile-view="depth"] .left-sidebar{
+  display:flex!important;height:100%!important;width:100%!important;
+  overflow:hidden!important;border-right:0
+ }
+ body.terminal-mode .left-panel-content{flex:1 1 0;min-height:0}
+ body.terminal-mode .left-panel-pane{height:100%}
+ body.terminal-mode .left-trends-pane,.terminal-mode .left-book-pane{padding:11px 13px}
+ body.terminal-mode .left-trends-pane .timeframe-trends-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body.terminal-mode .left-trends-pane .timeframe-trend:first-child{grid-column:auto;display:flex}
+ body.terminal-mode .left-trends-pane .timeframe-trend:first-child .tf-name{grid-row:auto}
+ body.terminal-mode .left-trends-pane .tf-direction{font-size:12px}
+ body.terminal-mode .left-trends-pane .tf-detail{font-size:10px}
+ body.terminal-mode .left-book-pane .orderbook-level{font-size:11px;gap:5px;min-height:28px}
+ body.terminal-mode .left-book-pane .orderbook-colheads{font-size:9px;gap:5px}
+ body.terminal-mode .market-watch-pane .market-row{display:flex!important}
+}
+@media(max-width:350px){
+ body.terminal-mode .left-trends-pane .timeframe-trends-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.terminal-mode .left-trends-pane .timeframe-trend:first-child{grid-column:1/-1;display:grid}
+}

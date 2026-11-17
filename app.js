@@ -49,19 +49,13 @@ rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:
 rsiSeries=rsiChart.addSeries(LW.LineSeries,{color:'#a998fc',lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
 rsiSeries.createPriceLine({price:70,color:'rgba(245,114,140,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
 rsiSeries.createPriceLine({price:30,color:'rgba(53,208,154,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
-chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{drawZones();try{const range=chart.timeScale().getVisibleRange();if(range&&state.data.length>14)rsiChart.timeScale().setVisibleRange(range);}catch{}clearTimeout(markerLayoutTimer);markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);});
-chart.subscribeCrosshairMove(p=>{const c=p.seriesData?.get(candles);if(c&&Number.isFinite(c.close))setOhlc(c);else if(state.data.length)setOhlc(state.data.at(-1));});
+chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{scheduleAlertLayout();drawZones();try{const range=chart.timeScale().getVisibleRange();if(range&&state.data.length>14)rsiChart.timeScale().setVisibleRange(range);}catch{}clearTimeout(markerLayoutTimer);markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);});
+chart.subscribeCrosshairMove(p=>{scheduleAlertLayout();const c=p.seriesData?.get(candles);if(c&&Number.isFinite(c.close))setOhlc(c);else if(state.data.length)setOhlc(state.data.at(-1));});
 chart.subscribeClick(onChartClick);
-// Right-click chart at any price on desktop for immediate alert creation.
-$('chartHost').addEventListener('contextmenu',event=>{
-  if(!state.data.length)return;
-  event.preventDefault();
-  const rect=$('chartHost').getBoundingClientRect(),y=event.clientY-rect.top;
-  if(y<0||y>=rect.height)return;
-  addChartPriceAlert(candles.coordinateToPrice(y));
-});
+installChartContextHandlers();
 document.addEventListener('tradingfiew:alerts-changed',renderAlertPriceLines);
 zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{
+  scheduleAlertLayout();
   drawZones();
   if(state.analysis){renderMarkers();renderSupportResistance();}
 });resizeObserver.observe($('chartHost'));
@@ -110,6 +104,7 @@ try{
   });
 }catch(error){console.warn('Optional price alert processing failed',error);}
 $('updatedAt').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+scheduleAlertLayout();
 if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:true,title:'LAST'};
 if(!lastPriceLine)lastPriceLine=candles.createPriceLine(options);else lastPriceLine.applyOptions(options);
 }catch(e){console.warn('Last-price guide issue',e);}}
@@ -190,6 +185,7 @@ function startQuotePolling(request){
 }
 function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
+hideChartContextMenu();
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
 try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
@@ -809,8 +805,143 @@ function addChartPriceAlert(price){
   if(result)renderAlertPriceLines();
   return Boolean(result);
 }
+/* Context menu is a real menu rather than an immediate right-click order.
+ * Alert controls are linked to an ID; the drag target stays local to this user. */
+function hideChartContextMenu(){
+  const menu=$('chartContextMenu');
+  if(!menu)return;
+  menu.classList.add('hidden');
+  alertMenuTarget=null;
+}
+function showChartContextMenu(price,clientX,clientY,alertId=null){
+  const menu=$('chartContextMenu');
+  const record=alertId?window.TradingFiewAlerts?.getAlert?.(alertId):null;
+  if(!record&&!Number.isFinite(price))return;
+  alertMenuTarget={price:record?.target??price,id:record?.id??null,symbol:state.symbol};
+  const managing=Boolean(record);
+  $('chartContextTitle').textContent=managing?
+    '🔔 '+record.symbol+' alert @ '+fmt(record.target):
+    state.symbol+' · '+fmt(price);
+  $('ctxAlertAdd').hidden=managing;
+  $('ctxAlertEdit').hidden=!managing;
+  $('ctxAlertToggle').hidden=!managing;
+  $('ctxAlertSound').hidden=!managing;
+  $('ctxAlertNotify').hidden=!managing;
+  $('ctxAlertDelete').hidden=!managing;
+  $('ctxAlertAdd').textContent='🔔 Add alert at '+fmt(price);
+  $('ctxCopyPrice').textContent='⧉ Copy price '+fmt(record?.target??price);
+  if(managing){
+    const armed=record.enabled&&!record.triggered;
+    $('ctxAlertToggle').textContent=armed?'Ⅱ Pause alert':'▷ Resume alert';
+    $('ctxAlertSound').textContent=(record.sound?'✓ ':'○ ')+'Sound '+(record.sound?'ON':'OFF');
+    $('ctxAlertSound').setAttribute('aria-checked',String(record.sound));
+    $('ctxAlertNotify').textContent=(record.notify?'✓ ':'○ ')+'Notification '+(record.notify?'ON':'OFF');
+    $('ctxAlertNotify').setAttribute('aria-checked',String(record.notify));
+  }
+  menu.classList.remove('hidden');
+  menu.style.visibility='hidden';
+  menu.style.left='0px';menu.style.top='0px';
+  // Use fixed positioning so the menu cannot be cropped by chart panels.
+  const rect=menu.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight;
+  const x=Math.max(6,Math.min(clientX,Math.max(6,vw-rect.width-7)));
+  const y=Math.max(6,Math.min(clientY,Math.max(6,vh-rect.height-7)));
+  menu.style.left=x+'px';menu.style.top=y+'px';
+  menu.style.visibility='';
+  const first=managing?$('ctxAlertEdit'):$('ctxAlertAdd');
+  first.focus({preventScroll:true});
+}
+function openAlertContextMenu(id,x,y){
+  const alert=window.TradingFiewAlerts?.getAlert?.(id);
+  if(!alert)return;
+  showChartContextMenu(alert.target,x,y,id);
+}
+function handleChartContextAction(id){
+  const details=alertMenuTarget;
+  if(!details)return;
+  const api=window.TradingFiewAlerts;
+  const record=details.id?api?.getAlert?.(details.id):null;
+  const price=record?.target??details.price;
+  hideChartContextMenu();
+  if(id==='ctxAlertAdd'){addChartPriceAlert(price);return;}
+  if(id==='ctxAlertEdit'&&record){api.openEdit(record.id);return;}
+  if(id==='ctxAlertToggle'&&record){api.toggleAlert(record.id);return;}
+  if(id==='ctxAlertSound'&&record){
+    api.setAlertOption(record.id,'sound',!record.sound);return;
+  }
+  if(id==='ctxAlertNotify'&&record){
+    api.setAlertOption(record.id,'notify',!record.notify);return;
+  }
+  if(id==='ctxAlertDelete'&&record){api.deleteAlert(record.id);return;}
+  if(id==='ctxManageAlerts'){api?.open?.();return;}
+  if(id==='ctxResetView'){focusRecentCandles();return;}
+  if(id==='ctxCopyPrice'){
+    const text=String(price);
+    if(navigator.clipboard?.writeText){
+      void navigator.clipboard.writeText(text).then(()=>toast('Copied '+text)).catch(()=>toast('Copy price unavailable.',true));
+    }else{
+      const input=document.createElement('textarea');
+      input.value=text;input.style.position='fixed';input.style.opacity='0';
+      document.body.appendChild(input);input.select();
+      try{document.execCommand('copy');toast('Copied '+text);}catch{toast('Copy price unavailable.',true);}
+      input.remove();
+    }
+  }
+}
+function cancelChartLongPress(){
+  if(chartLongPress?.timer)clearTimeout(chartLongPress.timer);
+  chartLongPress=null;
+}
+function installChartContextHandlers(){
+  const host=$('chartHost'),menu=$('chartContextMenu');
+  host.addEventListener('contextmenu',event=>{
+    if(!state.data.length)return;
+    event.preventDefault();
+    cancelChartLongPress();
+    const price=priceAtClientY(event.clientY);
+    if(Number.isFinite(price)&&price>0)showChartContextMenu(price,event.clientX,event.clientY);
+  });
+  // A deliberate 600ms hold opens the menu on mobile. Regular pan & zoom
+  // gestures remain native to Lightweight Charts, with movement cancelling.
+  host.addEventListener('pointerdown',event=>{
+    if(event.pointerType!=='touch'||!state.data.length||alertDrag)return;
+    cancelChartLongPress();
+    const x=event.clientX,y=event.clientY;
+    chartLongPress={x,y,timer:setTimeout(()=>{
+      const price=priceAtClientY(y);
+      if(Number.isFinite(price)&&price>0){
+        suppressAlertClickUntil=Date.now()+850;
+        showChartContextMenu(price,x,y);
+      }
+      chartLongPress=null;
+    },610)};
+  },{passive:true});
+  host.addEventListener('pointermove',event=>{
+    if(chartLongPress&&Math.hypot(event.clientX-chartLongPress.x,event.clientY-chartLongPress.y)>11)
+      cancelChartLongPress();
+  },{passive:true});
+  for(const type of ['pointerup','pointercancel','pointerleave'])
+    host.addEventListener(type,cancelChartLongPress,{passive:true});
+  for(const id of ['ctxAlertAdd','ctxAlertEdit','ctxAlertToggle','ctxAlertSound',
+    'ctxAlertNotify','ctxAlertDelete','ctxCopyPrice','ctxManageAlerts','ctxResetView']){
+    $(id).addEventListener('click',()=>handleChartContextAction(id));
+  }
+  document.addEventListener('pointerdown',event=>{
+    if(!menu.classList.contains('hidden')&&!menu.contains(event.target))hideChartContextMenu();
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape')hideChartContextMenu();
+    if(event.key==='a'&&event.altKey&&!event.ctrlKey&&!event.metaKey&&
+      !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){
+      event.preventDefault();
+      const r=host.getBoundingClientRect();
+      const y=r.top+r.height*.45,price=priceAtClientY(y);
+      if(Number.isFinite(price))showChartContextMenu(price,r.left+r.width*.6,y);
+    }
+  });
+  window.addEventListener('resize',hideChartContextMenu,{passive:true});
+}
 function onChartClick(param){
-  if(!param?.point)return;
+  if(!param?.point||Date.now()<suppressAlertClickUntil)return;
   if(state.drawMode==='alert'){
     // SubscribeClick covers both mouse and touch. No candle timestamp needed:
     // tap any visible vertical price level, even on empty future chart space.
@@ -864,6 +995,7 @@ function onChartClick(param){
   }
 }
 function setDrawMode(mode){
+  hideChartContextMenu();
   state.drawMode=mode;state.drawStart=null;
   document.querySelectorAll('[data-draw]').forEach(b=>{
     const enabled=b.dataset.draw===mode;

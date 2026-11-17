@@ -157,6 +157,9 @@ function renderSettings(){
     "Not allowed yet — tap Allow notifications";
   $("alertsPermissionStatus").textContent=permission+
     ". Alerts cannot be delivered after TradingFiew is fully closed without a push service.";
+  $("alertsEnableNotificationsBtn").textContent=
+    "Notification" in root&&Notification.permission==="granted"?
+    "Test notification":"Allow notifications";
 }
 function updateForm(){
   const kind=$("alertCondition").value,smc=kind.startsWith("smc");
@@ -510,7 +513,18 @@ function bind(){
     saveSettings();renderSettings();
     if(e.target.checked&&!settings.notify)toast("Tap Allow notifications to grant permission.",true);
   });
-  $("alertsEnableNotificationsBtn").addEventListener("click",permission);
+  $("alertsEnableNotificationsBtn").addEventListener("click",async()=>{
+    if("Notification" in root&&Notification.permission==="granted"){
+      settings.notify=true;saveSettings();renderSettings();
+      prepareAlertAudio();
+      if(settings.sound)beep();
+      await notify("TradingFiew — Test notification",
+        "Alerts are enabled for this device while TradingFiew is running.",
+        location.href);
+      return;
+    }
+    await permission();
+  });
   if(settings.notify)void prepareServiceWorker();
   void beginOtherMarkets();
 }

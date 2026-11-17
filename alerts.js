@@ -116,6 +116,12 @@ function list(){
       a.enabled?"ACTIVE"+(a.repeat?" · Repeating":" · Once"):"PAUSED";
     body.append(heading,detail,meta);
     const buttons=document.createElement("div");buttons.className="alert-item-actions";
+    const edit=document.createElement("button");edit.type="button";
+    if(a.condition.startsWith("price")){
+      edit.dataset.alertAction="edit";edit.dataset.alertId=a.id;
+      edit.textContent="Edit";edit.setAttribute("aria-label","Edit "+a.symbol+" price alert");
+      buttons.appendChild(edit);
+    }
     const toggle=document.createElement("button");toggle.type="button";
     toggle.dataset.alertAction="toggle";toggle.dataset.alertId=a.id;
     toggle.textContent=a.enabled&&!a.triggered?"Pause":"Resume";
@@ -432,18 +438,92 @@ function create(event){
   $("alertTf").value=tf;
   updateForm();
 }
+let editingId=null;
+function getAlert(id){
+  const item=alerts.find(a=>a.id===id);
+  return item?{...item}:null;
+}
+function setAlertPrice(id,value,currentPrice){
+  const alert=alerts.find(a=>a.id===id);
+  const price=Number(value);
+  if(!alert||!alert.condition.startsWith("price")||!Number.isFinite(price)||price<=0)return false;
+  const digits=price>=1000?2:price>=1?4:price>=.01?6:8;
+  const rounded=Number(price.toFixed(digits));
+  if(!rounded||!Number.isFinite(rounded))return false;
+  const before={...alert};
+  alert.target=rounded;alert.triggered=false;alert.enabled=true;
+  if(!persist()){Object.assign(alert,before);return false;}
+  if(Number.isFinite(currentPrice)&&currentPrice>0)priorPrices.set(alert.symbol,currentPrice);
+  list();
+  return true;
+}
+function setAlertOption(id,key,value){
+  const a=alerts.find(item=>item.id===id);
+  if(!a||!["sound","notify","repeat"].includes(key)||typeof value!=="boolean")return false;
+  const before=a[key];
+  a[key]=value;
+  if(!persist()){a[key]=before;return false;}
+  list();
+  return true;
+}
+function toggleAlert(id){
+  const a=alerts.find(item=>item.id===id);
+  if(!a)return false;
+  const before={...a};
+  const wasActive=a.enabled&&!a.triggered;
+  a.enabled=!wasActive;
+  if(a.enabled)a.triggered=false;
+  if(!persist()){Object.assign(a,before);return false;}
+  list();toast(wasActive?"Alert paused.":"Alert resumed.");return true;
+}
+function deleteAlert(id){
+  const before=alerts;
+  alerts=alerts.filter(a=>a.id!==id);
+  if(before.length===alerts.length)return false;
+  if(!persist()){alerts=before;return false;}
+  list();toast("Alert deleted.");return true;
+}
+function openEdit(id){
+  const a=alerts.find(item=>item.id===id&&item.condition.startsWith("price"));
+  if(!a)return false;
+  editingId=a.id;
+  $("alertEditPrice").value=String(a.target);
+  $("alertEditCondition").value=a.condition;
+  $("alertEditRepeat").checked=a.repeat;
+  $("alertEditSound").checked=a.sound;
+  $("alertEditNotify").checked=a.notify;
+  $("alertEditSymbolLabel").textContent=a.symbol+" · "+controlLabel(a);
+  $("alertEditModal").classList.remove("hidden");
+  $("alertEditPrice").focus();
+  return true;
+}
+function closeEdit(){
+  editingId=null;
+  $("alertEditModal").classList.add("hidden");
+}
+function submitEdit(e){
+  e.preventDefault();
+  const id=editingId,a=alerts.find(v=>v.id===id);
+  if(!a)return closeEdit();
+  const price=Number($("alertEditPrice").value),condition=$("alertEditCondition").value;
+  if(!Number.isFinite(price)||price<=0||!["price_touch","price_above","price_below"].includes(condition)){
+    toast("Choose a valid price and trigger condition.",true);return;
+  }
+  const before={...a};
+  a.condition=condition;a.repeat=$("alertEditRepeat").checked;
+  a.sound=$("alertEditSound").checked;a.notify=$("alertEditNotify").checked;
+  a.enabled=true;a.triggered=false;
+  const digits=price>=1000?2:price>=1?4:price>=.01?6:8;
+  a.target=Number(price.toFixed(digits));
+  if(!a.target||!persist()){Object.assign(a,before);return;}
+  list();
+  toast("Alert updated at "+money(a.target)+".");
+  closeEdit();
+}
 function changeAlert(id,action){
-  const a=alerts.find(x=>x.id===id);
-  if(!a)return;
-  if(action==="delete"){
-    alerts=alerts.filter(x=>x!==a);
-    toast("Alert deleted.");
-  }else if(action==="toggle"){
-    a.enabled=!a.enabled;
-    if(a.enabled)a.triggered=false;
-    toast(a.enabled?"Alert resumed.":"Alert paused.");
-  }else return;
-  persist();list();
+  if(action==="delete"){deleteAlert(id);return;}
+  if(action==="toggle"){toggleAlert(id);return;}
+  if(action==="edit"){openEdit(id);return;}
 }
 function populateMarkets(){
   const select=$("alertSymbol");select.replaceChildren();
@@ -477,6 +557,18 @@ function bind(){
   $("alertsList").addEventListener("click",e=>{
     const button=e.target.closest("[data-alert-action]");
     if(button)changeAlert(button.dataset.alertId,button.dataset.alertAction);
+  });
+  $("alertEditCloseBtn").addEventListener("click",closeEdit);
+  $("alertEditModal").addEventListener("click",e=>{
+    if(e.target===$("alertEditModal"))closeEdit();
+  });
+  $("alertEditForm").addEventListener("submit",submitEdit);
+  $("alertEditRemove").addEventListener("click",()=>{
+    if(!editingId)return;
+    deleteAlert(editingId);closeEdit();
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&!$("alertEditModal").classList.contains("hidden"))closeEdit();
   });
   $("alertsDeleteAllBtn").addEventListener("click",()=>{
     if(!alerts.length)return;
@@ -585,6 +677,6 @@ root.TradingFiewAlerts=Object.freeze({
   onPrice:(symbol,price,options)=>evaluatePrice(symbol,price,options),
   onAnalysis:(symbol,tf,analysis,closed)=>evaluateAnalysis(symbol,tf,analysis,closed),
   watching:(symbol)=>settings.smcEnabled||active().some(a=>a.symbol===symbol),
-  createFromChart,getPriceLevels,open,close
+  createFromChart,getPriceLevels,getAlert,setAlertPrice,setAlertOption,toggleAlert,deleteAlert,openEdit,open,close
 });
 })(window);

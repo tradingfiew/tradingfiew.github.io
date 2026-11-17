@@ -68,12 +68,48 @@
     </header>
 
     <main class="workspace" id="terminal">
-      <aside class="sidebar left-sidebar">
+      <aside class="sidebar left-sidebar" aria-label="Market Watch, timeframe trends and Binance Spot order book">
+        <nav class="left-panel-tabs" id="leftPanelTabs" role="tablist" aria-label="Market tools">
+          <button type="button" id="leftTabMarkets" data-left-tab="markets" role="tab" aria-controls="leftPaneMarkets" aria-selected="true" tabindex="0">Markets</button>
+          <button type="button" id="leftTabTrends" data-left-tab="trends" role="tab" aria-controls="leftPaneTrends" aria-selected="false" tabindex="-1">Trends</button>
+          <button type="button" id="leftTabBook" data-left-tab="book" role="tab" aria-controls="leftPaneBook" aria-selected="false" tabindex="-1">Book</button>
+        </nav>
+        <div class="left-panel-content">
+          <section class="left-panel-pane market-watch-pane" id="leftPaneMarkets" role="tabpanel" aria-labelledby="leftTabMarkets">
+
         <div class="sidebar-title"><span>MARKET WATCH</span><span id="marketCount" class="tiny-count">—</span></div>
         <div class="search-box"><span>⌕</span><input id="symbolSearch" placeholder="Search markets..." aria-label="Search symbols"></div>
         <div id="marketCategories" class="market-categories" aria-label="Markets"><button class="active" data-category="all">All</button><button data-category="metals">Metals</button><button data-category="indices">Indices</button><button data-category="forex">Forex</button><button data-category="crypto">Crypto</button><button data-category="energy">Oil</button><button data-category="stocks">Stocks</button></div><div class="market-controls"><span id="marketCategoryName">ALL MARKETS</span><span id="marketSourceName" class="market-source">MULTI-FEED</span></div>
         <div id="marketList" class="market-list"></div>
         <div class="sidebar-bottom"><button type="button" id="sideDonateBtn" class="side-donate"><span>♥</span> Donate with Crypto</button><div class="sidebar-tip">✦ <b>Zero API keys</b><br><span>Public exchange market data. No trading account needed. Non-crypto market quotes are indicative.</span></div><div class="side-foot">FREE TO USE <span>v1.0</span></div></div>
+
+          </section>
+          <section class="left-panel-pane left-trends-pane" id="leftPaneTrends" role="tabpanel" aria-labelledby="leftTabTrends" hidden>
+<section class="market-panel" id="timeframeTrendsPanel" aria-labelledby="timeframeTrendsHeading">
+          <div class="market-panel-heading"><div><span class="eyebrow">MULTI-TIMEFRAME ANALYSIS</span><h3 id="timeframeTrendsHeading">Trend by timeframe</h3></div><button type="button" id="trendsRefreshBtn" class="market-panel-refresh" title="Refresh all timeframe directions" aria-label="Refresh timeframe directions">↻</button></div>
+          <p class="market-panel-note">Based on closed candles, EMA 20/50 and confirmed market structure — not a trade signal.</p>
+          <div id="timeframeTrendsList" class="timeframe-trends-grid" aria-live="polite">
+            <div class="timeframe-placeholder">Loading verified candle data…</div>
+          </div>
+          <div class="market-panel-footer"><span id="timeframeTrendsUpdated">Waiting for market data</span><span id="timeframeTrendsSummary">—</span></div>
+        </section>
+          </section>
+          <section class="left-panel-pane left-book-pane" id="leftPaneBook" role="tabpanel" aria-labelledby="leftTabBook" hidden>
+<section class="market-panel" id="orderBookPanel" aria-labelledby="orderBookHeading">
+          <div class="market-panel-heading"><div><span class="eyebrow">MARKET DEPTH</span><h3 id="orderBookHeading">Order Book <span class="orderbook-tag">BINANCE SPOT</span></h3></div><button type="button" id="orderBookRefreshBtn" class="market-panel-refresh" title="Refresh order book snapshot" aria-label="Refresh order book snapshot">↻</button></div>
+          <p class="market-panel-note" id="orderBookNotice">Market depth available for supported Binance Spot pairs only.</p>
+          <div class="orderbook-status" id="orderBookStatus" role="status">Select a cryptocurrency market</div>
+          <div id="orderBookContent" hidden>
+            <div class="orderbook-colheads"><span>PRICE</span><span>AMOUNT</span><span>VALUE (USDT)</span></div>
+            <div id="orderBookAsks" class="orderbook-side asks" aria-label="Sell orders"></div>
+            <div class="orderbook-spread"><strong id="orderBookMid">—</strong><span id="orderBookSpread">Spread —</span></div>
+            <div id="orderBookBids" class="orderbook-side bids" aria-label="Buy orders"></div>
+            <div class="orderbook-balance"><span id="orderBookBidLabel">Buy 0%</span><div class="orderbook-balance-track"><i id="orderBookBidBar"></i></div><span id="orderBookAskLabel">Sell 0%</span></div>
+            <div class="market-panel-footer"><span id="orderBookUpdated">—</span><span>Top 10 levels / side</span></div>
+          </div>
+        </section>
+          </section>
+        </div>
       </aside>
       <section class="center-pane" id="chartWindow" aria-label="TradingFiew interactive chart window">
         <div class="chart-window-bar" id="chartWindowBar">
@@ -184,27 +220,6 @@
           <div class="bias-meter"><span id="biasMeterFill"></span></div>
           <div class="bias-bottom"><span id="biasReason">Based on confirmed swing breaks</span><b id="biasScore">—</b></div>
         </div>
-        <section class="market-panel" id="timeframeTrendsPanel" aria-labelledby="timeframeTrendsHeading">
-          <div class="market-panel-heading"><div><span class="eyebrow">MULTI-TIMEFRAME ANALYSIS</span><h3 id="timeframeTrendsHeading">Trend by timeframe</h3></div><button type="button" id="trendsRefreshBtn" class="market-panel-refresh" title="Refresh all timeframe directions" aria-label="Refresh timeframe directions">↻</button></div>
-          <p class="market-panel-note">Based on closed candles, EMA 20/50 and confirmed market structure — not a trade signal.</p>
-          <div id="timeframeTrendsList" class="timeframe-trends-grid" aria-live="polite">
-            <div class="timeframe-placeholder">Loading verified candle data…</div>
-          </div>
-          <div class="market-panel-footer"><span id="timeframeTrendsUpdated">Waiting for market data</span><span id="timeframeTrendsSummary">—</span></div>
-        </section>
-        <section class="market-panel" id="orderBookPanel" aria-labelledby="orderBookHeading">
-          <div class="market-panel-heading"><div><span class="eyebrow">MARKET DEPTH</span><h3 id="orderBookHeading">Order Book <span class="orderbook-tag">BINANCE SPOT</span></h3></div><button type="button" id="orderBookRefreshBtn" class="market-panel-refresh" title="Refresh order book snapshot" aria-label="Refresh order book snapshot">↻</button></div>
-          <p class="market-panel-note" id="orderBookNotice">Market depth available for supported Binance Spot pairs only.</p>
-          <div class="orderbook-status" id="orderBookStatus" role="status">Select a cryptocurrency market</div>
-          <div id="orderBookContent" hidden>
-            <div class="orderbook-colheads"><span>PRICE</span><span>AMOUNT</span><span>VALUE (USDT)</span></div>
-            <div id="orderBookAsks" class="orderbook-side asks" aria-label="Sell orders"></div>
-            <div class="orderbook-spread"><strong id="orderBookMid">—</strong><span id="orderBookSpread">Spread —</span></div>
-            <div id="orderBookBids" class="orderbook-side bids" aria-label="Buy orders"></div>
-            <div class="orderbook-balance"><span id="orderBookBidLabel">Buy 0%</span><div class="orderbook-balance-track"><i id="orderBookBidBar"></i></div><span id="orderBookAskLabel">Sell 0%</span></div>
-            <div class="market-panel-footer"><span id="orderBookUpdated">—</span><span>Top 10 levels / side</span></div>
-          </div>
-        </section>
         <div class="analysis-section">
           <h3>STRUCTURE & ORDER FLOW <span id="smcAsOf">—</span></h3>
           <div class="metric-grid">

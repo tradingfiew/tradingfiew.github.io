@@ -170,7 +170,11 @@ function startQuotePolling(request){
   clearInterval(state.quoteTimer);state.quoteTimer=null;
   if(request!==state.request||activeMarket().provider==='binance')return;
   state.quoteTimer=setInterval(()=>{
-    if(request!==state.request||document.hidden)return;
+    if(request!==state.request)return;
+    // A hidden tab may still run JS: continue monitored markets where possible.
+    // Mobile browsers can suspend this regardless; a push backend is required
+    // for guaranteed notifications when the website is closed.
+    if(document.hidden&&!window.TradingFiewAlerts?.watching?.(state.symbol))return;
     void fetchTicker(state.symbol,request);
   },5000);
 }

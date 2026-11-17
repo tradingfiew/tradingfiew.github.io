@@ -32,7 +32,7 @@ const c=themeColors();
 return {autoSize:true,width:700,height,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'IBM Plex Mono, monospace',fontSize:10,attributionLogo:false},
 grid:{vertLines:{color:c.grid,style:1},horzLines:{color:c.grid,style:1}},
 crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{color:'#7592ae',style:2,labelBackgroundColor:'#243a54'},horzLine:{visible:false,labelVisible:false}},
-rightPriceScale:{borderColor:c.grid,scaleMargins:{top:.08,bottom:primary ? .18 : .06}},
+rightPriceScale:{borderColor:c.grid,scaleMargins:{top:.11,bottom:primary ? .23 : .06}},
 timeScale:{borderColor:c.grid,timeVisible:true,secondsVisible:false,barSpacing:window.innerWidth<=730?6:8,minBarSpacing:2,rightOffset:window.innerWidth<=730?4:8},
 handleScroll:true,handleScale:true,localization:{locale:'en-US'}};
 }
@@ -185,7 +185,7 @@ try{history.replaceState(null,'',location.pathname+'?symbol='+state.symbol+'&tf=
 function focusRecentCandles(){
 if(!chart||!state.data.length)return;
 const last=state.data.length-1;
-const count=window.innerWidth<=480?48:window.innerWidth<=730?64:window.innerWidth<=1120?115:155;
+const count=window.innerWidth<=480?36:window.innerWidth<=730?50:window.innerWidth<=1120?88:110;
 try{chart.timeScale().setVisibleLogicalRange({from:Math.max(0,last-count),to:last+4});}
 catch{chart.timeScale().fitContent();}
 }

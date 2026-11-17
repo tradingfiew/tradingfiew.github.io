@@ -511,3 +511,75 @@ body.chart-window-active .center-pane .chart-space{flex:1 1 0!important;height:a
  .right-sidebar{padding-inline:10px}
  .sr-box>b{font-size:11px}
 }
+
+
+/* TradingFiew market depth and multiframe panels v1 */
+.market-panel{margin:17px 0 19px;border:1px solid var(--stroke);background:var(--panel);border-radius:11px;padding:12px;min-width:0;overflow:hidden}
+.market-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:6px}
+.market-panel-heading>div{min-width:0}
+.market-panel-heading h3{font-size:14px;font-weight:850;color:var(--text);letter-spacing:-.15px;margin:4px 0 0;line-height:1.3}
+.market-panel .eyebrow{font-size:9px;letter-spacing:1px}
+.market-panel-refresh{border:1px solid var(--stroke);background:var(--elev);color:var(--muted);border-radius:7px;width:30px;height:30px;flex:none;font-size:20px;display:grid;place-items:center;cursor:pointer}
+.market-panel-refresh:hover{color:var(--green);border-color:var(--green)}
+.market-panel-refresh:disabled{opacity:.4;cursor:not-allowed}
+.market-panel-note{font-size:10px!important;color:var(--muted);line-height:1.65;margin:0 0 11px}
+.timeframe-trends-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;min-width:0}
+.timeframe-trend{border:1px solid var(--stroke);border-radius:8px;padding:9px 8px;min-width:0;display:flex;flex-direction:column;gap:5px;background:var(--shell)}
+.timeframe-trend:first-child{grid-column:1/-1;display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-rows:1fr 1fr;gap:1px 7px;align-items:center}
+.timeframe-trend:first-child .tf-name{grid-row:1/-1}
+.timeframe-trend .tf-name{font:800 10px 'IBM Plex Mono',monospace;color:var(--muted)}
+.timeframe-trend .tf-direction{font:800 11px 'DM Sans',sans-serif;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timeframe-trend .tf-detail{font:9px 'IBM Plex Mono',monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timeframe-trend[data-direction="bull"]{border-color:rgba(55,210,160,.24);background:rgba(37,175,126,.04)}
+.timeframe-trend[data-direction="bull"] .tf-direction{color:var(--green)}
+.timeframe-trend[data-direction="bear"]{border-color:rgba(249,99,129,.22);background:rgba(231,75,104,.035)}
+.timeframe-trend[data-direction="bear"] .tf-direction{color:var(--red)}
+.timeframe-trend[data-direction="neutral"] .tf-direction{color:var(--orange)}
+.timeframe-placeholder{grid-column:1/-1;text-align:center;font-size:10px;color:var(--muted);padding:14px}
+.market-panel-footer{display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid var(--stroke);margin-top:10px;padding-top:9px;font:9px 'IBM Plex Mono',monospace;color:var(--muted);flex-wrap:wrap;line-height:1.5}
+.orderbook-tag{font-size:8px;font-family:'IBM Plex Mono',monospace;letter-spacing:.25px;display:inline-block;vertical-align:middle;color:#ddba76;font-weight:600}
+.orderbook-status{display:block;border-radius:7px;font:10px/1.5 'DM Sans',sans-serif;border:1px solid var(--stroke);background:var(--shell);color:var(--muted);padding:8px 9px;margin-bottom:9px;min-height:31px}
+.orderbook-status[data-state="live"]{border-color:rgba(55,210,160,.3);color:var(--green)}
+.orderbook-status[data-state="warning"]{border-color:rgba(240,176,84,.28);color:var(--orange)}
+.orderbook-status[data-state="unavailable"]{background:transparent;border-style:dashed;color:var(--muted)}
+#orderBookContent[hidden]{display:none!important}
+.orderbook-colheads{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.8fr) minmax(0,1fr);gap:5px;color:var(--muted);font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.35px;margin-bottom:5px}
+.orderbook-colheads>span:not(:first-child){text-align:right}
+.orderbook-side{display:flex;flex-direction:column;gap:1px;min-width:0}
+.orderbook-level{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.8fr) minmax(0,1fr);align-items:center;gap:5px;min-height:23px;padding:2px 3px;overflow:hidden;font:10px 'IBM Plex Mono',monospace}
+.orderbook-level .orderbook-depth-bg{display:block;position:absolute;top:0;bottom:0;right:0;pointer-events:none;z-index:0}
+.orderbook-level.bid .orderbook-depth-bg{background:rgba(53,203,155,.095)}
+.orderbook-level.ask .orderbook-depth-bg{background:rgba(245,91,127,.095)}
+.orderbook-level>*:not(.orderbook-depth-bg){position:relative;z-index:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.orderbook-level .ob-price{font-weight:800}
+.orderbook-level.bid .ob-price{color:var(--green)}
+.orderbook-level.ask .ob-price{color:var(--red)}
+.orderbook-level .ob-size,.orderbook-level .ob-total{text-align:right;color:var(--text)}
+.orderbook-spread{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke);margin:7px 0;padding:11px 4px}
+.orderbook-spread strong{font:800 17px 'IBM Plex Mono',monospace;color:var(--text)}
+.orderbook-spread span{font:10px 'IBM Plex Mono',monospace;color:var(--muted)}
+.orderbook-balance{display:grid;grid-template-columns:auto minmax(15px,1fr) auto;align-items:center;gap:8px;margin-top:12px;font:800 9px 'IBM Plex Mono',monospace;color:var(--muted)}
+.orderbook-balance-track{height:7px;border-radius:9px;background:var(--red);overflow:hidden}
+.orderbook-balance-track i{display:block;height:100%;background:var(--green);width:50%}
+@media(min-width:731px) and (max-width:1270px){
+ #timeframeTrendsPanel,#orderBookPanel{align-self:start}
+ .timeframe-trends-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .timeframe-trend:first-child{grid-column:auto;display:flex;gap:5px}
+ .timeframe-trend:first-child .tf-name{grid-row:auto}
+}
+@media(max-width:730px){
+ .market-panel{padding:12px;margin-block:13px}
+ .timeframe-trends-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .timeframe-trend:first-child{grid-column:auto;display:flex;gap:5px}
+ .timeframe-trend:first-child .tf-name{grid-row:auto}
+ .timeframe-trend{min-height:70px}
+ .market-panel-heading h3{font-size:15px}
+ .orderbook-colheads,.orderbook-level{grid-template-columns:minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1fr)}
+ .orderbook-level{min-height:27px;font-size:11px}
+}
+@media(max-width:370px){
+ .timeframe-trends-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .timeframe-trend:first-child{grid-column:1/-1;display:grid}
+ .timeframe-trend:first-child .tf-name{grid-row:1/-1}
+ .orderbook-level{font-size:10px}
+}

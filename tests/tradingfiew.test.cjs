@@ -136,3 +136,15 @@ test('all referenced local scripts and stylesheets exist',()=>{
     assert.ok(fs.existsSync(path.join(base,name)),name+' referenced but absent');
   }
 });
+
+test('no mobile ad slot can consume space even when a panel becomes visible',()=>{
+  const css=source('styles.css');
+  assert.match(css,/\.ad-placement\[hidden\][^{]*\{display:none!important/);
+  assert.match(css,/@media\(max-width:730px\), \(pointer:coarse\)/);
+});
+test('silent live WebSockets are downgraded to REST fallback',()=>{
+  const app=source('app.js');
+  assert.ok(app.includes("state.streamLastMessageAt=Date.now()"));
+  assert.ok(app.includes("connection('STALE FEED'"));
+  assert.ok(app.includes("startPolling(request);"));
+});

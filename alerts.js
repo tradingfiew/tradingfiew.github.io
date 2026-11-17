@@ -222,9 +222,9 @@ function beep(){
     }
   }catch(e){console.warn("Browser sound could not start",e);}
 }
-async function notify(title,body,url){
+async function notify(title,body,url,{silent=false}={}){
   if(!settings.notify||!("Notification" in root)||Notification.permission!=="granted")return;
-  const options={body,tag:"tradingfiew-"+Date.now(),data:{url:url||"./"},silent:false};
+  const options={body,tag:"tradingfiew-"+Date.now(),data:{url:url||"./"},silent:Boolean(silent)};
   try{
     const sw=await prepareServiceWorker();
     if(sw?.showNotification){await sw.showNotification(title,options);return;}
@@ -245,7 +245,7 @@ function emit(title,detail,{sound=true,notifyUser=true,symbol,tf}={}){
   toast(text);
   rememberEvent({text,at:Date.now()});
   if(sound)beep();
-  if(notifyUser)void notify("TradingFiew: "+title,detail,url.href);
+  if(notifyUser)void notify("TradingFiew: "+title,detail,url.href,{silent:!settings.sound||!sound});
 }
 function evaluatePrice(symbol,price,{fresh=true}={}){
   if(!Markets?.get(symbol)||!Number.isFinite(price)||price<=0||!fresh)return;

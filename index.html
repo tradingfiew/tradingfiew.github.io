@@ -34,6 +34,7 @@
   <script defer src="./analysis.js"></script>
   <script defer src="./market-data.js"></script>
   <script defer src="./workspace.js"></script>
+  <script defer src="./market-panels.js"></script>
   <script defer src="./app.js?v=20261117-clarity2"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
@@ -161,6 +162,27 @@
           <div class="bias-meter"><span id="biasMeterFill"></span></div>
           <div class="bias-bottom"><span id="biasReason">Based on confirmed swing breaks</span><b id="biasScore">—</b></div>
         </div>
+        <section class="market-panel" id="timeframeTrendsPanel" aria-labelledby="timeframeTrendsHeading">
+          <div class="market-panel-heading"><div><span class="eyebrow">MULTI-TIMEFRAME ANALYSIS</span><h3 id="timeframeTrendsHeading">Trend by timeframe</h3></div><button type="button" id="trendsRefreshBtn" class="market-panel-refresh" title="Refresh all timeframe directions" aria-label="Refresh timeframe directions">↻</button></div>
+          <p class="market-panel-note">Based on closed candles, EMA 20/50 and confirmed market structure — not a trade signal.</p>
+          <div id="timeframeTrendsList" class="timeframe-trends-grid" aria-live="polite">
+            <div class="timeframe-placeholder">Loading verified candle data…</div>
+          </div>
+          <div class="market-panel-footer"><span id="timeframeTrendsUpdated">Waiting for market data</span><span id="timeframeTrendsSummary">—</span></div>
+        </section>
+        <section class="market-panel" id="orderBookPanel" aria-labelledby="orderBookHeading">
+          <div class="market-panel-heading"><div><span class="eyebrow">MARKET DEPTH</span><h3 id="orderBookHeading">Order Book <span class="orderbook-tag">BINANCE SPOT</span></h3></div><button type="button" id="orderBookRefreshBtn" class="market-panel-refresh" title="Refresh order book snapshot" aria-label="Refresh order book snapshot">↻</button></div>
+          <p class="market-panel-note" id="orderBookNotice">Market depth available for supported Binance Spot pairs only.</p>
+          <div class="orderbook-status" id="orderBookStatus" role="status">Select a cryptocurrency market</div>
+          <div id="orderBookContent" hidden>
+            <div class="orderbook-colheads"><span>PRICE</span><span>AMOUNT</span><span>VALUE (USDT)</span></div>
+            <div id="orderBookAsks" class="orderbook-side asks" aria-label="Sell orders"></div>
+            <div class="orderbook-spread"><strong id="orderBookMid">—</strong><span id="orderBookSpread">Spread —</span></div>
+            <div id="orderBookBids" class="orderbook-side bids" aria-label="Buy orders"></div>
+            <div class="orderbook-balance"><span id="orderBookBidLabel">Buy 0%</span><div class="orderbook-balance-track"><i id="orderBookBidBar"></i></div><span id="orderBookAskLabel">Sell 0%</span></div>
+            <div class="market-panel-footer"><span id="orderBookUpdated">—</span><span>Top 10 levels / side</span></div>
+          </div>
+        </section>
         <div class="analysis-section">
           <h3>STRUCTURE & ORDER FLOW <span id="smcAsOf">—</span></h3>
           <div class="metric-grid">

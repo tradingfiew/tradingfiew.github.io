@@ -418,10 +418,18 @@ function bind(){
   $("smcBreakoutEnabled").addEventListener("change",e=>{
     settings.smcEnabled=e.target.checked;
     saveSettings();renderSettings();
+    if(!settings.smcEnabled){
+      $("smcBreakoutBanner").classList.add("hidden");
+      $("smcBreakoutResult").hidden=true;
+    }
   });
   $("toggleBreakoutAlerts").addEventListener("change",e=>{
     settings.smcEnabled=e.target.checked;
     saveSettings();renderSettings();
+    if(!settings.smcEnabled){
+      $("smcBreakoutBanner").classList.add("hidden");
+      $("smcBreakoutResult").hidden=true;
+    }
   });
   $("smcBannerCloseBtn").addEventListener("click",()=>{$("smcBreakoutBanner").classList.add("hidden");});
   $("alertsSoundEnabled").addEventListener("change",e=>{

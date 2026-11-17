@@ -13,6 +13,7 @@ tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
+let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -648,12 +649,113 @@ function drawingHitTest(point){
 /* User price alerts are separate from manually drawn lines.
  * Thin dotted amber guides have no right-axis price labels, avoiding a
  * second LAST price or overlapping S1 / R1 labels. */
+/* Alert data is persisted by alerts.js; these canvas price guides and
+ * HTML hit targets only visualise & manipulate the selected price level. */
 function clearAlertPriceLines(){
-  if(!candles){alertPriceLines.clear();return;}
-  for(const line of alertPriceLines.values()){
+  if(candles)for(const line of alertPriceLines.values()){
     try{candles.removePriceLine(line);}catch{}
   }
   alertPriceLines.clear();
+  $('alertLineHandles')?.replaceChildren();
+}
+function priceAtClientY(clientY){
+  const host=$('chartHost'),rect=host.getBoundingClientRect();
+  const y=clientY-rect.top;
+  return y>=0&&y<rect.height?candles.coordinateToPrice(y):null;
+}
+function layoutAlertHandles(){
+  alertLayoutPending=false;
+  if(!candles||!state.data.length)return;
+  const holder=$('alertLineHandles'),chartRect=$('chartHost').getBoundingClientRect(),
+    holderRect=holder.getBoundingClientRect();
+  for(const node of holder.children){
+    const id=node.dataset.alertId;
+    if(alertDrag?.id===id&&alertDrag.moved)continue;
+    const record=window.TradingFiewAlerts?.getAlert?.(id);
+    if(!record){node.hidden=true;continue;}
+    const y=candles.priceToCoordinate(record.target);
+    if(!Number.isFinite(y)||y<0||y>chartRect.height-8){
+      node.hidden=true;continue;
+    }
+    node.hidden=false;
+    node.style.top=(chartRect.top-holderRect.top+y)+'px';
+    const label=node.querySelector('.alert-handle-label');
+    if(label)label.textContent='🔔 '+fmt(record.target);
+  }
+}
+function scheduleAlertLayout(){
+  if(alertLayoutPending)return;
+  alertLayoutPending=true;
+  requestAnimationFrame(layoutAlertHandles);
+}
+function alertPointerFinish(event,cancelled=false){
+  const drag=alertDrag;
+  if(!drag||event.pointerId!==drag.pointerId)return;
+  alertDrag=null;
+  const node=drag.node;
+  try{node.releasePointerCapture(event.pointerId);}catch{}
+  try{chart.applyOptions({handleScroll:true,handleScale:true});}catch{}
+  if(drag.moved){
+    if(!cancelled&&Number.isFinite(drag.price)&&drag.price>0){
+      const ok=window.TradingFiewAlerts?.setAlertPrice?.(drag.id,drag.price,state.activePrice);
+      if(ok)toast('🔔 Alert moved to '+fmt(drag.price)+' · saved.');
+      else toast('Could not save the moved alert.',true);
+    }
+    renderAlertPriceLines();
+  }else if(!cancelled){
+    openAlertContextMenu(drag.id,event.clientX,event.clientY);
+  }
+  scheduleAlertLayout();
+}
+function bindAlertHitTarget(node){
+  node.addEventListener('pointerdown',event=>{
+    if(event.button!==0&&!['touch','pen'].includes(event.pointerType))return;
+    if(alertDrag)return;
+    const record=window.TradingFiewAlerts?.getAlert?.(node.dataset.alertId);
+    if(!record)return;
+    hideChartContextMenu();
+    const y=candles.priceToCoordinate(record.target);
+    if(!Number.isFinite(y))return;
+    event.preventDefault();event.stopPropagation();
+    alertDrag={
+      id:record.id,node,pointerId:event.pointerId,originClientY:event.clientY,
+      originY:y,price:record.target,moved:false
+    };
+    try{node.setPointerCapture(event.pointerId);}catch{}
+  });
+  node.addEventListener('pointermove',event=>{
+    if(alertDrag?.node!==node||alertDrag.pointerId!==event.pointerId)return;
+    const drag=alertDrag,shift=event.clientY-drag.originClientY;
+    if(Math.abs(shift)>=4)drag.moved=true;
+    if(!drag.moved)return;
+    event.preventDefault();event.stopPropagation();
+    // Constrain to plot area rather than extrapolating arbitrary prices.
+    const rect=$('chartHost').getBoundingClientRect();
+    const y=Math.max(3,Math.min(rect.height-30,drag.originY+shift));
+    const price=candles.coordinateToPrice(y);
+    if(!Number.isFinite(price)||price<=0)return;
+    drag.price=price;
+    const line=alertPriceLines.get(drag.id);
+    try{line?.applyOptions({price});}catch{}
+    node.style.top=(rect.top-$('alertLineHandles').getBoundingClientRect().top+y)+'px';
+    node.querySelector('.alert-handle-label').textContent='🔔 '+fmt(price);
+    node.classList.add('dragging');
+  });
+  node.addEventListener('pointerup',event=>{
+    if(alertDrag?.node===node){event.preventDefault();event.stopPropagation();alertPointerFinish(event);}
+  });
+  node.addEventListener('pointercancel',event=>{if(alertDrag?.node===node)alertPointerFinish(event,true);});
+  node.addEventListener('contextmenu',event=>{
+    event.preventDefault();event.stopPropagation();
+    openAlertContextMenu(node.dataset.alertId,event.clientX,event.clientY);
+  });
+  node.addEventListener('keydown',event=>{
+    if(event.key==='Enter'||event.key===' '){
+      event.preventDefault();
+      const r=node.getBoundingClientRect();
+      openAlertContextMenu(node.dataset.alertId,r.left+Math.min(90,r.width/2),r.top);
+    }
+  });
 }
 function renderAlertPriceLines(){
   if(!candles||!state.data.length||!window.TradingFiewAlerts?.getPriceLevels)return;
@@ -664,17 +766,37 @@ function renderAlertPriceLines(){
     try{candles.removePriceLine(line);}catch{}
     alertPriceLines.delete(id);
   }
-  for(const item of current){
-    if(alertPriceLines.has(item.id))continue;
-    try{
-      const line=candles.createPriceLine({
-        price:item.target,color:'#e6b968',lineWidth:1,
-        lineStyle:LW.LineStyle.Dotted,axisLabelVisible:false,
-        title:'ALERT'
-      });
-      alertPriceLines.set(item.id,line);
-    }catch(error){console.warn('Alert level guide unavailable',error);}
+  const holder=$('alertLineHandles');
+  for(const node of [...holder.children]){
+    if(!liveIds.has(node.dataset.alertId))node.remove();
   }
+  for(const item of current){
+    let line=alertPriceLines.get(item.id);
+    try{
+      if(!line){
+        line=candles.createPriceLine({
+          price:item.target,color:'#e6b968',lineWidth:1,
+          lineStyle:LW.LineStyle.Dotted,axisLabelVisible:false,title:'ALERT'
+        });
+        alertPriceLines.set(item.id,line);
+      }else line.applyOptions({price:item.target});
+      if(![...holder.children].some(node=>node.dataset.alertId===item.id)){
+        const node=document.createElement('div');
+        node.className='alert-hit-level';
+        node.dataset.alertId=item.id;
+        node.setAttribute('role','button');
+        node.tabIndex=0;
+        node.setAttribute('aria-label','Alert '+state.symbol+' at '+fmt(item.target)+'. Drag vertically to adjust, or press Enter for options');
+        const grip=document.createElement('span');
+        grip.className='alert-handle-grip';grip.textContent='⋮⋮';
+        const label=document.createElement('span');
+        label.className='alert-handle-label';label.textContent='🔔 '+fmt(item.target);
+        node.append(grip,label);
+        bindAlertHitTarget(node);holder.appendChild(node);
+      }
+    }catch(error){console.warn('Alert guide unavailable',error);}
+  }
+  scheduleAlertLayout();
 }
 function addChartPriceAlert(price){
   if(!Number.isFinite(price)||price<=0||!state.data.length){

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="TradingFiew market terminal icon">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b1931"/><stop offset="1" stop-color="#121c2b"/></linearGradient></defs>
+<rect width="512" height="512" rx="104" fill="url(#g)"/>
+<rect x="32" y="32" width="448" height="448" rx="78" fill="none" stroke="#2d4457" stroke-width="10"/>
+<path d="M98 336 L193 250 L261 292 L399 150" fill="none" stroke="#40dba1" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M321 150 H399 V228" fill="none" stroke="#40dba1" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M97 405 H399" stroke="#7891a7" stroke-opacity=".45" stroke-width="11" stroke-linecap="round"/>
+</svg>

@@ -1512,3 +1512,134 @@ body.light .live-price-badge[data-direction="up"][data-fresh="true"][data-range=
 body.terminal-mode .chart-line-dragging{touch-action:none!important}
 .alert-hit-level{touch-action:none;min-height:23px}
 @media(max-width:730px){.alert-hit-level{min-height:30px}}
+
+/* ── TradingView-style economic calendar launcher ──
+   Native <dialog> lives in the browser top layer, not in the flex layout.
+   This fixes the 2026-11-17 regression where the calendar reduced chart height. */
+body.terminal-mode .us-calendar-trigger{cursor:pointer}
+body.terminal-mode .center-pane #usCalendarChartBtn{
+  display:inline-flex!important;align-items:center;justify-content:center;
+  color:#b7cbeb;flex-shrink:0;
+}
+body.terminal-mode .center-pane #usCalendarChartBtn.active,
+.us-news-shortcut.active,.topnav .us-calendar-trigger.active{
+  color:var(--green)!important;background:var(--mintwash)!important
+}
+.us-news-shortcut{display:inline-flex;align-items:center;gap:5px;font-size:10px;line-height:1}
+.us-news-shortcut svg,.us-calendar-chart-trigger svg{flex:none}
+dialog.us-calendar-dialog{
+  position:fixed;inset:0;
+  margin:auto;
+  width:min(860px,calc(100vw - 42px));
+  max-width:none;
+  height:min(735px,calc(100dvh - 44px));
+  max-height:calc(100dvh - 24px);
+  min-height:0;
+  padding:15px 18px 12px;
+  overflow:hidden;
+  border:1px solid #304760;
+  border-radius:12px;
+  background:var(--panel);
+  color:var(--text);
+  box-shadow:0 26px 90px rgba(0,0,0,.65);
+  z-index:9999;
+}
+dialog.us-calendar-dialog:not([open]){display:none!important}
+dialog.us-calendar-dialog[open]{
+  display:flex!important;flex-direction:column;
+  gap:0;
+  isolation:isolate;
+}
+dialog.us-calendar-dialog::backdrop{background:rgba(3,9,20,.76);backdrop-filter:blur(3px)}
+body.light dialog.us-calendar-dialog{border-color:#c9d6e7}
+body.light dialog.us-calendar-dialog::backdrop{background:rgba(21,35,58,.5)}
+dialog.us-calendar-dialog .us-economic-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex:0 0 auto;min-height:47px;
+}
+dialog.us-calendar-dialog .us-economic-heading-title{min-width:0}
+dialog.us-calendar-dialog .us-economic-heading .eyebrow{
+  color:var(--green);font-size:9px;letter-spacing:1.3px;font-weight:800
+}
+dialog.us-calendar-dialog .us-economic-heading h2{
+  font-size:17px;line-height:1.3;margin:3px 0 0;overflow-wrap:anywhere
+}
+dialog.us-calendar-dialog .us-economic-actions{flex:0 0 auto;gap:6px;display:flex}
+dialog.us-calendar-dialog .us-economic-actions button,
+dialog.us-calendar-dialog .us-economic-actions a{
+  min-height:34px;border-radius:6px;padding:6px 10px;white-space:nowrap
+}
+dialog.us-calendar-dialog .us-economic-actions .us-calendar-close{
+  width:34px;min-width:34px;padding:0;font-size:24px;line-height:1;
+  background:var(--elev);border:1px solid var(--stroke);color:var(--text)
+}
+dialog.us-calendar-dialog .us-economic-actions .us-calendar-close:hover{
+  border-color:var(--red);color:var(--red)
+}
+dialog.us-calendar-dialog .us-calendar-description{
+  flex:0 0 auto;margin:5px 0 0;font-size:11px;line-height:1.4;color:var(--muted)
+}
+dialog.us-calendar-dialog .us-economic-legend{
+  flex:0 0 auto;padding:7px 0 9px;gap:7px 15px;font-size:10px
+}
+dialog.us-calendar-dialog #usCalendarUpdated{margin-left:auto;font-variant-numeric:tabular-nums}
+dialog.us-calendar-dialog .us-economic-widget{
+  flex:1 1 0;min-height:0;height:auto;width:100%;
+  overflow:hidden;border-radius:7px;background:var(--bg)
+}
+dialog.us-calendar-dialog .us-economic-widget .tradingview-widget-container,
+dialog.us-calendar-dialog .us-economic-widget .tradingview-widget-container__widget{
+  display:block;width:100%!important;height:100%!important;min-height:0!important;
+}
+dialog.us-calendar-dialog .us-economic-widget iframe{max-width:100%;border:0}
+dialog.us-calendar-dialog .us-calendar-attribution{
+  flex:0 0 auto;margin:8px 0 0;font-size:10px;line-height:1.35
+}
+dialog.us-calendar-dialog .us-calendar-provider-error{
+  color:var(--red);font-size:12px;padding:14px;
+}
+@media(max-width:730px){
+  body.terminal-mode .center-pane .chart-toolbar{
+    column-gap:3px!important
+  }
+  body.terminal-mode .center-pane #usCalendarChartBtn{
+    width:26px!important;min-width:26px!important;flex:0 0 26px!important;
+  }
+  body.terminal-mode .center-pane #csvBtn,
+  body.terminal-mode .center-pane #shareChartBtn{display:none!important}
+  dialog.us-calendar-dialog{
+    width:calc(100vw - 12px);height:calc(100dvh - 18px);
+    max-height:calc(100dvh - 18px);padding:9px 10px;
+    border-radius:9px
+  }
+  dialog.us-calendar-dialog .us-economic-heading h2{font-size:15px}
+  dialog.us-calendar-dialog .us-economic-heading .eyebrow{font-size:8px}
+  dialog.us-calendar-dialog .us-economic-actions button,
+  dialog.us-calendar-dialog .us-economic-actions a{min-height:32px;padding:6px 7px;font-size:10px}
+  dialog.us-calendar-dialog .us-economic-actions .us-calendar-close{
+    width:32px;min-width:32px
+  }
+  dialog.us-calendar-dialog .us-economic-legend{padding:6px 0}
+  dialog.us-calendar-dialog .us-calendar-description{font-size:10px}
+  dialog.us-calendar-dialog .us-calendar-attribution{font-size:9px;line-height:1.3}
+  body.terminal-mode .us-news-shortcut span{display:none}
+}
+@media(max-width:440px){
+  body.terminal-mode .center-pane #chartSnapshotBtn{display:none!important}
+  body.terminal-mode .center-pane #fitBtn{display:none!important}
+  body.terminal-mode .center-pane .chart-toolbar .toolbar-menu .toolbar-button,
+  body.terminal-mode .center-pane #autoSmcBtn{font-size:9px!important;padding-inline:4px!important}
+  body.terminal-mode .center-pane .chart-toolbar .toolbar-icon{width:26px!important;min-width:26px!important;flex:0 0 26px!important}
+  dialog.us-calendar-dialog .us-calendar-description{display:none}
+  dialog.us-calendar-dialog .us-economic-legend{gap:5px 9px;font-size:9px}
+  dialog.us-calendar-dialog .us-economic-heading{gap:6px}
+}
+@media(max-width:365px){
+  dialog.us-calendar-dialog .us-economic-heading .eyebrow{font-size:7px}
+  dialog.us-calendar-dialog .us-economic-actions a{display:none}
+}
+@media(max-height:540px) and (orientation:landscape){
+  dialog.us-calendar-dialog{height:calc(100dvh - 10px);max-height:calc(100dvh - 10px);padding-block:6px}
+  dialog.us-calendar-dialog .us-calendar-description,
+  dialog.us-calendar-dialog .us-economic-legend span:nth-child(2){display:none}
+}

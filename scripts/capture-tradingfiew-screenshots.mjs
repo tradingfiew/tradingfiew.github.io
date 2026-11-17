@@ -55,16 +55,18 @@ try {
     if(await page.locator('#alertsModal').isVisible()) await shot('02-real-alert-manager.png');
     await button('#alertsCloseBtn');
   }
-  if(await button('#toggleMarketsBtn')){
-    await button('#marketCategories button[data-category="crypto"]');
+  if(await button('#terminalMobileDock [data-terminal-view="markets"]')) {
     await shot('03-real-market-watch.png');
-    await button('#toggleMarketsBtn');
   }
-  if(await button('#toggleAnalysisBtn')){
+  if(await button('#terminalMobileDock [data-terminal-view="analysis"]')) {
     await shot('04-real-smc-panel.png');
   }
+  if(await button('#terminalMobileDock [data-terminal-view="depth"]')) {
+    await shot('05-real-depth-panel.png');
+  }
+  await button('#terminalMobileDock [data-terminal-view="chart"]');
   await button('#themeBtn');
-  await shot('05-real-day-theme.png');
+  await shot('06-real-day-theme.png');
 } catch(e){
   report.fatal=String(e);
 } finally {

@@ -238,6 +238,24 @@ function priceGuideColor(){return document.body.classList.contains('light')?'#00
  * coordinate, so the number cannot drift away from its actual level.
  * If the price is outside the visible chart range, an arrow clearly marks
  * the badge as off-screen rather than implying a different level. */
+/* The countdown is based on the last real candle's opening timestamp
+ * and the selected interval. A stale feed must never show a fake countdown. */
+function candleCountdownData(){
+  const last=state.data.at(-1),duration=TF_SECONDS[state.tf];
+  if(!last||!duration)return {text:'—',active:false,status:'waiting'};
+  const market=activeMarket();
+  const fresh=market.provider==='binance'?
+    state.live&&state.ws?.readyState===WebSocket.OPEN:
+    state.quoteIsFresh&&Number.isFinite(state.quoteAt)&&Math.abs(Date.now()/1000-state.quoteAt)<120;
+  if(!fresh)return {text:'PAUSED',active:false,status:'paused'};
+  const left=Math.ceil(last.time+duration-Date.now()/1000);
+  if(!Number.isFinite(left)||left<=0||left>duration)return {text:'—',active:false,status:'stale'};
+  const pad=n=>String(n).padStart(2,'0');
+  const hh=Math.floor(left/3600),mm=Math.floor(left%3600/60),ss=left%60;
+  return {text:(hh?pad(hh)+':':'')+pad(mm)+':'+pad(ss),active:true,status:'active'};
+}
+/* The first badge row is centered ON the actual current-price line.
+ * The second row counts down the active candle just like TradingView. */
 function layoutLivePriceBadge(){
   livePriceBadgePending=false;
   const badge=$('livePriceBadge');
@@ -250,22 +268,26 @@ function layoutLivePriceBadge(){
       holder=badge.parentElement.getBoundingClientRect(),
       y=candles.priceToCoordinate(state.activePrice);
     if(!Number.isFinite(y)||host.height<50){badge.hidden=true;return;}
-    const half=13,lowest=half+3,highest=host.height-half-3;
-    const pos=Math.max(lowest,Math.min(highest,y));
-    const range=y<lowest?'above':y>highest?'below':'visible';
-    const number=fmt(state.activePrice);
-    badge.textContent=(range==='above'?'▲ ':range==='below'?'▼ ':'')+number;
-    badge.style.top=(host.top-holder.top+pos)+'px';
+    const minY=12,maxY=Math.max(minY,host.height-34);
+    const pos=Math.max(minY,Math.min(maxY,y));
+    const range=y<minY?'above':y>maxY?'below':'visible';
+    const number=fmt(state.activePrice),last=state.data.at(-1);
+    const market=activeMarket(),countdown=candleCountdownData();
+    const fresh=countdown.status!=='paused'&&countdown.status!=='waiting';
+    const direction=Number.isFinite(last?.open)&&state.activePrice<last.open?'down':'up';
+    badge.querySelector('.axis-price').textContent=(range==='above'?'▲ ':range==='below'?'▼ ':'')+number;
+    badge.querySelector('.axis-countdown').textContent=countdown.text;
+    badge.style.top=(host.top-holder.top+pos-9)+'px';
     badge.style.width=Math.ceil(Math.max(88,chart.priceScale('right').width()))+'px';
     badge.dataset.range=range;
-    const market=activeMarket();
-    const fresh=market.provider==='binance'?state.live:state.quoteIsFresh;
+    badge.dataset.direction=direction;
     badge.dataset.fresh=String(Boolean(fresh));
     badge.title=(range==='above'?'Current quote ABOVE visible chart range':range==='below'?
       'Current quote BELOW visible chart range':'Current market price at this chart level')+
-      ': '+number+(fresh?'':' · last available / not verified live');
-    badge.setAttribute('aria-label','Current '+market.symbol+' price '+number+
-      (range==='visible'?' at chart price level':' '+range+' current visible chart'));
+      ': '+number+' · '+(countdown.active?'Candle closes in '+countdown.text:
+        countdown.status==='paused'?'Market feed paused':'Current candle not confirmed');
+    badge.setAttribute('aria-label',market.symbol+' current price '+number+
+      (countdown.active+', candle closes in '+countdown.text));
     badge.hidden=false;
   }catch(error){badge.hidden=true;console.warn('Price badge layout unavailable',error);}
 }
@@ -1524,6 +1546,8 @@ window.TradingFiewChartAPI=Object.freeze({
   resize:()=>resizeChartWindow(),
   setRange:terminalRange,
   getSnapshot:terminalSnapshot,
+  getCandleCountdown:candleCountdownData,
+  refreshPriceBadge:scheduleLivePriceBadgeLayout,
   saveScreenshot:terminalScreenshot,
   getAlignmentDiagnostics:()=>{
     if(!chart||!rsiChart||!state.data.length)return null;

@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20261117-candle-axis1">
+  <link rel="stylesheet" href="./styles.css?v=20261117-usnews1">
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
@@ -42,7 +42,8 @@
   <script defer src="./alerts.js?v=20261117-menu1"></script>
   <script defer src="./market-panels.js?v=20261117-terminal1"></script>
   <script defer src="./terminal-ui.js?v=20261117-candle-axis1"></script>
-  <script defer src="./app.js?v=20261117-candle-axis1"></script>
+  <script defer src="./app.js?v=20261117-hover1"></script>
+  <script defer src="./us-calendar.js?v=20261117-1"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
   <script defer src="./share.js?v=20261117-3"></script>
@@ -57,6 +58,7 @@
       <nav class="topnav" aria-label="Primary">
         <a class="selected" href="#terminal">Terminal</a>
         <a href="#analysisPanel">Smart Money</a>
+        <a href="#usEconomicCalendar">US News</a>
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
@@ -218,6 +220,7 @@
           </div>
           <div class="range-tools">
             <button type="button" id="terminalEventsBtn" aria-pressed="false" aria-controls="terminalEventsPanel" title="Show structure events and key levels">◫ Events</button>
+            <a class="us-news-shortcut" href="#usEconomicCalendar" title="Upcoming and released US economic announcements">🇺🇸 US News</a>
             <button type="button" id="terminalInfoBtn" title="Site information and legal notices">ⓘ Info</button>
             <a class="chart-attribution" href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" title="TradingView Lightweight Charts attribution">Lightweight Charts™</a>
             <time id="terminalClock" class="terminal-clock" aria-label="Current UTC time">--:--:-- UTC</time>
@@ -297,6 +300,17 @@
       <button type="button" data-terminal-view="analysis" aria-pressed="false"><span>◈</span>Analysis</button>
       <button type="button" data-terminal-view="depth" aria-pressed="false"><span>≋</span>Depth</button>
     </nav>
+
+    <section class="us-economic-calendar" id="usEconomicCalendar" aria-labelledby="usEconomicCalendarTitle">
+      <div class="us-economic-heading"><div><div class="eyebrow">UNITED STATES · ECONOMIC EVENTS</div>
+        <h2 id="usEconomicCalendarTitle">🇺🇸 US Economic News &amp; Results</h2>
+        <p>Upcoming US economic releases before announcement, and Actual / Forecast / Previous figures when published by the data provider. Times follow the widget's selected time zone.</p>
+      </div><div class="us-economic-actions"><button type="button" id="refreshUsCalendar">↻ Refresh results</button>
+        <a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener noreferrer">Open on TradingView ↗</a></div></div>
+      <div class="us-economic-legend"><span>🔴 High impact</span><span>🟠 Medium impact</span><span>Actual / Forecast / Previous</span><span id="usCalendarUpdated">Connecting…</span></div>
+      <div id="usEconomicWidget" class="us-economic-widget" aria-label="US economic release calendar by TradingView"><p>Loading US economic calendar…</p></div>
+      <p class="us-calendar-attribution">Official embed by <a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener nofollow noreferrer">TradingView</a>. Data can arrive with delay or be revised; Forecast and Previous are not newly released Actual values.</p>
+    </section>
     <section class="ad-placement ad-placement-banner" data-ad-placement="banner" aria-label="Advertisement space">
       <span class="ad-label">ADVERTISEMENT</span>
       <div class="ad-reserved"><span class="ad-symbol">▤</span><strong>Advertising space</strong><small>Google AdSense placement · Awaiting approval</small></div>

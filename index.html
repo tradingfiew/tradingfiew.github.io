@@ -35,6 +35,7 @@
   <script defer src="./market-data.js"></script>
   <script defer src="./workspace.js"></script>
   <script defer src="./market-panels.js?v=20261117-depth2"></script>
+  <script defer src="./terminal-ui.js?v=20261117-tv1"></script>
   <script defer src="./app.js?v=20261117-depth1"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
@@ -53,6 +54,10 @@
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
+        <div class="terminal-side-toggles" role="group" aria-label="Terminal panels">
+          <button type="button" id="toggleMarketsBtn" aria-label="Toggle market watch" title="Market Watch" aria-pressed="false">☷ <span>Markets</span></button>
+          <button type="button" id="toggleAnalysisBtn" aria-label="Toggle Smart Money analysis" title="SMC and Order Book" aria-pressed="true">◈ <span>SMC</span></button>
+        </div>
         <button type="button" id="shareBtn" class="share-header" aria-label="Share this TradingFiew chart" aria-haspopup="dialog" aria-controls="shareModal" title="Share TradingFiew chart"><span aria-hidden="true">↗</span><span class="share-header-text">Share</span></button>
         <button type="button" id="workspaceBtn" class="workspace-entry" title="My saved browser workspace" aria-haspopup="dialog" aria-controls="workspaceModal"><span aria-hidden="true">◉</span><span class="workspace-name">My Space</span></button>
         <button type="button" id="donateBtn" class="donate-header" aria-haspopup="dialog" aria-controls="donateModal"><span class="donate-symbol">₿</span><span>Donate</span><span class="donate-crypto">Crypto</span></button>
@@ -70,12 +75,6 @@
         <div id="marketList" class="market-list"></div>
         <div class="sidebar-bottom"><button type="button" id="sideDonateBtn" class="side-donate"><span>♥</span> Donate with Crypto</button><div class="sidebar-tip">✦ <b>Zero API keys</b><br><span>Public exchange market data. No trading account needed. Non-crypto market quotes are indicative.</span></div><div class="side-foot">FREE TO USE <span>v1.0</span></div></div>
       </aside>
-      <nav class="mobile-jump-nav" aria-label="Mobile market navigation">
-        <a href="#chartHost">Chart</a>
-        <a href="#analysisPanel">SMC Analysis</a>
-        <a href="#donateBtn">Donate ₿</a>
-      </nav>
-
       <section class="center-pane" id="chartWindow" aria-label="TradingFiew interactive chart window">
         <div class="chart-window-bar" id="chartWindowBar">
           <div class="chart-window-title"><span class="chart-window-icon">↗</span><div><strong>CHART WINDOW</strong><small>Live chart · Drawing tools · Smart Money</small></div></div>
@@ -88,6 +87,10 @@
             <span class="spot-pill" id="assetClassBadge">MARKET</span>
           </div>
           <div class="instrument-price"><strong id="lastPrice">—</strong><span id="priceChange" class="change-label">—</span></div>
+          <div id="bestQuotePanel" class="best-quote-panel" aria-label="Real exchange best bid and ask" hidden>
+            <div class="best-quote-side bid"><small>BEST BID · SPOT</small><strong id="bestBidPrice">—</strong></div>
+            <div class="best-quote-side ask"><small>BEST ASK · SPOT</small><strong id="bestAskPrice">—</strong></div>
+          </div>
           <div class="instrument-stats"><div><small>24H HIGH</small><b id="high24">—</b></div><div><small>24H LOW</small><b id="low24">—</b></div><div><small id="volumeLabel">QUOTE SOURCE</small><b id="volume24">—</b></div></div>
         </div>
 
@@ -110,6 +113,7 @@
           <button id="autoSmcBtn" class="toolbar-button active-tool">✧ Auto SMC <span id="smcSwitchDot" class="small-green-dot"></span></button>
           <div class="toolbar-spacer"></div>
           <button id="csvBtn" class="toolbar-icon" title="Export OHLCV CSV" aria-label="Export CSV">⇩</button>
+          <button id="chartSnapshotBtn" class="toolbar-icon" title="Save chart image" aria-label="Save chart as PNG">▣</button>
           <button id="refreshChartBtn" class="toolbar-icon" title="Refresh market chart" aria-label="Refresh market chart">↻</button>
           <button id="fitBtn" class="toolbar-icon" title="Focus on latest price candles" aria-label="Focus on latest price candles">⇤</button>
           <button id="shareChartBtn" class="toolbar-icon" title="Share this chart" aria-label="Share this chart">↗</button>
@@ -144,10 +148,27 @@
               </section>
             </div>
             <div id="rsiPanel" class="rsi-panel"><span class="rsi-label">RSI <b id="rsiValue">—</b></span><div id="rsiHost"></div></div>
-            <div class="chart-footer"><span><span id="feedStatusDot" class="status-dot"></span> <span id="feedText">Loading candles...</span></span><span id="updatedAt">—</span><span>UTC</span></div>
+            <div class="chart-footer"><span><span id="feedStatusDot" class="status-dot"></span> <span id="feedText">Loading candles...</span></span><span id="updatedAt">—</span><span class="candle-countdown" id="candleCountdown" title="Time remaining to candle close">⏱ —</span></div>
           </div>
         </div>
-        <section class="bottom-panel">
+        <nav class="terminal-rangebar" aria-label="Visible historical chart range">
+          <div class="range-presets" id="rangePresets" role="group" aria-label="Chart history range">
+            <button type="button" data-range="1D">1D</button>
+            <button type="button" data-range="5D">5D</button>
+            <button type="button" data-range="1M">1M</button>
+            <button type="button" data-range="3M">3M</button>
+            <button type="button" data-range="6M">6M</button>
+            <button type="button" data-range="YTD">YTD</button>
+            <button type="button" data-range="1Y">1Y</button>
+            <button type="button" data-range="ALL">ALL</button>
+          </div>
+          <div class="range-tools">
+            <button type="button" id="terminalEventsBtn" aria-pressed="false" aria-controls="terminalEventsPanel" title="Show structure events and key levels">◫ Events</button>
+            <button type="button" id="terminalInfoBtn" title="Site information and legal notices">ⓘ Info</button>
+            <time id="terminalClock" class="terminal-clock" aria-label="Current UTC time">--:--:-- UTC</time>
+          </div>
+        </nav>
+        <section class="bottom-panel" id="terminalEventsPanel">
           <div class="bottom-title"><div class="tabs"><button class="tab active" data-tab="events">Structure Events <span id="eventsCount">0</span></button><button class="tab" data-tab="levels">Key Levels</button></div><span class="muted-small">Calculated on confirmed candles</span></div>
           <div id="bottomTable" class="table-scroller"></div>
         </section>
@@ -216,6 +237,12 @@
         <div class="analysis-note"><span>ⓘ</span><p><strong>Educational analysis only.</strong> SMC zones and structure labels are heuristic, may disagree with other indicators, and do not predict future prices. No trading or wallet access.</p></div>
       </aside>
     </main>
+    <nav class="terminal-mobile-dock" id="terminalMobileDock" aria-label="Mobile terminal panels">
+      <button type="button" data-terminal-view="chart" aria-pressed="true"><span>▥</span>Chart</button>
+      <button type="button" data-terminal-view="markets" aria-pressed="false"><span>☷</span>Markets</button>
+      <button type="button" data-terminal-view="analysis" aria-pressed="false"><span>◈</span>Analysis</button>
+      <button type="button" data-terminal-view="depth" aria-pressed="false"><span>≋</span>Depth</button>
+    </nav>
     <section class="ad-placement ad-placement-banner" data-ad-placement="banner" aria-label="Advertisement space">
       <span class="ad-label">ADVERTISEMENT</span>
       <div class="ad-reserved"><span class="ad-symbol">▤</span><strong>Advertising space</strong><small>Google AdSense placement · Awaiting approval</small></div>
@@ -240,6 +267,22 @@
     <footer class="footer"><span>© 2026 TradingFiew by RibhLab <span class="footer-sep">•</span> Independent chart research</span><span>Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a> · Data: Binance Spot + indicative biquote feeds · Not financial advice</span><nav class="legal-links" aria-label="Legal and analysis links"><a href="./about.html">How SMC works</a><a href="./privacy.html">Privacy</a></nav></footer>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="terminalInfoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="terminalInfoTitle">
+    <div class="modal-card terminal-info-modal">
+      <button type="button" id="terminalInfoCloseBtn" class="modal-close" aria-label="Close terminal information">×</button>
+      <span class="eyebrow">TRADINGFIEW TERMINAL</span>
+      <h2 id="terminalInfoTitle">Markets, tools &amp; information</h2>
+      <p>The chart fills your screen. Market Watch, Smart Money and Order Book use separate panels you can open as needed. Use the date-range buttons to focus on available historical candles, and the camera icon to save the chart view.</p>
+      <div class="terminal-info-links">
+        <a href="./about.html">How the SMC indicators work</a>
+        <a href="./privacy.html">Privacy &amp; local workspace</a>
+        <a href="https://github.com/tradingfiew/tradingfiew.github.io" target="_blank" rel="noopener noreferrer">Source repository</a>
+      </div>
+      <p><strong>Data:</strong> Binance Spot exchange markets; other instruments use indicative broker or aggregated quotes that may be delayed. Bid and ask depth is available for Binance Spot only. Historical prices are references, not orders you can place from this site.</p>
+      <p><strong>Chart library:</strong> Powered by <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a>. Not affiliated with or endorsed by TradingView.</p>
+      <button type="button" id="terminalInfoDoneBtn" class="donate-dismiss">Close</button>
+    </div>
+  </div>
   <div id="workspaceModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="workspaceTitle">
     <div class="modal-card workspace-modal">
       <button type="button" id="workspaceCloseBtn" class="modal-close" aria-label="Close workspace details">×</button>

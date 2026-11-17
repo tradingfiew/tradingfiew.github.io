@@ -464,3 +464,50 @@ body.chart-window-active .center-pane .chart-space{flex:1 1 0!important;height:a
  .header-actions .icon-button{min-width:27px;width:27px;padding:0}
  .header-actions .header-button{display:none}
 }
+
+
+/* TradingFiew chart clarity and adaptive workspace v2.1
+ * Prioritize the live canvas over secondary cards; never cover candles
+ * with SMC descriptions. These are appended after historical breakpoints. */
+@media(min-width:1271px){
+ .workspace{grid-template-columns:clamp(160px,12.5vw,190px) minmax(0,1fr) clamp(260px,19.5vw,295px)}
+ .left-sidebar{min-width:0}
+ .right-sidebar{min-width:0;padding-inline:13px}
+ .chart-space{min-height:760px}
+ .center-pane{min-width:0}
+ .chart-holder{min-height:530px}
+ .instrument-header{gap:14px;padding-inline:14px}
+ .instrument-stats{gap:12px}
+}
+@media(min-width:731px) and (max-width:1270px){
+ .workspace{grid-template-columns:175px minmax(0,1fr);min-height:0;align-items:start}
+ .left-sidebar{min-height:0;height:auto;max-height:920px}
+ .left-sidebar .market-list{max-height:630px}
+ .center-pane{min-height:0;align-self:start}
+ .right-sidebar{
+  grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:0 18px;max-height:none;min-width:0;overflow:visible;
+  border-left:0;border-top:1px solid var(--stroke);padding:17px 18px
+ }
+ .right-head,.analysis-status,.bias-card,.analysis-note{grid-column:1/-1}
+ .chart-space{height:655px;min-height:655px;flex:0 0 auto}
+ .chart-holder{min-height:450px}
+ .topbar{gap:12px;padding-inline:13px}
+ .topnav{display:none}
+ .header-actions{gap:7px}
+ .instrument-header{gap:10px;padding-inline:12px}
+ .chart-toolbar{height:auto;min-height:49px;flex-wrap:wrap;padding-block:6px}
+}
+@media(max-width:730px){
+ .chart-inner{min-width:0;width:100%}
+ .chart-space{min-width:0}
+ .chart-holder{min-width:0}
+ .ohlc-strip{position:relative;z-index:1}
+ .legend-strip{position:relative;z-index:1}
+ .right-sidebar{max-height:none}
+ .sr-grid{gap:8px}
+}
+@media(max-width:380px){
+ .right-sidebar{padding-inline:10px}
+ .sr-box>b{font-size:11px}
+}

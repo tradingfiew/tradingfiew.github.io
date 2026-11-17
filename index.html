@@ -33,6 +33,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
+  <script defer src="./alerts.js?v=20261117-alerts1"></script>
   <script defer src="./market-data.js"></script>
   <script defer src="./workspace.js"></script>
   <script defer src="./market-panels.js?v=20261117-terminal1"></script>
@@ -55,6 +56,7 @@
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
+        <button type="button" id="alertsBtn" class="alerts-header" aria-haspopup="dialog" aria-controls="alertsModal" title="Create and manage price/SMC alerts"><span aria-hidden="true">♧</span><span class="alerts-header-name">Alerts</span><span id="alertsCount" class="alerts-count" aria-label="Active alerts">0</span></button>
         <div class="terminal-side-toggles" role="group" aria-label="Terminal panels">
           <button type="button" id="toggleMarketsBtn" aria-label="Toggle market watch" title="Market Watch" aria-pressed="false">☷ <span>Markets</span></button>
           <button type="button" id="toggleAnalysisBtn" aria-label="Toggle Smart Money analysis" title="SMC and Order Book" aria-pressed="true">◈ <span>SMC</span></button>
@@ -150,6 +152,7 @@
           </div>
           <button id="autoSmcBtn" class="toolbar-button active-tool">✧ Auto SMC <span id="smcSwitchDot" class="small-green-dot"></span></button>
           <div class="toolbar-spacer"></div>
+          <button type="button" id="alertsChartBtn" class="toolbar-icon" title="Create or manage alerts" aria-label="Create or manage alerts">♧</button>
           <button id="csvBtn" class="toolbar-icon" title="Export OHLCV CSV" aria-label="Export CSV">⇩</button>
           <button id="chartSnapshotBtn" class="toolbar-icon" title="Save chart image" aria-label="Save chart as PNG">▣</button>
           <button id="refreshChartBtn" class="toolbar-icon" title="Refresh market chart" aria-label="Refresh market chart">↻</button>
@@ -239,6 +242,7 @@
             <p id="smcBreakoutPlan"></p>
             <p id="smcBreakoutContext"></p>
           </div>
+          <button type="button" id="smcManageAlertsBtn" class="smc-manage-alerts">Manage custom alerts</button>
           <p class="smc-breakout-legal">Automated educational analysis, not financial advice. No guaranteed results. TradingFiew accepts no responsibility for individual trading decisions or losses. You bear the risk of any trade.</p>
         </section>
         <div class="analysis-section">
@@ -310,6 +314,44 @@
     <p id="smcBannerPlan">—</p>
     <small>Educational scenario only · TradingFiew is not responsible for trading decisions or losses.</small>
   </section>
+  <div id="alertsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="alertsTitle">
+    <div class="modal-card alerts-modal">
+      <button type="button" id="alertsCloseBtn" class="modal-close" aria-label="Close alert manager">×</button>
+      <div class="eyebrow">PERSONAL MARKET WATCH</div>
+      <h2 id="alertsTitle">Price &amp; SMC alerts <span id="alertsTotalBadge">0</span></h2>
+      <p class="alerts-explain">Create as many price or SMC breakout alerts as you need. Alerts are saved privately in this browser. You can pause, resume or delete each alert.</p>
+      <div class="alerts-setting-row"><label class="alerts-setting"><input type="checkbox" id="alertsSoundEnabled"> Play alert sound</label><button type="button" id="alertsTestSoundBtn">Test sound</button></div>
+      <div class="alerts-setting-row"><label class="alerts-setting"><input type="checkbox" id="alertsNotificationsEnabled"> Phone / browser notifications</label><button type="button" id="alertsEnableNotificationsBtn">Allow notifications</button></div>
+      <p id="alertsPermissionStatus" class="alerts-permission" role="status">Notifications require permission and a supported browser.</p>
+      <div class="alerts-new">
+        <h3>New alert</h3>
+        <form id="alertCreateForm" autocomplete="off">
+          <div class="alerts-form-grid">
+            <label>Market <select id="alertSymbol" required aria-label="Market for new alert"></select></label>
+            <label>Condition <select id="alertCondition" required>
+              <option value="price_above">Price crosses above</option>
+              <option value="price_below">Price crosses below</option>
+              <option value="smc_any">Any confirmed SMC break</option>
+              <option value="smc_red">Red zone breaks upward</option>
+              <option value="smc_green">Green zone breaks downward</option>
+            </select></label>
+            <label id="alertTargetWrap">Target price <input id="alertTarget" type="number" min="0.00000001" step="any" inputmode="decimal" placeholder="Enter a price"></label>
+            <label id="alertTfWrap" hidden>SMC timeframe <select id="alertTf"><option value="5m">5m</option><option value="15m">15m</option><option value="1h">1H</option><option value="4h">4H</option><option value="1d">1D</option></select></label>
+          </div>
+          <label class="alerts-setting alerts-repeat"><input id="alertRepeat" type="checkbox"> Repeat every time the price crosses (otherwise trigger once)</label>
+          <label class="alerts-setting alerts-repeat"><input id="alertSound" type="checkbox" checked> Sound for this alert</label>
+          <label class="alerts-setting alerts-repeat"><input id="alertNotify" type="checkbox" checked> Phone / browser notification for this alert (when allowed)</label>
+          <button type="submit" id="alertAddBtn" class="alert-add">+ Create alert</button>
+        </form>
+        <p class="alerts-scope-note">Alerts only work while TradingFiew is running in your browser. Delivery with the site fully closed requires a separate push server, which is not configured. Phone settings may suppress sounds or notifications.</p>
+      </div>
+      <div class="alerts-manager-heading"><h3>My alerts <span id="alertsActiveSummary">0 active</span></h3><button id="alertsDeleteAllBtn" type="button">Delete all</button></div>
+      <div id="alertsList" class="alerts-list" aria-live="polite"></div>
+      <div class="alerts-history-heading"><h3>Recent alerts</h3><button type="button" id="alertsClearHistoryBtn">Clear history</button></div>
+      <div id="alertsHistoryList" class="alerts-history-list"></div>
+      <p class="alerts-legal"><strong>Educational signals only.</strong> SMC breakouts are technical scenarios, not guaranteed BUY/SELL orders or personalized investment advice. TradingFiew cannot accept responsibility for financial losses or trading decisions. Verify prices independently and manage your own risk.</p>
+    </div>
+  </div>
   <div id="terminalInfoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="terminalInfoTitle">
     <div class="modal-card terminal-info-modal">
       <button type="button" id="terminalInfoCloseBtn" class="modal-close" aria-label="Close terminal information">×</button>

@@ -334,3 +334,116 @@ body.chart-window-active .center-pane .draw-tools{overflow-y:auto;overscroll-beh
  .chart-window-title small{display:none}
  body.chart-window-active .rsi-panel{flex-basis:65px!important}
 }
+
+
+/* TradingFiew v2 share, supporters and responsive chart */
+.share-header{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;min-width:80px;padding:5px 11px;border-radius:8px;background:linear-gradient(135deg,#1fba9c,#138776);border:1px solid rgba(87,252,214,.4);box-shadow:0 2px 12px rgba(14,204,166,.12);color:#fff;font-weight:800;font-size:12px;white-space:nowrap}
+.share-header>span:first-child{font-size:19px;line-height:1}
+.share-header:hover,.share-native:hover{filter:brightness(1.13)}
+.share-header:focus-visible,.share-platforms button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.share-modal{width:min(100%,480px)}
+.share-modal h2{font-size:24px;line-height:1.2;margin:9px 0 12px}
+.share-modal>p{font-size:12px;line-height:1.7;color:var(--muted)}
+.share-current-market{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--stroke);background:var(--panel2);border-radius:11px;margin:18px 0 13px}
+.share-current-market>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.share-current-market strong{font-size:13px;overflow-wrap:anywhere}
+.share-current-market small{font-size:10px;color:var(--muted)}
+.share-market-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:10px;background:var(--mintwash);border:1px solid rgba(50,208,158,.3);color:var(--green);font-size:22px}
+.share-modal>label{font-size:11px;display:block;font-weight:800;margin-bottom:7px}
+.share-url-row{display:flex;gap:7px;width:100%}
+.share-url-row input{flex:1;min-width:0;border:1px solid var(--stroke);background:var(--shell);border-radius:8px;padding:11px;color:var(--text);font:11px 'IBM Plex Mono',monospace}
+.share-url-row button,.share-native{border:0;border-radius:8px;padding:10px 15px;background:var(--green);color:#081d19;font-weight:800;white-space:nowrap;font-size:12px}
+.share-platforms{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:15px 0 11px}
+.share-platforms button{border:1px solid var(--stroke);background:var(--panel2);color:var(--text);min-height:39px;border-radius:8px;font-weight:700;font-size:11px;padding:5px 2px}
+.share-platforms button:hover{color:var(--green);border-color:var(--green)}
+.share-native{width:100%;min-height:41px}
+.share-preview-note{border-top:1px solid var(--stroke);padding-top:12px;margin-top:13px}
+.supporters-widget{margin-top:16px;border-top:1px solid var(--stroke);padding-top:15px}
+.supporters-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.supporters-title h3{margin:0;font-size:14px;letter-spacing:-.2px}
+.supporters-optional{font:750 9px 'IBM Plex Mono',monospace;color:var(--green)}
+.supporters-note{color:var(--muted);font-size:11px!important;line-height:1.6;margin:3px 0 11px!important}
+.supporters-list{display:flex;flex-wrap:wrap;gap:7px;min-height:38px;align-items:center;padding:8px 0}
+.supporters-empty{color:var(--muted);font-size:11px;font-style:italic}
+.supporter-name{display:inline-block;border:1px solid rgba(67,211,159,.3);border-radius:20px;color:var(--green);background:var(--mintwash);font-size:11px;padding:6px 10px;font-weight:800;max-width:100%;overflow-wrap:anywhere}
+.supporter-consent{display:flex;align-items:flex-start;gap:9px;background:var(--panel2);border:1px solid var(--stroke);border-radius:9px;cursor:pointer;padding:12px 10px;margin:12px 0 5px;font-size:11px;font-weight:750;line-height:1.45}
+.supporter-consent input{accent-color:var(--green);width:16px;height:16px;flex:none;margin:1px 0 0}
+.supporter-form{padding:12px;border:1px solid var(--stroke);background:var(--panel);border-radius:9px;margin:8px 0 10px}
+.supporter-form[hidden]{display:none!important}
+.supporter-form>label{display:block;font-weight:750;font-size:11px;margin:0 0 7px}
+.supporter-form>input{width:100%;border:1px solid var(--stroke);border-radius:8px;background:var(--shell);color:var(--text);padding:10px 11px;font-size:13px}
+.supporter-form>p{margin:9px 0;font-size:11px!important;line-height:1.6}
+.supporter-form>button{width:100%;border:1px solid var(--green);background:var(--mintwash);color:var(--green);font-size:12px;font-weight:800;border-radius:8px;padding:10px;margin:2px 0 8px}
+.supporter-form>small{display:block;color:var(--muted);font-size:10px;line-height:1.6;margin-top:5px}
+#supporterFormStatus{color:var(--green);font-weight:650}
+.supporters-public{padding:20px 28px 22px;border-top:1px solid var(--stroke);background:var(--shell)}
+.supporters-public-intro{display:flex;align-items:center;justify-content:space-between;gap:17px}
+.supporters-public h2{margin:4px 0 6px;font-size:20px;line-height:1.25}
+.supporters-public p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}
+.supporters-public button{border:1px solid rgba(241,186,81,.57);background:linear-gradient(130deg,rgba(241,186,81,.15),rgba(241,186,81,.04));color:#ecc075;border-radius:9px;padding:11px 14px;font-size:12px;font-weight:800;white-space:nowrap;min-height:39px}
+.supporters-public>.supporters-list{padding:14px 0 0}
+.crypto-modal{max-height:min(93dvh,790px)!important;overflow-y:auto!important;overscroll-behavior:contain}
+@media(min-width:731px) and (max-width:1120px){
+ .workspace{align-items:start;min-height:0}
+ .center-pane{align-self:start;min-height:0}
+ .left-sidebar{align-self:start;min-height:0;height:auto;max-height:830px}
+ .market-list{max-height:520px}
+ .chart-space{flex:0 0 auto;height:580px;min-height:580px}
+ .chart-holder{height:430px;min-height:370px;flex:1}
+ .topbar{gap:12px;padding:0 13px}
+ .topnav{display:none}
+ .header-actions{gap:7px}
+ .header-actions .session-tag{display:none}
+ .instrument-header{gap:12px}
+ .instrument-stats{gap:10px}
+ .chart-toolbar{flex-wrap:wrap;height:auto;min-height:49px;padding-block:6px}
+}
+@media(min-width:1121px) and (max-width:1350px){
+ .topbar{gap:10px;padding-inline:13px}
+ .header-actions{gap:7px}
+ .topnav{gap:10px}
+ .session-tag{display:none}
+ .brand-title{font-size:15px}
+}
+@media(max-width:730px){
+ .topbar{gap:5px}
+ .share-header{flex:0 0 32px;min-width:32px;height:33px;width:32px;padding:5px}
+ .share-header>span:first-child{font-size:19px}
+ .share-header-text{display:none}
+ .header-actions{gap:4px}
+ .header-actions .session-tag{display:none}
+ .chart-holder{height:clamp(420px,58svh,560px);min-height:420px}
+ .legend-strip{overflow:visible;white-space:normal;display:flex;flex-wrap:wrap;gap:4px 10px;font-size:9px}
+ .legend-strip>span:nth-child(n+4){display:flex}
+ .legend-strip>span:nth-child(3){display:flex}
+ .ohlc-strip{height:auto;min-height:33px;white-space:normal;overflow:visible;gap:4px 11px;padding:6px 5px 2px;font-size:9px}
+ .instrument-stats{gap:6px}
+ .chart-toolbar{row-gap:6px}
+ .chart-toolbar>.toolbar-icon{min-width:30px;width:30px}
+ .rsi-panel{height:86px}
+ .supporters-public{padding:19px 12px}
+ .supporters-public-intro{align-items:flex-start;flex-direction:column;gap:11px}
+ .supporters-public h2{font-size:18px}
+ .supporters-public button{width:100%}
+ .share-platforms{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .share-modal{max-height:calc(100dvh - 20px);overflow-y:auto}
+ .crypto-modal{max-height:calc(100dvh - 20px)!important}
+ .share-modal h2{font-size:20px}
+ .supporters-optional{font-size:8px}
+}
+@media(max-width:390px){
+ .header-actions .header-button{display:none}
+ .topbar{gap:5px}
+ .brand{max-width:calc(100% - 141px);gap:5px}
+ .brand-symbol{width:26px;height:26px}
+ .brand-title{font-size:11px}
+ .brand-title small{display:none}
+ .header-actions .donate-header{min-width:0}
+ .instrument-price strong{font-size:clamp(13px,4.2vw,17px)}
+ .legend-strip>span:nth-child(3){display:flex}
+ .legend-strip{font-size:8px;gap:4px 7px}
+ .share-url-row input{font-size:10px}
+ .share-platforms button{font-size:11px}
+}
+body.chart-window-active .center-pane .chart-holder{flex:1 1 0!important;height:auto!important;min-height:140px!important}
+body.chart-window-active .center-pane .chart-space{flex:1 1 0!important;height:auto!important;min-height:0!important}

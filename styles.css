@@ -1413,3 +1413,37 @@ body.light .synced-crosshair-guide{
  opacity:.75;
  background:repeating-linear-gradient(to bottom,#6480a4 0px,#6480a4 4px,transparent 4px,transparent 8px)
 }
+
+
+/* TradingFiew explicit price-axis badge and unified cursor v5.
+   The axis shows ONE current quote; the solid line stays in the same
+   Lightweight Charts series coordinate with no duplicate native label. */
+.live-price-badge{
+  position:absolute;right:0;z-index:10;display:flex;
+  min-height:26px;box-sizing:border-box;align-items:center;justify-content:center;
+  padding:3px 5px;transform:translateY(-50%);
+  background:#20d4bc;color:#062b29;border-left:2px solid #81f1de;
+  border-radius:4px 0 0 4px;
+  font:850 12px/1.15 'IBM Plex Mono',monospace;
+  letter-spacing:-.25px;font-variant-numeric:tabular-nums;
+  box-shadow:0 2px 8px rgba(0,0,0,.24);
+  white-space:nowrap;pointer-events:none;user-select:none;
+  -webkit-user-select:none
+}
+.live-price-badge[hidden]{display:none!important}
+.live-price-badge[data-fresh="false"]{
+  background:#f1bd63;color:#3e2a09;border-left-color:#ffe0a1
+}
+.live-price-badge[data-range="above"],
+.live-price-badge[data-range="below"]{
+  background:#deb061;color:#38260a;border-left-color:#f9e0a8
+}
+body.light .live-price-badge[data-fresh="true"][data-range="visible"]{
+  background:#008d82;color:#fff;border-left-color:#36bfae
+}
+@media(max-width:730px){
+ .live-price-badge{font-size:11px;min-height:25px;padding-inline:3px;border-left-width:1px}
+}
+@media(max-width:350px){
+ .live-price-badge{font-size:10px;letter-spacing:-.4px;min-height:22px}
+}

@@ -15,6 +15,7 @@ const HISTORY_KEY="marketAlertsHistory:v1";
 const SETTING_KEY="marketAlertSettings:v1";
 const LIMITS=Object.freeze({history:80});
 const CONDITIONS={
+  price_touch:"Price reaches level (either direction)",
   price_above:"Price crosses above",
   price_below:"Price crosses below",
   smc_any:"Any confirmed SMC break",
@@ -56,6 +57,7 @@ function persist(){
     toast("Could not save alerts — browser storage might be blocked or full.",true);
     return false;
   }
+  try{document.dispatchEvent(new CustomEvent("tradingfiew:alerts-changed"));}catch{}
   return true;
 }
 function saveSettings(){Space?.setJSON(SETTING_KEY,settings);}
@@ -82,6 +84,11 @@ function controlLabel(alert){
   return alert.condition.startsWith("price")?
     CONDITIONS[alert.condition]+" "+money(alert.target):
     CONDITIONS[alert.condition]+" · "+alert.tf.toUpperCase();
+}
+function getPriceLevels(symbol){
+  return alerts.filter(a=>a.enabled&&!a.triggered&&a.symbol===symbol&&
+    a.condition.startsWith("price")&&Number.isFinite(a.target)&&a.target>0)
+    .map(a=>({id:a.id,target:a.target,condition:a.condition}));
 }
 function list(){
   const container=$("alertsList");
@@ -255,12 +262,13 @@ function evaluatePrice(symbol,price,{fresh=true}={}){
   let changed=false;
   for(const a of alerts){
     if(!a.enabled||a.triggered||a.symbol!==symbol||!a.condition.startsWith("price"))continue;
-    const crossed=a.condition==="price_above"?old<=a.target&&price>a.target:
-      old>=a.target&&price<a.target;
+    const crossed=a.condition==="price_above"?old<=a.target&&price>=a.target:
+      a.condition==="price_below"?old>=a.target&&price<=a.target:
+      (old<=a.target&&price>=a.target)||(old>=a.target&&price<=a.target);
     if(!crossed)continue;
     if(!a.repeat)a.triggered=true;
     a.lastFiredAt=Date.now();a.firedCount=(a.firedCount||0)+1;
-    emit(symbol+" price "+(a.condition==="price_above"?"above":"below")+" "+money(a.target),
+    emit(symbol+" price "+(a.condition==="price_above"?"above":a.condition==="price_below"?"below":"reached")+" "+money(a.target),
       "Last observed "+money(price)+" · price sources can be indicative or delayed.",{
         symbol,sound:a.sound,notifyUser:a.notify
       });
@@ -331,6 +339,65 @@ function evaluateAnalysis(symbol,tf,analysis,closed){
   }
   if(changed){persist();list();}
 }
+function prepareAlertAudio(){
+  if(!settings.sound)return;
+  try{
+    const Ctx=root.AudioContext||root.webkitAudioContext;
+    if(Ctx){
+      audioContext=audioContext||new Ctx();
+      if(audioContext.state==="suspended")void audioContext.resume();
+    }
+  }catch(error){console.warn("Audio permission unavailable",error);}
+}
+/* Direct click / tap mode: one action immediately creates one price alert.
+ * An alert can be edited, paused or removed from the existing manager.
+ * The first click may prompt for system notification permission; there is
+ * no automatic registration without the user's physical gesture.
+ */
+function createFromChart({symbol,price,currentPrice}={}){
+  if(!Markets?.get(symbol)||!Number.isFinite(price)||price<=0){
+    toast("Tap within the chart's price area to set a valid alert.",true);
+    return false;
+  }
+  // Format to the instrument precision, avoiding near-duplicate coordinates.
+  const decimals=price>=1000?2:price>=1?4:price>=.01?6:8;
+  const target=Number(price.toFixed(decimals));
+  if(!target||!Number.isFinite(target))return false;
+  const tolerance=Math.pow(10,-decimals)*.49;
+  const duplicate=alerts.some(a=>a.enabled&&!a.triggered&&a.symbol===symbol&&
+    a.condition==="price_touch"&&Math.abs(a.target-target)<=tolerance);
+  if(duplicate){
+    toast(symbol+" already has an active alert at "+money(target)+". Open 🔔 Alerts to manage it.");
+    return false;
+  }
+  const alert={
+    id:newId(),symbol,condition:"price_touch",tf:"",target,
+    repeat:false,enabled:true,triggered:false,sound:true,notify:true,
+    created:Date.now(),lastFiredAt:0,firedCount:0
+  };
+  alerts.push(alert);
+  if(!persist()){alerts.pop();return false;}
+  // Initialize threshold comparison from the latest displayed price instead
+  // of the selected *historic* candle or cursor position.
+  if(Number.isFinite(currentPrice)&&currentPrice>0)priorPrices.set(symbol,currentPrice);
+  prepareAlertAudio();
+  list();
+  toast("🔔 "+symbol+" alert saved at "+money(target)+". Sound + notification when this price is reached.");
+  if("Notification" in root){
+    if(Notification.permission==="granted"){
+      settings.notify=true;saveSettings();
+      void prepareServiceWorker();
+    }else if(Notification.permission==="default"){
+      // Call permission() synchronously during the chart-click gesture.
+      void permission();
+    }else{
+      toast("🔔 Alert saved. Notifications are blocked; allow TradingFiew in your browser settings.",true);
+    }
+  }else{
+    toast("🔔 Alert saved. This browser cannot show system notifications; sound works while active.",true);
+  }
+  return true;
+}
 function create(event){
   event.preventDefault();
   const symbol=$("alertSymbol").value,condition=$("alertCondition").value,
@@ -353,9 +420,7 @@ function create(event){
   if(!persist()){alerts.pop();return;}
   list();toast("Alert created for "+symbol+". It will trigger on the next matching crossing.");
   // Explicit user interaction can unlock AudioContext without making sound now.
-  if(settings.sound){try{const Ctx=root.AudioContext||root.webkitAudioContext;
-      if(Ctx){audioContext=audioContext||new Ctx();if(audioContext.state==="suspended")void audioContext.resume();}
-    }catch{}}
+  prepareAlertAudio();
   $("alertCreateForm").reset();
   $("alertSymbol").value=symbol;
   $("alertTf").value=tf;
@@ -503,6 +568,6 @@ root.TradingFiewAlerts=Object.freeze({
   onPrice:(symbol,price,options)=>evaluatePrice(symbol,price,options),
   onAnalysis:(symbol,tf,analysis,closed)=>evaluateAnalysis(symbol,tf,analysis,closed),
   watching:(symbol)=>settings.smcEnabled||active().some(a=>a.symbol===symbol),
-  open,close
+  createFromChart,getPriceLevels,open,close
 });
 })(window);

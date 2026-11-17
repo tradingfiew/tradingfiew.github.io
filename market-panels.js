@@ -174,8 +174,8 @@
     $("timeframeTrendsSummary").textContent=ok.length?"Bull "+buys+" · Bear "+sells+" · Range "+flat:"No confirmed data";
     $("timeframeTrendsUpdated").textContent=ok.length?"Closed candles only · refreshed "+new Date().toLocaleTimeString("en-GB",{timeZone:"UTC",hour12:false})+" UTC":"Waiting for confirmed candles";
   }
-  function trendFromBars(bars,provider){
-    const closed=provider==="binance"?bars.slice(0,-1):bars.filter(x=>!x.isOpen);
+  function trendFromBars(bars,provider,tf){
+    const closed=Markets.completedBars(bars,tf,provider);
     if(closed.length<65)throw Error("Not enough closed candles");
     const analysis=Engine.calculate(closed);
     const last=closed.at(-1);
@@ -205,7 +205,7 @@
         try{
           const bars=await Markets.candles(symbol,tf,260,state.controller?.signal);
           if(serial!==state.serial)return;
-          const value=trendFromBars(bars,provider);
+          const value=trendFromBars(bars,provider,tf);
           rows[tf]=value;cache.set(symbol+":"+tf,{at:Date.now(),value});
         }catch(e){
           if(serial!==state.serial||e.name==="AbortError")return;

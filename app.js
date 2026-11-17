@@ -397,7 +397,7 @@ function startQuotePolling(request){
     void fetchTicker(state.symbol,request);
   },5000);
 }
-function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.tabTickerTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.tabTickerTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
+function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.tabTickerTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.tabTickerTimer=null;state.streamLastMessageAt=null;state.streamConnectedAt=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 hideChartContextMenu();
 const request=++state.request;drawingDrag=null;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
@@ -433,7 +433,7 @@ refreshEMAs();
 if(fit)focusRecentCandles();
 }
 function refreshEMAs(){
-const data=state.data.slice(0,-1);
+const data=Markets.completedBars(state.data,state.tf,activeMarket().provider);
 ema20.setData($('toggleEMA20').checked?Engine.ema(data,20):[]);
 ema50.setData($('toggleEMA50').checked?Engine.ema(data,50):[]);
 ema200.setData($('toggleEMA200').checked?Engine.ema(data,200):[]);
@@ -469,12 +469,13 @@ let connected=false;
 try{
 const url='wss://data-stream.binance.vision/ws/'+state.symbol.toLowerCase()+'@kline_'+state.tf;
 const socket=new WebSocket(url);state.ws=socket;
-socket.onopen=()=>{if(request!==state.request)return;connected=true;clearInterval(state.refreshTimer);state.refreshTimer=null;connection('LIVE','WebSocket — streaming market candles');};
+socket.onopen=()=>{if(request!==state.request)return;connected=true;state.streamConnectedAt=Date.now();state.streamLastMessageAt=Date.now();clearInterval(state.refreshTimer);state.refreshTimer=null;connection('LIVE','WebSocket — streaming market candles');};
 socket.onmessage=e=>{
 if(request!==state.request)return;
 try{const packet=JSON.parse(e.data),k=packet.k;if(!k)return;
 const incoming={time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
 if(!Number.isFinite(incoming.close))return;
+state.streamLastMessageAt=Date.now();
 const last=state.data.at(-1);
 if(incoming.time===last?.time){state.data[state.data.length-1]=incoming;candles.update(incoming);if($('toggleVolume').checked)vol.update({time:incoming.time,value:incoming.volume,color:incoming.close>=incoming.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'});}
 else if(incoming.time>last?.time){
@@ -500,7 +501,22 @@ if(k.x){refreshEMAs();analyze();fetchTicker(state.symbol,request);}
 socket.onerror=()=>{if(request===state.request&&!connected)connection('REST MODE','Live stream unavailable; polling every 60s');};
 socket.onclose=()=>{if(request!==state.request)return;state.ws=null;connection('REST MODE','Live stream disconnected; polling every 60s');startPolling(request);state.reconnectTimer=setTimeout(()=>{if(request===state.request)connectStream(request);},45000);};
 }catch{startPolling(request);}
-clearInterval(state.heartbeat);state.heartbeat=setInterval(()=>{if(state.ws&&state.ws.readyState===1)return;startPolling(request);},20000);
+clearInterval(state.heartbeat);
+state.heartbeat=setInterval(()=>{
+  if(request!==state.request)return;
+  if(state.ws?.readyState===WebSocket.OPEN){
+    // A silent but technically OPEN socket is NOT reliable live data.
+    // Recover through REST polling, then the normal reconnect path.
+    const last=state.streamLastMessageAt||state.streamConnectedAt||Date.now();
+    if(Date.now()-last>50000){
+      connection('STALE FEED','No fresh market stream updates · switching to REST backup');
+      startPolling(request);
+      try{state.ws.close();}catch(error){console.warn('Stale stream close failed',error);}
+    }
+    return;
+  }
+  startPolling(request);
+},20000);
 }
 function startPolling(request){
 if(state.refreshTimer)return;
@@ -528,14 +544,14 @@ const tf=activeMarket().provider==='binance'?intervals[state.tf]:(state.tf==='1d
 try{
 const data=await fetchCandles(state.symbol,tf,350,state.controller?.signal);
 if(request!==state.request)return;
-const htf=Engine.calculate(activeMarket().provider==='binance'?data.slice(0,-1):data.filter(x=>!x.isOpen));state.htf=htf;$('htfValue').textContent=htf.direction==='bull'?'BULLISH':htf.direction==='bear'?'BEARISH':'RANGING';$('htfValue').className=htf.direction==='bull'?'text-green':htf.direction==='bear'?'text-red':'';
+const htf=Engine.calculate(Markets.completedBars(data,tf,activeMarket().provider));state.htf=htf;$('htfValue').textContent=htf.direction==='bull'?'BULLISH':htf.direction==='bear'?'BEARISH':'RANGING';$('htfValue').className=htf.direction==='bull'?'text-green':htf.direction==='bear'?'text-red':'';
 $('htfInterval').textContent=tf.toUpperCase()+' confirmed';renderBias();
 }catch{if(request===state.request){$('htfValue').textContent='Unavailable';$('htfInterval').textContent=tf.toUpperCase()+' data unavailable';}}
 }
 function analyze(){
 if(!state.data||state.data.length<65)return;
 try{
-const closed=activeMarket().provider==='binance'?state.data.slice(0,-1):state.data.filter(x=>!x.isOpen);
+const closed=Markets.completedBars(state.data,state.tf,activeMarket().provider);
 state.analysis=Engine.calculate(closed);
 try{window.TradingFiewAlerts?.onAnalysis(state.symbol,state.tf,state.analysis,closed);}
 catch(error){console.warn('Optional SMC alert processing failed',error);}

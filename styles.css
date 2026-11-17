@@ -447,3 +447,20 @@ body.chart-window-active .center-pane .draw-tools{overflow-y:auto;overscroll-beh
 }
 body.chart-window-active .center-pane .chart-holder{flex:1 1 0!important;height:auto!important;min-height:140px!important}
 body.chart-window-active .center-pane .chart-space{flex:1 1 0!important;height:auto!important;min-height:0!important}
+
+/* Tiny phones: retain independent controls without horizontal overflow. */
+@media(max-width:340px){
+ html,body,.app-shell{min-width:0!important;max-width:100%!important}
+ .topbar{padding-inline:6px;gap:3px}
+ .header-actions{gap:2px}
+ .brand{gap:3px;min-width:0;max-width:none}
+ .brand-symbol{width:22px;height:22px}
+ .brand-symbol svg{width:18px;height:18px}
+ .brand-title{font-size:10px;letter-spacing:-.5px}
+ .share-header{min-width:27px;width:27px;flex-basis:27px}
+ .donate-header{width:28px;min-width:28px;justify-content:center;padding:3px}
+ .donate-header>span:nth-child(2){display:none}
+ .workspace-entry{min-width:26px;width:26px;padding:4px}
+ .header-actions .icon-button{min-width:27px;width:27px;padding:0}
+ .header-actions .header-button{display:none}
+}

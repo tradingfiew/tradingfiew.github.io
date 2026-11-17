@@ -13,7 +13,7 @@ tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
-let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=82;
+let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=82,sharedCrosshairTime=null;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
@@ -41,6 +41,29 @@ handleScroll:true,handleScale:true,localization:{locale:'en-US'}};
 function addLine(color,width=1){return chart.addSeries(LW.LineSeries,{color,lineWidth:width,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});}
 /* Chart and RSI must use the same FULL timestamp index and equal plot width.
  * These module-scope functions are also needed during asynchronous analysis. */
+function layoutSharedCrosshairGuide(){
+  const guide=$('syncedCrosshairGuide');
+  if(!guide||!chart||!rsiChart||!$('toggleRSI').checked||
+     !Number.isFinite(sharedCrosshairTime)){if(guide)guide.hidden=true;return;}
+  try{
+    const x=chart.timeScale().timeToCoordinate(sharedCrosshairTime);
+    const host=$('chartHost').getBoundingClientRect();
+    const bottom=$('rsiPanel').getBoundingClientRect();
+    const inner=$('chartHost').closest('.chart-inner').getBoundingClientRect();
+    const plotWidth=host.width-chart.priceScale('right').width();
+    if(!Number.isFinite(x)||x<0||x>=plotWidth||host.height<30){
+      guide.hidden=true;return;
+    }
+    guide.style.left=(host.left-inner.left+x)+'px';
+    guide.style.top=(host.top-inner.top)+'px';
+    guide.style.height=Math.max(0,bottom.bottom-host.top)+'px';
+    guide.hidden=false;
+  }catch(error){guide.hidden=true;}
+}
+function updateSharedCrosshairGuide(time){
+  sharedCrosshairTime=typeof time==='number'&&Number.isFinite(time)?time:null;
+  layoutSharedCrosshairGuide();
+}
 function alignPriceScaleWidths(){
   if(!chart||!rsiChart)return;
   try{
@@ -107,14 +130,17 @@ function linkedCrosshair(param,source){
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
   scheduleAlertLayout();drawZones();
+  if(sharedCrosshairTime!==null)requestAnimationFrame(layoutSharedCrosshairGuide);
   synchronizeVisibleRange(chart,rsiChart,range);
   clearTimeout(markerLayoutTimer);
   markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);
 });
 rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
+  if(sharedCrosshairTime!==null)requestAnimationFrame(layoutSharedCrosshairGuide);
   synchronizeVisibleRange(rsiChart,chart,range);
 });
 chart.subscribeCrosshairMove(p=>{
+  updateSharedCrosshairGuide(p.time);
   scheduleAlertLayout();
   const c=p.seriesData?.get(candles);
   if(c&&Number.isFinite(c.close))setOhlc(c);
@@ -122,6 +148,7 @@ chart.subscribeCrosshairMove(p=>{
   linkedCrosshair(p,'main');
 });
 rsiChart.subscribeCrosshairMove(p=>{
+  updateSharedCrosshairGuide(p.time);
   const c=p.time&&state.data.find(d=>d.time===p.time);
   if(c)setOhlc(c);
   else if(state.data.length)setOhlc(state.data.at(-1));
@@ -299,6 +326,8 @@ catch{chart.timeScale().fitContent();}
 }
 function setCandleData(fit=false){
 if(!state.data.length)return;
+sharedCrosshairTime=null;
+$('syncedCrosshairGuide').hidden=true;
 rsiTimelineReady=false;
 candles.setData(state.data.map(({time,open,high,low,close})=>({time,open,high,low,close})));
 vol.setData($('toggleVolume').checked?state.data.map(d=>({time:d.time,value:d.volume,color:d.close>=d.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'})):[]);
@@ -1214,6 +1243,7 @@ function resizeChartWindow(){
     if(rsi.width>80&&rsi.height>30)rsiChart.resize(Math.floor(rsi.width),Math.floor(rsi.height));
     alignPriceScaleWidths();
     if(rsiTimelineReady)restoreSharedTimeScale();
+    if(sharedCrosshairTime!==null)layoutSharedCrosshairGuide();
     drawZones();
   }catch(error){console.warn('Chart window resizing issue',error);}
 }

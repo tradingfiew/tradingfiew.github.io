@@ -13,7 +13,16 @@
   <meta property="og:title" content="TradingFiew — Free Gold, Nasdaq & Smart Money Charts">
   <meta property="og:description" content="Research gold, Nasdaq 100, forex and crypto charts with Smart Money Concepts, BOS, CHoCH, FVG, support and resistance.">
   <meta property="og:url" content="https://tradingfiew.github.io/">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://tradingfiew.github.io/og-preview.png">
+  <meta property="og:image:secure_url" content="https://tradingfiew.github.io/og-preview.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="TradingFiew chart terminal showing candlestick prices, technical analysis and Smart Money tools">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://tradingfiew.github.io/og-preview.png">
+  <meta name="twitter:title" content="TradingFiew — Live Gold, Forex, Nasdaq & Crypto Charts">
+  <meta name="twitter:description" content="Interactive price charts, Smart Money Concepts, market structure and technical analysis.">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"TradingFiew","url":"https://tradingfiew.github.io/","applicationCategory":"FinanceApplication","operatingSystem":"Web","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free chart research for indicative gold and Nasdaq 100, forex, and Binance Spot crypto, with Smart Money Concepts, RSI, EMA and confirmed pivot levels."}</script>
   <title>TradingFiew — Free Charts, Price Guides & Smart Money</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230e1729'/%3E%3Cpath d='M18 64 40 45 58 56 83 27' stroke='%2345e0a1' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -28,6 +37,7 @@
   <script defer src="./app.js"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js"></script>
+  <script defer src="./share.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -42,6 +52,7 @@
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
+        <button type="button" id="shareBtn" class="share-header" aria-haspopup="dialog" aria-controls="shareModal" title="Share TradingFiew chart"><span aria-hidden="true">↗</span><span class="share-header-text">Share</span></button>
         <button type="button" id="workspaceBtn" class="workspace-entry" title="My saved browser workspace" aria-haspopup="dialog" aria-controls="workspaceModal"><span aria-hidden="true">◉</span><span class="workspace-name">My Space</span></button>
         <button type="button" id="donateBtn" class="donate-header" aria-haspopup="dialog" aria-controls="donateModal"><span class="donate-symbol">₿</span><span>Donate</span><span class="donate-crypto">Crypto</span></button>
         <span class="session-tag"><span id="liveDot" class="status-dot"></span><span id="connectionState">CONNECTING</span></span>
@@ -98,7 +109,8 @@
           <button id="autoSmcBtn" class="toolbar-button active-tool">✧ Auto SMC <span id="smcSwitchDot" class="small-green-dot"></span></button>
           <div class="toolbar-spacer"></div>
           <button id="csvBtn" class="toolbar-icon" title="Export OHLCV CSV" aria-label="Export CSV">⇩</button>
-          <button id="fitBtn" class="toolbar-icon" title="Fit chart" aria-label="Fit chart">⇤</button>
+          <button id="fitBtn" class="toolbar-icon" title="Focus on latest price candles" aria-label="Focus on latest price candles">⇤</button>
+          <button id="shareChartBtn" class="toolbar-icon" title="Share this chart" aria-label="Share this chart">↗</button>
           <button id="chartWindowBtn" class="toolbar-icon chart-window-trigger" title="Open chart window (full screen)" aria-label="Open interactive chart window">⤢</button>
         </div>
 
@@ -213,6 +225,24 @@
       <button type="button" id="workspaceDoneBtn" class="donate-dismiss">Close</button>
     </div>
   </div>
+  <div id="shareModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="modal-card share-modal">
+      <button type="button" id="shareCloseBtn" class="modal-close" aria-label="Close share dialog">×</button>
+      <div class="eyebrow">SHARE TRADINGFIEW</div><h2 id="shareTitle">Share this chart</h2>
+      <p>Send the exact market and timeframe. Your drawings and personal settings stay private on your browser.</p>
+      <div class="share-current-market"><span class="share-market-icon">↗</span><div><strong id="shareMarketTitle">Gold · XAUUSD</strong><small id="shareMarketTimeframe">1H analysis</small></div></div>
+      <label for="shareUrl">Shareable chart link</label>
+      <div class="share-url-row"><input type="url" id="shareUrl" readonly aria-label="Shareable chart URL"><button type="button" id="shareCopyBtn">Copy</button></div>
+      <div class="share-platforms">
+        <button type="button" id="shareWhatsAppBtn">WhatsApp</button>
+        <button type="button" id="shareTelegramBtn">Telegram</button>
+        <button type="button" id="shareFacebookBtn">Facebook</button>
+        <button type="button" id="shareXBtn">X</button>
+      </div>
+      <button type="button" id="shareNativeBtn" class="share-native">Share with another app</button>
+      <p class="share-preview-note"><strong>Link preview:</strong> the public TradingFiew chart image is included when supported by the receiving app. Some apps cache the first preview.</p>
+    </div>
+  </div>
   <div id="donateModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="donateTitle">
     <div class="modal-card crypto-modal">
       <button type="button" id="donateCloseBtn" class="modal-close" aria-label="Close donation window">×</button>
@@ -228,6 +258,20 @@
       <div id="donateAddress" class="donate-address" aria-live="polite">Donation wallet not configured yet</div>
       <button type="button" id="copyDonateBtn" class="donate-copy" disabled>Copy wallet address</button></div>
       <p class="donate-warning">Always check that the asset and blockchain network match before sending. Crypto transfers are normally irreversible. No donation is possible until the project owner adds a verified receiving address.</p>
+      <section class="supporters-widget" aria-labelledby="supportersHeading">
+        <div class="supporters-title"><h3 id="supportersHeading">Our supporters</h3><span class="supporters-optional">PUBLIC NAMES · OPT-IN ONLY</span></div>
+        <p class="supporters-note">Only donors who explicitly request public credit and are confirmed by the project owner appear here. Anonymous donations are never identified.</p>
+        <div id="supportersList" class="supporters-list" aria-live="polite"><span class="supporters-empty">No public supporters yet · You can donate anonymously</span></div>
+        <label class="supporter-consent"><input type="checkbox" id="supporterNameOptIn"> <span>I want to be publicly credited by name (optional)</span></label>
+        <div id="supporterForm" class="supporter-form" hidden>
+          <label for="supporterDisplayName">Public display name / pseudonym</label>
+          <input type="text" id="supporterDisplayName" maxlength="42" autocomplete="off" placeholder="Name you'd like to show">
+          <p>Your chosen display name can be shown on this public website. You can also remain anonymous. Do not include your wallet address or other private information.</p>
+          <button type="button" id="requestPublicCreditBtn">Request public credit</button>
+          <small id="supporterFormStatus" role="status" aria-live="polite"></small>
+          <small class="supporter-process-note">A GitHub account is needed to submit the optional public-credit request. This site itself requires no account or password; approval is manual, and donating does not automatically post your name.</small>
+        </div>
+      </section>
       <button type="button" id="donateDoneBtn" class="donate-dismiss">Close</button>
     </div>
   </div>

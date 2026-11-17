@@ -82,6 +82,17 @@ async function requestJSON(url,{signal,timeoutMs=12000}={}){
     signal?.removeEventListener("abort",abort);
   }
 }
+/* Only confirmed bars may drive SMC, trend bias, EMA or RSI.
+ * A late or suspended feed may contain NO open bar; do not blindly delete
+ * its latest genuinely completed observation. */
+const FRAME_SECONDS=Object.freeze({"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400});
+function completedBars(bars,tf,provider,nowSeconds=Math.floor(Date.now()/1000)){
+  if(!Array.isArray(bars)||!FRAME_SECONDS[tf])return [];
+  const length=FRAME_SECONDS[tf];
+  if(provider==="binance")
+    return bars.filter(b=>Number.isFinite(b?.time)&&b.time+length<=nowSeconds);
+  return bars.filter(b=>b?.isOpen===false&&Number.isFinite(b?.time));
+}
 async function candles(symbol,tf,limit=650,signal){
 const c=get(symbol);if(!c)throw Error("Unknown market "+symbol);
 let out=[];
@@ -109,5 +120,5 @@ const t=await requestJSON("https://data-api.binance.vision/api/v3/ticker/24hr?sy
 }
 const t=await requestJSON("https://biquote.io/api/"+encodeURIComponent(symbol),{signal,timeoutMs:9000});return {price:Number(t.mid),high:Number(t.high),low:Number(t.low),change:Number(t.dayDiffPercent),volume:null,marketState:t.marketState||"unknown",stale:!!t.stale,quoteAt:Date.parse(t.timestamp||t.lastQuoteAt)/1000,source:t.source||"MT5"};
 }
-root.TradingFiewMarkets={instruments,get,candles,quote,normalize,version:"1.2.0"};
+root.TradingFiewMarkets={instruments,get,candles,quote,normalize,completedBars,version:"1.3.0"};
 })(window);

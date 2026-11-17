@@ -33,25 +33,68 @@ const instruments=[
 ];
 const map=new Map(instruments.map(x=>[x.symbol,x]));
 const get=symbol=>map.get(symbol)||null;
+/* Reject malformed, stale-future and impossible OHLC bars before analysis.
+   When duplicate open times exist, prefer the provider's latest update. */
 function normalize(rows,provider){
-let out=provider==="binance"?rows.map(k=>({time:Math.floor(Number(k[0])/1000),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4]),volume:Number(k[5])})):
-rows.map(b=>({time:Math.floor(Date.parse(b.openTime)/1000),open:Number(b.open),high:Number(b.high),low:Number(b.low),close:Number(b.close),volume:Number(b.volume)>0?Number(b.volume):Number(b.tickVolume)||0,isOpen:!!b.isOpen}));
-out=out.filter(x=>Object.values(x).every(v=>typeof v==="boolean"||Number.isFinite(v))&&x.low>0&&x.high>=x.low).sort((a,b)=>a.time-b.time);
-return out.filter((x,i)=>i===0||x.time!==out[i-1].time);
+  if(!Array.isArray(rows))throw Error("Market feed returned invalid candle data");
+  const mapped=provider==="binance"?rows.map(k=>({
+    time:Math.floor(Number(k?.[0])/1000),
+    open:Number(k?.[1]),high:Number(k?.[2]),low:Number(k?.[3]),
+    close:Number(k?.[4]),volume:Number(k?.[5])
+  })):rows.map(b=>{
+    const v=Number(b?.volume),ticks=Number(b?.tickVolume);
+    return {time:Math.floor(Date.parse(b?.openTime)/1000),
+      open:Number(b?.open),high:Number(b?.high),low:Number(b?.low),close:Number(b?.close),
+      volume:Number.isFinite(v)&&v>=0?v:Number.isFinite(ticks)&&ticks>=0?ticks:0,
+      isOpen:b?.isOpen===true};
+  });
+  const ceiling=Math.floor(Date.now()/1000)+86400;
+  const valid=mapped.filter(x=>
+    Number.isSafeInteger(x.time)&&x.time>0&&x.time<=ceiling&&
+    [x.open,x.high,x.low,x.close,x.volume].every(Number.isFinite)&&
+    x.open>0&&x.close>0&&x.low>0&&x.volume>=0&&
+    x.high>=Math.max(x.open,x.close,x.low)&&x.low<=Math.min(x.open,x.close)
+  ).sort((a,b)=>a.time-b.time);
+  const out=[];
+  for(const bar of valid){
+    if(out.at(-1)?.time===bar.time)out[out.length-1]=bar;
+    else out.push(bar);
+  }
+  return out;
+}
+/* Both active cancellation and a hard timeout are respected. */
+async function requestJSON(url,{signal,timeoutMs=12000}={}){
+  const controller=new AbortController();
+  const abort=()=>controller.abort(signal?.reason);
+  if(signal?.aborted)abort();
+  else signal?.addEventListener("abort",abort,{once:true});
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const response=await fetch(url,{signal:controller.signal,cache:"no-store"});
+    if(!response.ok)throw Error("Market feed HTTP "+response.status);
+    return await response.json();
+  }catch(error){
+    if(controller.signal.aborted&&!signal?.aborted)
+      throw Error("Market feed timeout after "+Math.ceil(timeoutMs/1000)+"s");
+    throw error;
+  }finally{
+    clearTimeout(timer);
+    signal?.removeEventListener("abort",abort);
+  }
 }
 async function candles(symbol,tf,limit=650,signal){
 const c=get(symbol);if(!c)throw Error("Unknown market "+symbol);
 let out=[];
 if(c.provider==="biquote"){
 const url="https://biquote.io/api/"+encodeURIComponent(symbol)+"/ohlc?interval="+tf+"&limit="+Math.min(limit,1000);
-const r=await fetch(url,{signal,cache:"no-store"});if(!r.ok)throw Error("Market feed HTTP "+r.status);
-out=normalize((await r.json()).bars||[],"biquote");
+const result=await requestJSON(url,{signal,timeoutMs:15000});
+out=normalize(result?.bars||[],"biquote");
 }else{
 let lastError;
 for(const endpoint of ["https://data-api.binance.vision/api/v3/klines","https://api.binance.com/api/v3/klines"]){
 try{
-const r=await fetch(endpoint+"?symbol="+symbol+"&interval="+tf+"&limit="+Math.min(limit,1000),{signal,cache:"no-store"});
-if(!r.ok)throw Error("Spot feed HTTP "+r.status);out=normalize(await r.json(),"binance");if(out.length>=60)break;
+const bars=await requestJSON(endpoint+"?symbol="+symbol+"&interval="+tf+"&limit="+Math.min(limit,1000),{signal,timeoutMs:12000});
+out=normalize(bars,"binance");if(out.length>=60)break;
 }catch(e){if(e.name==="AbortError")throw e;lastError=e;}
 }
 if(out.length<60&&lastError)throw lastError;
@@ -62,11 +105,9 @@ return out;
 async function quote(symbol,signal){
 const c=get(symbol);if(!c)throw Error("Unknown symbol");
 if(c.provider==="binance"){
-const r=await fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol="+symbol,{signal,cache:"no-store"});if(!r.ok)throw Error("Spot ticker unavailable");
-const t=await r.json();return {price:+t.lastPrice,high:+t.highPrice,low:+t.lowPrice,change:+t.priceChangePercent,volume:+t.quoteVolume,marketState:"open",stale:false,quoteAt:Date.now()/1000,source:"Binance Spot"};
+const t=await requestJSON("https://data-api.binance.vision/api/v3/ticker/24hr?symbol="+symbol,{signal,timeoutMs:9000});return {price:+t.lastPrice,high:+t.highPrice,low:+t.lowPrice,change:+t.priceChangePercent,volume:+t.quoteVolume,marketState:"open",stale:false,quoteAt:Date.now()/1000,source:"Binance Spot"};
 }
-const r=await fetch("https://biquote.io/api/"+encodeURIComponent(symbol),{signal,cache:"no-store"});if(!r.ok)throw Error("Indicative quote unavailable");
-const t=await r.json();return {price:Number(t.mid),high:Number(t.high),low:Number(t.low),change:Number(t.dayDiffPercent),volume:null,marketState:t.marketState||"unknown",stale:!!t.stale,quoteAt:Date.parse(t.timestamp||t.lastQuoteAt)/1000,source:t.source||"MT5"};
+const t=await requestJSON("https://biquote.io/api/"+encodeURIComponent(symbol),{signal,timeoutMs:9000});return {price:Number(t.mid),high:Number(t.high),low:Number(t.low),change:Number(t.dayDiffPercent),volume:null,marketState:t.marketState||"unknown",stale:!!t.stale,quoteAt:Date.parse(t.timestamp||t.lastQuoteAt)/1000,source:t.source||"MT5"};
 }
-root.TradingFiewMarkets={instruments,get,candles,quote,version:"1.1.0"};
+root.TradingFiewMarkets={instruments,get,candles,quote,normalize,version:"1.2.0"};
 })(window);

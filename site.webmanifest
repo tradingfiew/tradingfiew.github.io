@@ -1,0 +1,24 @@
+{
+  "name": "TradingFiew — Charts & Market Alerts",
+  "short_name": "TradingFiew",
+  "description": "Free technical charts, Smart Money Concepts, optional price alerts and Binance Spot order book.",
+  "id": "/",
+  "start_url": "/?symbol=XAUUSD&tf=1h",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1424",
+  "theme_color": "#0b1424",
+  "categories": [
+    "finance",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "./tradingfiew-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

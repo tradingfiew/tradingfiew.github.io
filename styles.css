@@ -1112,3 +1112,28 @@ body.terminal-mode .right-sidebar .analysis-section:first-of-type{margin-top:7px
  .alerts-form-grid{grid-template-columns:1fr}
  .alerts-modal{padding:15px 10px}
 }
+
+
+/* One-tap chart alert tool: preserve chart's real interactive data. */
+.draw-button.alert-draw-button{font-size:19px;line-height:1}
+.draw-button.alert-draw-button.active,.draw-button.alert-draw-button[aria-pressed="true"]{
+ background:rgba(234,186,97,.17)!important;color:#f1c677!important;
+ outline:1px solid rgba(241,198,119,.6);
+}
+.chart-host.chart-alert-mode,.chart-host.chart-alert-mode canvas{cursor:crosshair!important}
+.chart-alert-mode~.zone-overlay{pointer-events:none}
+.alerts-chart-help{
+ font-size:11px!important;line-height:1.75!important;
+ background:rgba(231,182,88,.09);border:1px solid rgba(229,179,92,.28);
+ color:var(--text);border-radius:8px;padding:9px 11px;margin:12px 0 4px
+}
+.alerts-chart-help strong{color:#dfad50}
+body.terminal-mode .chart-alert-mode{touch-action:pan-x pan-y}
+body.terminal-mode .draw-button.alert-draw-button{flex:0 0 auto}
+@media(max-width:730px){
+ .alerts-chart-help{font-size:10px!important}
+ body.terminal-mode .chart-alert-mode~.zone-overlay{pointer-events:none}
+ body.terminal-mode .center-pane .draw-tools .alert-draw-button{
+  width:30px;height:32px;font-size:17px
+ }
+}

@@ -298,7 +298,11 @@ function evaluateAnalysis(symbol,tf,analysis,closed){
   const snapshot={lastTime:last.time,zones:zones.map(z=>({...z})),atr:analysis.atr,structure:analysis.direction};
   priorAnalyses.set(key,snapshot);
   if(!old||!Number.isFinite(old.lastTime)||last.time<=old.lastTime)return;
-  if(!Number.isFinite(previous.time)||previous.time<old.lastTime)return;
+  const frameSeconds={ "5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400 }[tf]||3600;
+  // If many bars passed while the page was suspended, do not infer a fresh
+  // signal from an obsolete zone snapshot.
+  if(!Number.isFinite(previous.time)||previous.time<old.lastTime||
+    last.time-old.lastTime>frameSeconds*3)return;
   const signal=SMC.detect({
     zones:old.zones,previous,latest:last,atr:analysis.atr,
     structure:analysis.direction
@@ -454,7 +458,8 @@ async function beginOtherMarkets(){
     await Promise.allSettled(selection.map(async symbol=>{
       try{
         const t=await Markets.quote(symbol);
-        if(t.marketState==="closed"||t.stale||!Number.isFinite(t.price))return;
+        if(t.marketState!=="open"||t.stale||!Number.isFinite(t.price)||
+          !Number.isFinite(t.quoteAt)||Math.abs(Date.now()/1000-t.quoteAt)>120)return;
         evaluatePrice(symbol,t.price,{fresh:true});
       }catch{}
     }));
@@ -489,6 +494,7 @@ else bind();
 root.TradingFiewAlerts=Object.freeze({
   onPrice:(symbol,price,options)=>evaluatePrice(symbol,price,options),
   onAnalysis:(symbol,tf,analysis,closed)=>evaluateAnalysis(symbol,tf,analysis,closed),
+  watching:(symbol)=>settings.smcEnabled||active().some(a=>a.symbol===symbol),
   open,close
 });
 })(window);

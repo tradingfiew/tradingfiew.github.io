@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20261117-calendar-modal2">
+  <link rel="stylesheet" href="./styles.css?v=20261117-calendar-modal3">
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
@@ -41,7 +41,7 @@
   <script defer src="./workspace.js"></script>
   <script defer src="./alerts.js?v=20261117-menu1"></script>
   <script defer src="./market-panels.js?v=20261117-terminal1"></script>
-  <script defer src="./terminal-ui.js?v=20261117-candle-axis1"></script>
+  <script defer src="./terminal-ui.js?v=20261117-toolbar-more1"></script>
   <script defer src="./app.js?v=20261117-drag-lines1"></script>
   <script defer src="./us-calendar.js?v=20261117-calendar-modal2"></script>
   <script defer src="./adsense.js"></script>
@@ -174,6 +174,16 @@
           <button id="fitBtn" class="toolbar-icon" title="Focus on latest price candles" aria-label="Focus on latest price candles">⇤</button>
           <button id="shareChartBtn" class="toolbar-icon" title="Share this chart" aria-label="Share this chart">↗</button>
           <button id="chartWindowBtn" class="toolbar-icon chart-window-trigger" title="Open chart window (full screen)" aria-label="Open interactive chart window">⤢</button>
+          <div class="chart-more-wrap" id="chartMoreWrap">
+            <button type="button" id="chartMoreBtn" class="toolbar-icon" title="More chart actions" aria-label="More chart actions" aria-controls="chartMoreMenu" aria-expanded="false" aria-haspopup="menu">⋯</button>
+            <div id="chartMoreMenu" class="chart-more-menu" role="menu" hidden>
+              <button type="button" role="menuitem" data-more-chart-action="chartSnapshotBtn">▣ Save chart image</button>
+              <button type="button" role="menuitem" data-more-chart-action="fitBtn">⇤ Focus on latest candles</button>
+              <button type="button" role="menuitem" data-more-chart-action="refreshChartBtn">↻ Refresh chart</button>
+              <button type="button" role="menuitem" data-more-chart-action="csvBtn">⇩ Export OHLCV CSV</button>
+              <button type="button" role="menuitem" data-more-chart-action="shareChartBtn">↗ Share chart</button>
+            </div>
+          </div>
         </div>
 
         <div class="chart-space">

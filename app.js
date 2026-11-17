@@ -93,6 +93,12 @@ $('volumeStripValue').textContent=Number.isFinite(original?.volume)?compact(orig
 function priceGuideColor(){return document.body.classList.contains('light')?'#008f88':'#22d7c1';}
 function updatePrice(v){if(!Number.isFinite(v)||v<=0)return;
 state.activePrice=v;$('lastPrice').textContent=fmt(v);
+try{
+  const market=activeMarket();
+  window.TradingFiewAlerts?.onPrice(state.symbol,v,{
+    fresh:market.provider==='binance'?state.live:state.quoteIsFresh
+  });
+}catch(error){console.warn('Optional price alert processing failed',error);}
 $('updatedAt').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 if(candles){try{const options={price:v,color:priceGuideColor(),lineWidth:1,lineStyle:LW.LineStyle.Solid,axisLabelVisible:true,title:'LAST'};
 if(!lastPriceLine)lastPriceLine=candles.createPriceLine(options);else lastPriceLine.applyOptions(options);
@@ -269,6 +275,8 @@ if(!state.data||state.data.length<65)return;
 try{
 const closed=activeMarket().provider==='binance'?state.data.slice(0,-1):state.data.filter(x=>!x.isOpen);
 state.analysis=Engine.calculate(closed);
+try{window.TradingFiewAlerts?.onAnalysis(state.symbol,state.tf,state.analysis,closed);}
+catch(error){console.warn('Optional SMC alert processing failed',error);}
 renderAnalysis();renderMarkers();drawZones();refreshRsi();
 $('analysisDot').className='status-dot online';$('analysisLabel').textContent='Analyzed '+closed.length+' confirmed candles';
 $('smcAsOf').textContent=date(closed.at(-1).time);

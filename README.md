@@ -69,3 +69,13 @@ The top-right **⤢ Chart Window** button opens the same live interactive chart 
 
 **Privacy limitation:** a GitHub Pages static app cannot identify or authenticate people without a server. Separate browser profiles/devices have separate local data; two people sharing **the same browser profile** can see its saved drawings, even with the anonymous ID. Use separate browser profiles for genuine separation without passwords. There is no cloud synchronization, account recovery, remote data upload or encryption guarantee for localStorage. Never store secret keys in the workspace.
 
+
+## Binance Spot Order Book & 5-frame trend matrix
+
+The Smart Money sidebar includes a **verified public-market-data** Order Book for Binance Spot cryptocurrency pairs. The book uses Binance's `@depth20` partial-depth WebSocket stream (top 20 price levels on each side), displays the nearest 10 bids and 10 asks, and shows spread, aggregate visible bid/ask quantity and the UTC time a snapshot was received. If WebSocket cannot connect, the interface falls back to actual `GET /api/v3/depth` snapshots (20 levels) approximately every 12 seconds. Partial book liquidity is not the entire exchange book, can change instantly, and bid/ask imbalance is NOT a reliable forecast or trading signal.
+
+For gold, silver, FX, indices, oil and other indicative MT5/CFD or aggregated markets **no exchange order book is available from the site's present provider**. The interface explicitly says unavailable rather than inventing bid and ask volume.
+
+Trend by timeframe independently downloads completed market candles for **5m / 15m / 1h / 4h / 1d**, runs the SMC analysis and EMA20 / EMA50 / price / RSI alignment heuristics, and reports bullish, bearish or ranging, or unavailable for unverified data. The dashboard refreshes the signals about every 90 seconds while visible; its output is educational context only, not a probability, an executable order or investment advice. Closed or delayed markets may retain the last historical trend.
+
+Sources: [Binance Spot WebSocket partial-depth streams](https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md), [Binance market data only](https://github.com/binance/binance-spot-api-docs/blob/master/faqs/market_data_only.md).

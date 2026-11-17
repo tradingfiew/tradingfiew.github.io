@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20261117-drag-lines1">
+  <link rel="stylesheet" href="./styles.css?v=20261117-calendar-modal2">
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
@@ -43,7 +43,7 @@
   <script defer src="./market-panels.js?v=20261117-terminal1"></script>
   <script defer src="./terminal-ui.js?v=20261117-candle-axis1"></script>
   <script defer src="./app.js?v=20261117-drag-lines1"></script>
-  <script defer src="./us-calendar.js?v=20261117-1"></script>
+  <script defer src="./us-calendar.js?v=20261117-calendar-modal2"></script>
   <script defer src="./adsense.js"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
   <script defer src="./share.js?v=20261117-3"></script>
@@ -58,7 +58,7 @@
       <nav class="topnav" aria-label="Primary">
         <a class="selected" href="#terminal">Terminal</a>
         <a href="#analysisPanel">Smart Money</a>
-        <a href="#usEconomicCalendar">US News</a>
+        <button type="button" id="usCalendarNavBtn" class="nav-link us-calendar-trigger" aria-haspopup="dialog" aria-controls="usEconomicCalendar" aria-expanded="false">US News</button>
         <button id="guideBtn" class="nav-link" type="button">How it works</button>
       </nav>
       <div class="header-actions">
@@ -166,6 +166,7 @@
           </div>
           <button id="autoSmcBtn" class="toolbar-button active-tool">✧ Auto SMC <span id="smcSwitchDot" class="small-green-dot"></span></button>
           <div class="toolbar-spacer"></div>
+          <button type="button" id="usCalendarChartBtn" class="toolbar-icon us-calendar-trigger us-calendar-chart-trigger" aria-label="Open US economic calendar" aria-haspopup="dialog" aria-controls="usEconomicCalendar" aria-expanded="false" title="US economic calendar: upcoming releases and results"><svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3M14 14h3M8 18h3"/></svg></button>
           <button type="button" id="alertsChartBtn" class="toolbar-icon" title="Create or manage alerts" aria-label="Create or manage alerts"><svg class="alert-icon-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button>
           <button id="csvBtn" class="toolbar-icon" title="Export OHLCV CSV" aria-label="Export CSV">⇩</button>
           <button id="chartSnapshotBtn" class="toolbar-icon" title="Save chart image" aria-label="Save chart as PNG">▣</button>
@@ -220,7 +221,7 @@
           </div>
           <div class="range-tools">
             <button type="button" id="terminalEventsBtn" aria-pressed="false" aria-controls="terminalEventsPanel" title="Show structure events and key levels">◫ Events</button>
-            <a class="us-news-shortcut" href="#usEconomicCalendar" title="Upcoming and released US economic announcements">🇺🇸 US News</a>
+            <button type="button" id="usCalendarRangeBtn" class="us-news-shortcut us-calendar-trigger" aria-label="Open US economic calendar" title="US economic news calendar" aria-haspopup="dialog" aria-controls="usEconomicCalendar" aria-expanded="false"><svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3M14 14h3M8 18h3"/></svg><span>Calendar</span></button>
             <button type="button" id="terminalInfoBtn" title="Site information and legal notices">ⓘ Info</button>
             <a class="chart-attribution" href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" title="TradingView Lightweight Charts attribution">Lightweight Charts™</a>
             <time id="terminalClock" class="terminal-clock" aria-label="Current UTC time">--:--:-- UTC</time>
@@ -301,16 +302,28 @@
       <button type="button" data-terminal-view="depth" aria-pressed="false"><span>≋</span>Depth</button>
     </nav>
 
-    <section class="us-economic-calendar" id="usEconomicCalendar" aria-labelledby="usEconomicCalendarTitle">
-      <div class="us-economic-heading"><div><div class="eyebrow">UNITED STATES · ECONOMIC EVENTS</div>
-        <h2 id="usEconomicCalendarTitle">🇺🇸 US Economic News &amp; Results</h2>
-        <p>Upcoming US economic releases before announcement, and Actual / Forecast / Previous figures when published by the data provider. Times follow the widget's selected time zone.</p>
-      </div><div class="us-economic-actions"><button type="button" id="refreshUsCalendar">↻ Refresh results</button>
-        <a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener noreferrer">Open on TradingView ↗</a></div></div>
-      <div class="us-economic-legend"><span>🔴 High impact</span><span>🟠 Medium impact</span><span>Actual / Forecast / Previous</span><span id="usCalendarUpdated">Connecting…</span></div>
-      <div id="usEconomicWidget" class="us-economic-widget" aria-label="US economic release calendar by TradingView"><p>Loading US economic calendar…</p></div>
-      <p class="us-calendar-attribution">Official embed by <a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener nofollow noreferrer">TradingView</a>. Data can arrive with delay or be revised; Forecast and Previous are not newly released Actual values.</p>
-    </section>
+    <dialog id="usEconomicCalendar" class="us-economic-calendar us-calendar-dialog" aria-labelledby="usEconomicCalendarTitle" aria-describedby="usCalendarDescription" aria-modal="true">
+      <div class="us-economic-heading">
+        <div class="us-economic-heading-title">
+          <span class="eyebrow">UNITED STATES · ECONOMIC CALENDAR</span>
+          <h2 id="usEconomicCalendarTitle">US economic releases</h2>
+        </div>
+        <div class="us-economic-actions">
+          <button type="button" id="refreshUsCalendar" title="Reload the latest published releases" aria-label="Refresh US calendar">↻ Refresh</button>
+          <a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener noreferrer" title="Open original economic calendar on TradingView">Source ↗</a>
+          <button type="button" id="closeUsCalendar" class="us-calendar-close" title="Close calendar" aria-label="Close US economic calendar">×</button>
+        </div>
+      </div>
+      <p id="usCalendarDescription" class="us-calendar-description">Scheduled announcements and Actual / Forecast / Previous figures from the publisher.</p>
+      <div class="us-economic-legend" aria-label="Calendar information">
+        <span>🔴 High impact</span><span>🟠 Medium impact</span>
+        <span id="usCalendarUpdated" role="status" aria-live="polite">Ready</span>
+      </div>
+      <div id="usEconomicWidget" class="us-economic-widget" aria-label="TradingView US economic calendar">
+        <p>Open the calendar to load scheduled releases and published results.</p>
+      </div>
+      <p class="us-calendar-attribution">Calendar powered by <a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener nofollow noreferrer">TradingView</a>. Release times and numbers may be delayed or revised.</p>
+    </dialog>
     <section class="ad-placement ad-placement-banner" data-ad-placement="banner" aria-label="Advertisement space">
       <span class="ad-label">ADVERTISEMENT</span>
       <div class="ad-reserved"><span class="ad-symbol">▤</span><strong>Advertising space</strong><small>Google AdSense placement · Awaiting approval</small></div>

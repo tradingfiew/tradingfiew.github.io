@@ -13,7 +13,7 @@ tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
-let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map();
+let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=82;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
@@ -34,11 +34,40 @@ const c=themeColors();
 return {autoSize:true,width:700,height,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'IBM Plex Mono, monospace',fontSize:10,attributionLogo:false},
 grid:{vertLines:{color:c.grid,style:1},horzLines:{color:c.grid,style:1}},
 crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{color:'#7592ae',style:2,labelBackgroundColor:'#243a54'},horzLine:{visible:false,labelVisible:false}},
-rightPriceScale:{borderColor:c.grid,scaleMargins:{top:.11,bottom:primary ? .23 : .06}},
+rightPriceScale:{borderColor:c.grid,minimumWidth:82,scaleMargins:{top:.11,bottom:primary ? .23 : .06}},
 timeScale:{borderColor:c.grid,timeVisible:true,secondsVisible:false,barSpacing:window.innerWidth<=730?6:8,minBarSpacing:2,rightOffset:window.innerWidth<=730?4:8},
 handleScroll:true,handleScale:true,localization:{locale:'en-US'}};
 }
 function addLine(color,width=1){return chart.addSeries(LW.LineSeries,{color,lineWidth:width,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});}
+/* Chart and RSI must use the same FULL timestamp index and equal plot width.
+ * These module-scope functions are also needed during asynchronous analysis. */
+function alignPriceScaleWidths(){
+  if(!chart||!rsiChart)return;
+  try{
+    const a=chart.priceScale('right'),b=rsiChart.priceScale('right');
+    const target=Math.ceil(Math.max(priceAxisMinimum,a.width(),b.width()));
+    priceAxisMinimum=target;
+    a.applyOptions({minimumWidth:target});
+    b.applyOptions({minimumWidth:target});
+  }catch(error){console.warn('Matching price axes unavailable',error);}
+}
+function synchronizeVisibleRange(source,target,range){
+  if(syncingTimeRanges||!rsiTimelineReady||!range||
+     !Number.isFinite(range.from)||!Number.isFinite(range.to)||!state.data.length)return;
+  try{
+    const existing=target.timeScale().getVisibleLogicalRange();
+    if(existing&&Math.abs(existing.from-range.from)<.02&&Math.abs(existing.to-range.to)<.02)return;
+    syncingTimeRanges=true;
+    target.timeScale().setVisibleLogicalRange(range);
+  }catch(error){console.warn('RSI synchronized range unavailable',error);}
+  finally{syncingTimeRanges=false;}
+}
+function restoreSharedTimeScale(){
+  if(!rsiTimelineReady||!chart||!rsiChart)return;
+  alignPriceScaleWidths();
+  const range=chart.timeScale().getVisibleLogicalRange();
+  if(range)synchronizeVisibleRange(chart,rsiChart,range);
+}
 function setupCharts(){
 if(!LW||!LW.createChart||!LW.CandlestickSeries||!Engine||!Markets)throw new Error('Chart or analysis library unavailable. Check your network and reload.');
 chart=LW.createChart($('chartHost'),chartOptions(405,true));
@@ -46,20 +75,10 @@ candles=chart.addSeries(LW.CandlestickSeries,{upColor:'#36cba1',downColor:'#f264
 vol=chart.addSeries(LW.HistogramSeries,{priceScaleId:'volume',priceFormat:{type:'volume'},lastValueVisible:false,priceLineVisible:false});
 chart.priceScale('volume').applyOptions({scaleMargins:{top:.82,bottom:0}});
 ema20=addLine('#699cf6',2);ema50=addLine('#ecae53',1);ema200=addLine('#a28df0',1);
-rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:{visible:true,borderVisible:false,scaleMargins:{top:.10,bottom:.10}},timeScale:{visible:false,borderVisible:false},grid:{vertLines:{visible:false},horzLines:{color:themeColors().grid}},crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:true,color:'#718da8',style:LW.LineStyle.Dashed,width:1,labelVisible:false},horzLine:{visible:false,labelVisible:false}},handleScroll:true,handleScale:true});
+rsiChart=LW.createChart($('rsiHost'),{...chartOptions(92,false),rightPriceScale:{visible:true,borderVisible:false,minimumWidth:82,scaleMargins:{top:.10,bottom:.10}},timeScale:{visible:false,borderVisible:false},grid:{vertLines:{visible:false},horzLines:{color:themeColors().grid}},crosshair:{mode:LW.CrosshairMode.Normal,vertLine:{visible:true,color:'#718da8',style:LW.LineStyle.Dashed,width:1,labelVisible:false},horzLine:{visible:false,labelVisible:false}},handleScroll:true,handleScale:true});
 rsiSeries=rsiChart.addSeries(LW.LineSeries,{color:'#a998fc',lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
 rsiSeries.createPriceLine({price:70,color:'rgba(245,114,140,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
 rsiSeries.createPriceLine({price:30,color:'rgba(53,208,154,.35)',lineStyle:LW.LineStyle.Dashed,lineWidth:1,axisLabelVisible:false});
-function linkedTimeRange(from,to,range){
-  if(syncingTimeRanges||!range||!Number.isFinite(range.from)||!Number.isFinite(range.to)||!state.data.length)return;
-  try{
-    const existing=to.timeScale().getVisibleLogicalRange();
-    if(existing&&Math.abs(existing.from-range.from)<.015&&Math.abs(existing.to-range.to)<.015)return;
-    syncingTimeRanges=true;
-    to.timeScale().setVisibleLogicalRange(range);
-  }catch(error){console.warn('Linked chart time range unavailable',error);}
-  finally{syncingTimeRanges=false;}
-}
 function linkedCrosshair(param,source){
   if(syncingCrosshair)return;
   const target=source==='main'?rsiChart:chart;
@@ -71,7 +90,9 @@ function linkedCrosshair(param,source){
   const time=typeof param.time==='number'?param.time:null;
   const rsiPoint=source==='main'?rsiPointsByTime.get(time):null;
   const candlePoint=source==='rsi'?state.data.find(d=>d.time===time):null;
-  const value=source==='main'?rsiPoint?.value:candlePoint?.close;
+  // Open bars have no confirmed RSI. This fallback is only a hidden cursor Y
+  // coordinate; it never creates a real RSI value or a trading signal.
+  const value=source==='main'?(rsiPoint?.value??state.analysis?.rsis?.at(-1)?.value??50):candlePoint?.close;
   const series=source==='main'?rsiSeries:candles;
   if(!Number.isFinite(value)){
     try{syncingCrosshair=true;target.clearCrosshairPosition();}catch{}
@@ -86,12 +107,12 @@ function linkedCrosshair(param,source){
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
   scheduleAlertLayout();drawZones();
-  linkedTimeRange(chart,rsiChart,range);
+  synchronizeVisibleRange(chart,rsiChart,range);
   clearTimeout(markerLayoutTimer);
   markerLayoutTimer=setTimeout(()=>{if(state.analysis)renderMarkers();},120);
 });
 rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
-  linkedTimeRange(rsiChart,chart,range);
+  synchronizeVisibleRange(rsiChart,chart,range);
 });
 chart.subscribeCrosshairMove(p=>{
   scheduleAlertLayout();
@@ -278,6 +299,7 @@ catch{chart.timeScale().fitContent();}
 }
 function setCandleData(fit=false){
 if(!state.data.length)return;
+rsiTimelineReady=false;
 candles.setData(state.data.map(({time,open,high,low,close})=>({time,open,high,low,close})));
 vol.setData($('toggleVolume').checked?state.data.map(d=>({time:d.time,value:d.volume,color:d.close>=d.open?'rgba(55,210,160,.19)':'rgba(240,94,125,.19)'})):[]);
 refreshEMAs();
@@ -293,14 +315,20 @@ syncIndicatorLegend();
 function refreshRsi(){
 const show=$('toggleRSI').checked;
 $('rsiPanel').classList.toggle('hidden',!show);
-const points=show&&state.analysis?state.analysis.rsis.map(p=>({time:p.time,value:p.value})):[];
-rsiPointsByTime=new Map(points.map(p=>[p.time,p]));
+// RSI begins after its warmup bars and excludes the live bar. Padding all
+// original candle timestamps with whitespace preserves EXACT logical indexes.
+const source=state.analysis?.rsis||[];
+rsiPointsByTime=new Map(source.filter(p=>Number.isFinite(p.value)).map(p=>[p.time,p]));
+const points=state.data.map(c=>{
+  const rsi=show?rsiPointsByTime.get(c.time):null;
+  return Number.isFinite(rsi?.value)?{time:c.time,value:rsi.value}:{time:c.time};
+});
+rsiTimelineReady=false;
 rsiSeries.setData(points);
-if(show)try{
-  const range=chart.timeScale().getVisibleLogicalRange();
-  if(range)linkedTimeRange(chart,rsiChart,range);
-}catch(error){console.warn('RSI chart relinking unavailable',error);}
+rsiTimelineReady=show&&points.length>0;
+if(show)restoreSharedTimeScale();
 resizeChartWindow();
+if(show)requestAnimationFrame(restoreSharedTimeScale);
 }
 function connectStream(request){
 if(request!==state.request)return;
@@ -1184,6 +1212,8 @@ function resizeChartWindow(){
     if(r.width>80&&r.height>70)chart.resize(Math.floor(r.width),Math.floor(r.height));
     const rsi=$('rsiHost').getBoundingClientRect();
     if(rsi.width>80&&rsi.height>30)rsiChart.resize(Math.floor(rsi.width),Math.floor(rsi.height));
+    alignPriceScaleWidths();
+    if(rsiTimelineReady)restoreSharedTimeScale();
     drawZones();
   }catch(error){console.warn('Chart window resizing issue',error);}
 }

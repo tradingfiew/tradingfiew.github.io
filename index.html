@@ -69,7 +69,7 @@
         <button type="button" id="workspaceBtn" class="workspace-entry" title="My saved browser workspace" aria-haspopup="dialog" aria-controls="workspaceModal"><span aria-hidden="true">◉</span><span class="workspace-name">My Space</span></button>
         <button type="button" id="donateBtn" class="donate-header" aria-haspopup="dialog" aria-controls="donateModal"><span class="donate-symbol">₿</span><span>Donate</span><span class="donate-crypto">Crypto</span></button>
         <span class="session-tag"><span id="liveDot" class="status-dot"></span><span id="connectionState">CONNECTING</span></span>
-        <button class="icon-button" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">☾</button>
+        <button type="button" class="icon-button theme-switch" id="themeBtn" title="Switch to Day theme" aria-label="Switch to Day theme" aria-pressed="false"><span id="themeIcon" aria-hidden="true">☀</span><span id="themeLabel">Day</span></button>
         <button class="header-button" id="refreshBtn">↻ <span>Refresh</span></button>
       </div>
     </header>
@@ -145,12 +145,20 @@
           <div class="toolbar-menu">
             <button id="indicatorsBtn" class="toolbar-button">◈ Indicators <span class="chevron">⌄</span></button>
             <div class="dropdown" id="indicatorMenu">
-              <label><input type="checkbox" id="toggleEMA" checked> EMA 20 / 50 / 200</label>
+              <div class="indicator-group-heading">Moving averages</div>
+              <label><input type="checkbox" id="toggleEMA20" checked> <i class="legend-dot ema20"></i> EMA 20</label>
+              <label><input type="checkbox" id="toggleEMA50" checked> <i class="legend-dot ema50"></i> EMA 50</label>
+              <label><input type="checkbox" id="toggleEMA200" checked> <i class="legend-dot ema200"></i> EMA 200</label>
               <label><input type="checkbox" id="toggleVolume" checked> Volume</label>
               <label><input type="checkbox" id="toggleRSI" checked> RSI (14)</label>
+              <div class="indicator-group-heading">Structure overlays</div>
               <label><input type="checkbox" id="toggleZones" checked> SMC Zones</label>
+              <label><input type="checkbox" id="toggleBullishFvg" checked> <i class="legend-dot bullish"></i> Green demand / FVG</label>
+              <label><input type="checkbox" id="toggleBearishFvg" checked> <i class="legend-dot bearish"></i> Red supply / FVG</label>
               <label><input type="checkbox" id="toggleMarkers" checked> Structure markers</label>
               <label><input type="checkbox" id="toggleSR" checked> Support / Resistance</label>
+              <label><input type="checkbox" id="toggleAlertLines" checked> Alert price guides</label>
+              <p class="indicator-price-note">Current price line is always shown.</p>
               <label class="optional-alert-menu"><input type="checkbox" id="toggleBreakoutAlerts"> SMC zone breakout alerts (optional)</label>
             </div>
           </div>
@@ -476,6 +484,6 @@
       <button type="button" id="donateDoneBtn" class="donate-dismiss">Close</button>
     </div>
   </div>
-  <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a market and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Set a phone or computer price alert directly on the chart:</b> tap the left-side 🔔 tool, then tap any price level on the live chart. An alert is saved immediately with a thin amber dotted line; tap the Cursor tool to finish. Desktop users can also right-click anywhere inside the chart. Open the top 🔔 Alerts manager to pause, resume, or delete alerts, to test the sound, or to grant phone notifications. Notifications only run while TradingFiew is running (a separate push backend would be needed after closing it).</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Tap any custom drawing to select it and press Delete, or open Manage Drawings (☷) to delete an individual line or Fibonacci level. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical crypto candles use Binance Spot data; the prices and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
+  <div id="guideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="guideTitle"><div class="modal-card"><button id="closeGuideBtn" class="modal-close" aria-label="Close guide">×</button><div class="eyebrow">TERMINAL GUIDE</div><h2 id="guideTitle">Read the chart. Don't chase the chart.</h2><p>Choose a market and timeframe. The SMC engine works on <b>confirmed swing pivots</b>, labeling structure breaks (BOS), changes of character (CHoCH), three-candle Fair Value Gaps, order block candidates and liquidity sweeps.</p><p><b>Set a phone or computer price alert directly on the chart:</b> tap the left-side 🔔 tool, then tap any price level on the live chart. An alert is saved immediately with a thin amber dotted line; tap the Cursor tool to finish. Desktop users can also right-click anywhere inside the chart. Open the top 🔔 Alerts manager to pause, resume, or delete alerts, to test the sound, or to grant phone notifications. Notifications only run while TradingFiew is running (a separate push backend would be needed after closing it).</p><p><b>Chart + RSI:</b> drag, zoom or move the crosshair in either panel. Both charts track the same time and show the same vertical cursor. Each EMA, SMC zone color, level and alert guide can be shown or hidden independently from Indicators. The current price line stays visible; the label is only the price.</p><p><b>Draw:</b> pick Horizontal, Trend or Fib from the chart toolbar, then click one or two chart points. Click the cursor tool to stop drawing. Tap any custom drawing to select it and press Delete, or open Manage Drawings (☷) to delete an individual line or Fibonacci level. Use the indicators menu for EMA, volume, RSI and overlays.</p><p><b>Prices:</b> historical crypto candles use Binance Spot data; the prices and WebSocket updates. Gold, indices, forex and stocks use indicative broker or aggregated feeds. The market can be closed or stale. No simulated prices.</p><p><b>Important:</b> patterns are historical heuristics and are not verified institutional order flow, investment advice, or a guarantee of profit.</p><button id="guideDoneBtn" class="primary-cta">Got it →</button></div></div>
 </body>
 </html>

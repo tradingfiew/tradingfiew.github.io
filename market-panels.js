@@ -73,7 +73,7 @@
     sideRows("orderBookBids",bids,"bid",max);
     const bid=bids[0].price,ask=asks[0].price,mid=(bid+ask)/2,spread=ask-bid;
     $("orderBookMid").textContent=num(mid,priceDecimals(mid));
-    $("orderBookSpread").textContent="Spread "+num(spread,priceDecimals(mid))+" ("+num(spread/mid*100,3)+"%)";
+    $("orderBookSpread").textContent="Spread "+num(spread,priceDecimals(mid))+" ("+num(spread/mid*100,5)+"%)";
     const buyVolume=bids.reduce((sum,x)=>sum+x.qty,0),sellVolume=asks.reduce((sum,x)=>sum+x.qty,0);
     const buyPct=(buyVolume+sellVolume)?buyVolume/(buyVolume+sellVolume)*100:50;
     $("orderBookBidLabel").textContent="Bids "+buyPct.toFixed(1)+"%";

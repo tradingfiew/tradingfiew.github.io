@@ -171,6 +171,7 @@ function startQuotePolling(request){
 function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 const request=++state.request;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
+try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
 try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;clearSrGuides();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
@@ -180,6 +181,7 @@ const rows=await fetchCandles(state.symbol,state.tf,650,state.controller.signal)
 state.data=rows;setCandleData(true);restoreDrawings();setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
 analyze();fetchTicker(state.symbol,request);fetchHigherTimeframe(request);connectStream(request);
 if(fit)focusRecentCandles();
+try{window.TradingFiewTerminalUI?.restoreRange?.();}catch(error){console.warn('Saved history range could not be restored',error);}
 try{history.replaceState(null,'',location.pathname+'?symbol='+state.symbol+'&tf='+state.tf);}catch{}
 }catch(e){if(e.name==='AbortError'||request!==state.request)return;loading('Market data unavailable',e.message,true);connection('OFFLINE','Unable to fetch public exchange data');toast('Cannot load market data. Try another network or refresh.',true);}
 }
@@ -837,6 +839,99 @@ document.addEventListener('keydown',e=>{
   }
 });
 }
+
+/* Public UI API: keeps chart internals private while allowing a standalone
+ * viewport terminal to control visible history, resizing and exports. */
+function terminalRange(range,{silent=false}={}){
+  if(!chart||state.data.length<2)return false;
+  const values={"1D":86400,"5D":432000,"1M":2592000,"3M":7776000,"6M":15552000,"1Y":31536000};
+  const last=state.data.length-1;
+  try{
+    if(range==="ALL"){
+      chart.timeScale().fitContent();
+      return true;
+    }
+    if(!Object.hasOwn(values,range)&&range!=="YTD")return false;
+    const lastTime=state.data[last].time;
+    const cutoff=range==="YTD"?
+      Date.UTC(new Date(lastTime*1000).getUTCFullYear(),0,1)/1000:
+      lastTime-values[range];
+    const from=state.data.findIndex(c=>c.time>=cutoff);
+    const index=Math.max(0,from);
+    const number=last-index+1;
+    const first=state.data[0].time;
+    chart.timeScale().setVisibleLogicalRange({
+      from:Math.max(0,index-1),to:last+4
+    });
+    if(!silent&&cutoff<first){
+      toast("Showing the full "+state.data.length+" available candles. More historical data isn't loaded for this timeframe.");
+    }else if(!silent&&number<3){
+      toast("Only "+number+" confirmed candles available in the selected period.");
+    }
+    return true;
+  }catch(error){
+    console.warn("Visible history range unavailable",error);
+    return false;
+  }
+}
+function terminalScreenshot(){
+  if(!chart||!state.data.length){toast("Open a loaded chart to save an image.",true);return;}
+  try{
+    const main=chart.takeScreenshot(false,false);
+    if(!main||!main.width||!main.height)throw Error("Chart capture unavailable");
+    const showRsi=!$("rsiPanel").classList.contains("hidden");
+    const bottom=showRsi?rsiChart.takeScreenshot(false,false):null;
+    const scale=Math.max(.75,main.width/Math.max(1,$("chartHost").getBoundingClientRect().width));
+    const header=Math.round(62*scale),footer=Math.round(43*scale),rsiHeight=bottom?.height||0;
+    const output=document.createElement("canvas");output.width=main.width;
+    output.height=header+main.height+rsiHeight+footer;
+    const ctx=output.getContext("2d");
+    if(!ctx)throw Error("Canvas unavailable");
+    const bg=state.dark?"#0c1322":"#f7f9fc",fg=state.dark?"#e3edfc":"#172436";
+    ctx.fillStyle=bg;ctx.fillRect(0,0,output.width,output.height);
+    const inset=Math.round(15*scale);
+    ctx.textBaseline="middle";
+    ctx.fillStyle=fg;ctx.font="bold "+Math.round(18*scale)+"px sans-serif";
+    ctx.fillText("TradingFiew  •  "+state.symbol+"  •  "+state.tf.toUpperCase(),inset,Math.round(21*scale));
+    ctx.fillStyle=state.dark?"#99acc3":"#617184";
+    ctx.font=Math.round(10*scale)+"px monospace";
+    ctx.fillText("Market research  ·  "+new Date().toISOString().slice(0,19).replace("T"," ")+" UTC",
+      inset,Math.round(46*scale));
+    ctx.drawImage(main,0,header);
+    // Overlaid FVG/OB regions are a separate canvas; include them explicitly.
+    if(zoneCanvas?.width>0&&zoneCanvas?.height>0)ctx.drawImage(zoneCanvas,0,header,main.width,main.height);
+    if(bottom)ctx.drawImage(bottom,0,header+main.height,main.width,rsiHeight);
+    ctx.fillStyle=state.dark?"#9eafc4":"#586780";
+    ctx.font=Math.round(9*scale)+"px sans-serif";
+    ctx.fillText("TradingFiew  •  Charts by TradingView Lightweight Charts™  •  Indicative data where applicable",
+      inset,output.height-Math.round(18*scale),output.width-inset*2);
+    output.toBlob(blob=>{
+      if(!blob){toast("Chart image could not be generated.",true);return;}
+      const url=URL.createObjectURL(blob),link=document.createElement("a");
+      link.href=url;link.download="TradingFiew_"+state.symbol+"_"+state.tf+"_"+new Date().toISOString().slice(0,10)+".png";
+      document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1500);
+      toast("Chart PNG saved, including price history and technical analysis.");
+    },"image/png");
+  }catch(error){
+    console.warn("Chart capture error",error);
+    toast("This browser could not capture the chart. Try the Share link instead.",true);
+  }
+}
+function terminalSnapshot(){
+  const market=activeMarket();
+  return {
+    symbol:state.symbol,tf:state.tf,provider:market.provider,
+    open:market.provider==="binance"?state.live:state.quoteIsFresh,
+    candleTime:state.data.at(-1)?.time||null
+  };
+}
+window.TradingFiewChartAPI=Object.freeze({
+  resize:()=>resizeChartWindow(),
+  setRange:terminalRange,
+  getSnapshot:terminalSnapshot,
+  saveScreenshot:terminalScreenshot
+});
 function start(){
 try{
 let responsiveTimer=null;

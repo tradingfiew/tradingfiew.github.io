@@ -1447,3 +1447,41 @@ body.light .live-price-badge[data-fresh="true"][data-range="visible"]{
 @media(max-width:350px){
  .live-price-badge{font-size:10px;letter-spacing:-.4px;min-height:22px}
 }
+
+/* TradingView-style axis marker: live price on the actual line, candle timer below. */
+.live-price-badge{
+  flex-direction:column;align-items:stretch;justify-content:center;gap:0;
+  transform:none;min-height:38px;padding:2px 3px 3px;
+  border:0;border-radius:3px 0 0 3px;
+  background:#098b75;color:#fff;text-align:center;line-height:1.1;
+  font-variant-numeric:tabular-nums;
+}
+.live-price-badge .axis-price{
+  display:block;min-width:0;font:800 12px/16px 'IBM Plex Mono',monospace;
+  white-space:nowrap;letter-spacing:-.3px;
+}
+.live-price-badge .axis-countdown{
+  display:block;min-width:0;font:750 11px/14px 'IBM Plex Mono',monospace;
+  white-space:nowrap;letter-spacing:.15px;
+}
+.live-price-badge[data-direction="down"][data-fresh="true"][data-range="visible"]{
+  background:#f23645;color:#fff;
+}
+.live-price-badge[data-direction="up"][data-fresh="true"][data-range="visible"]{
+  background:#098b75;color:#fff;
+}
+body.light .live-price-badge[data-direction="down"][data-fresh="true"][data-range="visible"]{
+  background:#d92f40;color:#fff;
+}
+body.light .live-price-badge[data-direction="up"][data-fresh="true"][data-range="visible"]{
+  background:#087e70;color:#fff;
+}
+@media(max-width:730px){
+  .live-price-badge{min-height:36px;padding:2px 2px 2px}
+  .live-price-badge .axis-price{font-size:11px;line-height:15px}
+  .live-price-badge .axis-countdown{font-size:10px;line-height:13px}
+}
+@media(max-width:350px){
+  .live-price-badge .axis-price{font-size:10px;letter-spacing:-.45px}
+  .live-price-badge .axis-countdown{font-size:10px}
+}

@@ -15,7 +15,10 @@ let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanva
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
 let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=88,sharedCrosshairTime=null,livePriceBadgePending=false;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
-let drawingDrag=null,suppressDrawingClickUntil=0;
+let drawingDrag=null,drawGesture=null,suppressDrawingClickUntil=0;
+const FIB_RETRACE=[0,.236,.382,.5,.618,.786,.886,1];
+const FIB_EXTEND=[0,.236,.382,.5,.618,.786,1,1.272,1.618,2,2.618];
+const DRAW_MODES=['cursor','alert','horizontal','vertical','trend','fib','fibext','rectangle','measure'];
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -178,6 +181,7 @@ rsiChart.subscribeCrosshairMove(p=>{
 chart.subscribeClick(onChartClick);
 installChartContextHandlers();
 installLineDragging();
+installPrecisionDraw();
 document.addEventListener('tradingfiew:alerts-changed',renderAlertPriceLines);
 zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{
   scheduleAlertLayout();
@@ -1354,74 +1358,259 @@ function installChartContextHandlers(){
   });
   window.addEventListener('resize',hideChartContextMenu,{passive:true});
 }
-function onChartClick(param){
-  if(!param?.point||Date.now()<suppressAlertClickUntil||Date.now()<suppressDrawingClickUntil)return;
-  if(state.drawMode==='alert'){
-    // SubscribeClick covers both mouse and touch. No candle timestamp needed:
-    // tap any visible vertical price level, even on empty future chart space.
-    const price=candles.coordinateToPrice(param.point.y);
-    addChartPriceAlert(price);
-    return;
+
+/* Precision drawing tool: HTML pointer capture avoids LW chart clicks/pans
+ * stealing the gesture, while SVG provides a real preview while moving.
+ * Works with drag-and-release AND click-first / move / click-second. */
+const drawingSvgNS='http://www.w3.org/2000/svg';
+function drawingPos(time,price){
+  const x=chart.timeScale().timeToCoordinate(time);
+  const y=candles.priceToCoordinate(price);
+  return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:null;
+}
+function drawingPriceAt(event,allowAxis=false){
+  if(!chart||!candles||!state.data.length)return null;
+  const host=$('chartHost'),r=host.getBoundingClientRect(),x=event.clientX-r.left,y=event.clientY-r.top;
+  const chartWidth=r.width-chart.priceScale('right').width();
+  if(x<0||y<0||y>=r.height||x>chartWidth-1&&(!allowAxis||x>r.width))return null;
+  let price=candles.coordinateToPrice(y);
+  const logical=chart.timeScale().coordinateToLogical(x);
+  if(!Number.isFinite(price)||price<=0||!Number.isFinite(logical))return null;
+  const idx=Math.max(0,Math.min(state.data.length-1,Math.round(logical)));
+  const bar=state.data[idx];
+  if(!bar)return null;
+  if(event.shiftKey){
+    const snap=[bar.open,bar.high,bar.low,bar.close].map(v=>({v,d:Math.abs(candles.priceToCoordinate(v)-y)}))
+       .sort((a,b)=>a.d-b.d)[0];
+    if(snap&&snap.d<=24)price=snap.v;
   }
-  if(state.drawMode==='cursor'){
-    const hit=drawingHitTest(param.point);
-    if(hit)selectDrawing(hit.id,hit.fraction);
-    else if(state.selectedDrawingId!==null){resetDrawingSelection();renderDrawingPanel();}
-    return;
+  return {x:Math.max(0,Math.min(chartWidth,x)),y:candles.priceToCoordinate(price),time:bar.time,price};
+}
+function svgLine(x1,y1,x2,y2,color,klass='draw-guide',width=1.5){
+  if(![x1,y1,x2,y2].every(Number.isFinite))return '';
+  return '<line class="'+klass+'" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+
+    '" stroke="'+color+'" stroke-width="'+width+'"/>';
+}
+function svgCircle(x,y,color){
+  if(![x,y].every(Number.isFinite))return '';
+  return '<circle class="draw-anchor" cx="'+x+'" cy="'+y+'" r="4.4" fill="#0c192b" stroke="'+color+'"/>';
+}
+function svgLabel(x,y,value,color='#cde1ff'){
+  if(![x,y].every(Number.isFinite))return '';
+  return '<text class="draw-tag" x="'+x+'" y="'+Math.max(12,y)+'" fill="'+color+'">'+String(value)+'</text>';
+}
+function shapeMarkup(mode,points,w,h,highlight=false){
+  const a=points?.[0],b=points?.[1],p=drawingPos(a?.time,a?.price),q=b?drawingPos(b.time,b.price):null;
+  if(!p)return '';
+  const color=highlight?'#ffd668':'#62aeff',r=4;
+  if(mode==='vertical')return svgLine(p.x,0,p.x,h,'#c2a0fa','draw-vertical')+svgCircle(p.x,p.y,'#c2a0fa');
+  if(!q)return '';
+  if(mode==='rectangle'){
+    const x=Math.min(p.x,q.x),y=Math.min(p.y,q.y),
+      width=Math.abs(q.x-p.x),height=Math.abs(q.y-p.y);
+    return '<rect class="draw-box" x="'+x+'" y="'+y+'" width="'+width+'" height="'+height+
+      '" stroke="'+color+'"/>'+svgCircle(p.x,p.y,color)+svgCircle(q.x,q.y,color);
   }
-  const price=candles.coordinateToPrice(param.point.y);
-  const time=param.time||chart.timeScale().coordinateToTime(param.point.x);
-  if(!Number.isFinite(price)||!time)return;
-  if(state.drawMode==='horizontal'){
-    const line=candles.createPriceLine({price,color:'#62aeff',lineWidth:2,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'USER LEVEL'});
-    const drawing={id:++drawingSeq,kind:'price',price,line};
-    state.drawings.push(drawing);
-    selectDrawing(drawing.id);
-    toast('Horizontal level added at '+fmt(price));
-    return;
+  if(mode==='measure'){
+    const diff=b.price-a.price,pct=(diff/a.price*100);
+    const label=(diff>=0?'+':'')+fmt(diff)+' ('+(pct>=0?'+':'')+num(pct,2)+'%)';
+    const x=Math.min(p.x,q.x),y=Math.min(p.y,q.y),bw=Math.abs(q.x-p.x),bh=Math.abs(q.y-p.y);
+    return '<rect class="draw-range-box" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+bh+'"/>'+
+      svgLine(p.x,p.y,q.x,q.y,'#47d7ab')+svgCircle(p.x,p.y,'#47d7ab')+svgCircle(q.x,q.y,'#47d7ab')+
+      svgLabel(Math.min(w-180,Math.max(6,x+5)),Math.max(13,y-5),label,'#66e6bb');
   }
-  if(!state.drawStart){
-    state.drawStart={time,price};
-    $('drawHint').textContent='Select the second point on the chart';
-    return;
+  return '';
+}
+function drawingPreviewMarkup(mode,a,b,w,h){
+  const plotWidth=Math.max(10,w-chart.priceScale('right').width());
+  if(!a)return '';
+  const color='#ffdc72';
+  if(mode==='horizontal'||mode==='alert'){
+    const y=candles.priceToCoordinate(a.price);
+    if(!Number.isFinite(y))return '';
+    return svgLine(0,y,plotWidth,y,color)+svgLabel(8,y-8,(mode==='alert'?'🔔 ':'')+fmt(a.price),color);
   }
-  const start=state.drawStart;state.drawStart=null;
-  if(state.drawMode==='trend'){
-    if(start.time===time){toast('Choose two different candles.',true);return;}
+  if(mode==='vertical')return shapeMarkup(mode,[a],w,h);
+  if(!b)return svgCircle(a.x,a.y,color);
+  if(mode==='trend'){
+    return svgLine(a.x,a.y,b.x,b.y,color)+svgCircle(a.x,a.y,color)+
+      svgCircle(b.x,b.y,color)+svgLabel(Math.min(plotWidth-115,Math.max(10,b.x+9)),b.y-10,fmt(b.price),color);
+  }
+  if(mode==='fib'||mode==='fibext'){
+    let result=svgLine(a.x,a.y,b.x,b.y,'#9e85f6');
+    const fractions=mode==='fib'?FIB_RETRACE:FIB_EXTEND;
+    for(const fraction of fractions){
+      const price=a.price+(b.price-a.price)*fraction;
+      if(price<=0)continue;
+      const y=candles.priceToCoordinate(price);
+      if(!Number.isFinite(y))continue;
+      result+=svgLine(0,y,plotWidth,y,fraction===.618?'#f9bd66':'#a28bff','draw-fib');
+      result+=svgLabel(8,y-4,num(fraction*100,1)+'%  '+fmt(price),fraction===.618?'#f9bd66':'#c2aeff');
+    }
+    return result+svgCircle(a.x,a.y,color)+svgCircle(b.x,b.y,color);
+  }
+  return shapeMarkup(mode,[a,b],w,h);
+}
+function renderDrawingOverlay(){
+  if(!chart||!candles)return;
+  const overlay=$('drawingOverlay'),shapes=$('drawingShapes'),live=$('drawingLive');
+  if(!overlay||!shapes||!live)return;
+  const host=$('chartHost'),w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);
+  overlay.setAttribute('viewBox','0 0 '+w+' '+h);
+  let markup='';
+  for(const d of state.drawings){
+    if(d.kind==='shape')markup+=shapeMarkup(d.shape,d.points,w,h,state.selectedDrawingId===d.id);
+    if(d.kind==='fib'&&d.anchors){
+      const a=drawingPos(d.anchors[0].time,d.anchors[0].price);
+      const b=drawingPos(d.anchors[1].time,d.anchors[1].price);
+      if(a&&b&&state.selectedDrawingId===d.id){
+        markup+=svgLine(a.x,a.y,b.x,b.y,'#d4b2ff')+svgCircle(a.x,a.y,'#ffd668')+svgCircle(b.x,b.y,'#ffd668');
+      }
+    }
+  }
+  shapes.innerHTML=markup;
+  if(state.drawMode==='cursor'){live.replaceChildren();return;}
+  const a=state.drawStart||null,b=drawGesture?.latest||null;
+  if(['horizontal','alert','vertical'].includes(state.drawMode))
+    live.innerHTML=drawingPreviewMarkup(state.drawMode,b||a,b,w,h);
+  else live.innerHTML=drawingPreviewMarkup(state.drawMode,a,b,w,h);
+}
+function scheduleDrawingOverlay(){
+  if(!chart||!candles)return;
+  if(scheduleDrawingOverlay.pending)return;
+  scheduleDrawingOverlay.pending=true;
+  requestAnimationFrame(()=>{scheduleDrawingOverlay.pending=false;renderDrawingOverlay();});
+}
+function addDrawingFromGesture(mode,start,end){
+  if(!Number.isFinite(end?.price)||end.price<=0||!Number.isFinite(end.time))return false;
+  if(mode==='horizontal'){
+    const line=candles.createPriceLine({price:end.price,color:'#62aeff',lineWidth:2,
+      lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'USER LEVEL'});
+    const d={id:++drawingSeq,kind:'price',price:end.price,line};
+    state.drawings.push(d);selectDrawing(d.id);toast('Horizontal level '+fmt(end.price)+' saved.');
+    return true;
+  }
+  if(mode==='alert'){addChartPriceAlert(end.price);return true;}
+  if(mode==='vertical'){
+    const d={id:++drawingSeq,kind:'shape',shape:'vertical',points:[{time:end.time,price:end.price}]};
+    state.drawings.push(d);selectDrawing(d.id);toast('Vertical time marker added.');
+    return true;
+  }
+  if(!start||!['trend','fib','fibext','rectangle','measure'].includes(mode))return false;
+  if(mode==='trend'&&start.time===end.time){toast('Choose points on different candles.',true);return false;}
+  if(['fib','fibext'].includes(mode)&&start.price===end.price){toast('Choose two different prices for Fibonacci.',true);return false;}
+  if(['rectangle','measure'].includes(mode)&&start.time===end.time&&start.price===end.price){
+    toast('Move to a different second point.',true);return false;
+  }
+  const anchors=[{time:start.time,price:start.price},{time:end.time,price:end.price}];
+  if(mode==='trend'){
     const line=addLine('#64b7ff',2);
-    const points=[{time:start.time,value:start.price},{time,value:price}].sort((a,b)=>a.time>b.time?1:-1);
+    const points=anchors.map(p=>({time:p.time,value:p.price})).sort((a,b)=>a.time-b.time);
     line.setData(points);
-    const drawing={id:++drawingSeq,kind:'series',line,points};
-    state.drawings.push(drawing);selectDrawing(drawing.id);toast('Trend line added.');
-  }else if(state.drawMode==='fib'){
-    if(start.price===price){toast('Choose two different prices.',true);return;}
+    const d={id:++drawingSeq,kind:'series',line,points};
+    state.drawings.push(d);selectDrawing(d.id);toast('Trend line saved.');
+  }else if(['fib','fibext'].includes(mode)){
     const levels=[];
-    for(const fraction of [0,.236,.382,.5,.618,.786,1]){
-      const p=start.price+(price-start.price)*fraction;
-      const line=candles.createPriceLine({
-        price:p,color:fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
-        lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'FIB '+(fraction*100).toFixed(1)+'%'
-      });
+    for(const fraction of mode==='fib'?FIB_RETRACE:FIB_EXTEND){
+      const p=start.price+(end.price-start.price)*fraction;
+      if(!Number.isFinite(p)||p<=0)continue;
+      const line=candles.createPriceLine({price:p,
+        color:fraction===.618?'#f9bd66':'rgba(158,133,246,.70)',
+        lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,
+        title:(mode==='fibext'?'EXT ':'FIB ')+num(fraction*100,1)+'%'});
       levels.push({fraction,price:p,line});
     }
-    const drawing={id:++drawingSeq,kind:'fib',lines:levels.map(l=>l.line),levels};
-    state.drawings.push(drawing);selectDrawing(drawing.id);toast('Fibonacci added. Tap a level or Manage drawings to delete it.');
+    if(levels.length<2){toast('These Fibonacci levels are outside positive prices.',true);return false;}
+    const d={id:++drawingSeq,kind:'fib',mode,anchors,levels,lines:levels.map(l=>l.line)};
+    state.drawings.push(d);selectDrawing(d.id);toast(mode==='fibext'?'Fibonacci Extension saved.':'Fibonacci Retracement saved.');
+  }else{
+    const d={id:++drawingSeq,kind:'shape',shape:mode,points:anchors};
+    state.drawings.push(d);selectDrawing(d.id);
+    toast(mode==='measure'?'Price range measured.':'Rectangle saved.');
   }
+  return true;
+}
+function installPrecisionDraw(){
+  const host=$('chartHost');
+  let press=null;
+  const drawingMode=()=>state.drawMode!=='cursor';
+  const stop=(e)=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();};
+  const finish=(mode,a,b)=>{
+    const ok=addDrawingFromGesture(mode,a,b);
+    if(ok){drawGesture=null;state.drawStart=null;suppressDrawingClickUntil=Date.now()+380;}
+    renderDrawingOverlay();
+  };
+  host.addEventListener('pointerdown',e=>{
+    if(!drawingMode()||e.button!==0||!state.data.length)return;
+    const p=drawingPriceAt(e);
+    if(!p)return;
+    const already=!!state.drawStart, mode=state.drawMode;
+    if(!already)state.drawStart=p;
+    press={id:e.pointerId,mode,wasSecond:already,startClientX:e.clientX,startClientY:e.clientY,moved:false};
+    drawGesture={latest:p,mode};
+    try{host.setPointerCapture(e.pointerId);}catch{}
+    renderDrawingOverlay();
+    stop(e);
+  },true);
+  host.addEventListener('pointermove',e=>{
+    if(!drawingMode()||!state.data.length)return;
+    const point=drawingPriceAt(e);
+    if(!point)return;
+    if(press&&press.id===e.pointerId&&Math.hypot(e.clientX-press.startClientX,e.clientY-press.startClientY)>5)
+      press.moved=true;
+    drawGesture={...drawGesture,latest:point,mode:state.drawMode};
+    renderDrawingOverlay();
+    if(press&&press.id===e.pointerId)stop(e);
+  },true);
+  host.addEventListener('pointerup',e=>{
+    if(!drawingMode()||!press||e.pointerId!==press.id)return;
+    const p=drawingPriceAt(e)||drawGesture?.latest||state.drawStart;
+    const mode=press.mode,dragged=press.moved,second=press.wasSecond;
+    press=null;
+    try{host.releasePointerCapture(e.pointerId);}catch{}
+    if(['horizontal','vertical','alert'].includes(mode))finish(mode,null,p);
+    else if(dragged||second)finish(mode,state.drawStart,p);
+    else{
+      $('drawHint').textContent='Move pointer to preview · tap the second point to confirm · Shift snaps to candle OHLC';
+      renderDrawingOverlay();
+    }
+    stop(e);
+  },true);
+  host.addEventListener('pointercancel',e=>{
+    if(!press||press.id!==e.pointerId)return;
+    press=null;drawGesture=null;state.drawStart=null;renderDrawingOverlay();stop(e);
+  },true);
+  host.addEventListener('pointerleave',()=>{if(!press&&!state.drawStart){drawGesture=null;renderDrawingOverlay();}});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){press=null;drawGesture=null;state.drawStart=null;renderDrawingOverlay();}
+  });
+}
+function onChartClick(param){
+  if(state.drawMode!=='cursor'||!param?.point||
+     Date.now()<suppressAlertClickUntil||Date.now()<suppressDrawingClickUntil)return;
+  const hit=drawingHitTest(param.point);
+  if(hit)selectDrawing(hit.id,hit.fraction);
+  else if(state.selectedDrawingId!==null){resetDrawingSelection();renderDrawingPanel();}
 }
 function setDrawMode(mode){
+  if(!DRAW_MODES.includes(mode))mode='cursor';
   hideChartContextMenu();
-  state.drawMode=mode;state.drawStart=null;
+  state.drawMode=mode;state.drawStart=null;drawGesture=null;
+  const host=$('chartHost');
+  host.classList.toggle('chart-alert-mode',mode==='alert');
+  host.classList.toggle('chart-drawing-active',mode!=='cursor');
+  if(chart)chart.applyOptions({handleScroll:mode==='cursor',handleScale:mode==='cursor'});
   document.querySelectorAll('[data-draw]').forEach(b=>{
     const enabled=b.dataset.draw===mode;
     b.classList.toggle('active',enabled);
-    if(b.dataset.draw==='alert')b.setAttribute('aria-pressed',String(enabled));
+    b.setAttribute('aria-pressed',String(enabled));
   });
-  $('chartHost').classList.toggle('chart-alert-mode',mode==='alert');
   $('drawHint').classList.toggle('hidden',mode==='cursor');
-  if(mode!=='cursor')$('drawHint').textContent=mode==='alert'?
-    '🔔 Tap anywhere on the chart to save a price alert · Tap cursor to finish':
-    mode==='horizontal'?'Tap chart to add a horizontal level':'Tap the first point on the chart';
+  if(mode!=='cursor')$('drawHint').textContent=
+    'Press and drag to draw · or tap first point then move and tap second · Shift snaps OHLC';
+  renderDrawingOverlay();
 }
+
 function clearDrawings({forget=true,notice=true}={}){
   const toRemove=[...state.drawings];
   for(const d of toRemove){

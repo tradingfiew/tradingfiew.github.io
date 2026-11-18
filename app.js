@@ -1837,6 +1837,12 @@ function drawingPreviewMarkup(mode,a,b,w,h,c=null){
   const p=drawingPos(a.time,a.price),q=b?drawingPos(b.time,b.price):null;
   if(!p)return '';
   if(!q)return svgCircle(p.x,p.y,color);
+  if(mode==='fibchannel'){
+    if(c)return shapeMarkup('fibchannel',[a,b,c],w,h,true,defaultStyle('fibchannel'));
+    return drawSegment(p.x,p.y,q.x,q.y,{color:'#ad8ff7',width:2,dash:'solid'})+
+      svgCircle(p.x,p.y,color)+svgCircle(q.x,q.y,color)+
+      svgLabel(Math.min(plotWidth-155,q.x+8),q.y-8,'2/3 · choose Fib channel width',color);
+  }
   if(mode==='channel'){
     if(c)return shapeMarkup('channel',[a,b,c],w,h,true,{color:'#62bfff',width:2,dash:'solid'});
     return drawSegment(p.x,p.y,q.x,q.y,{color,width:2,dash:'solid'})+
@@ -1856,6 +1862,7 @@ function drawingPreviewMarkup(mode,a,b,w,h,c=null){
   }
   if(mode==='fib')return svgFibDrawing('fib',[a,b],w,
     {color:'#9e85f6',width:1,dash:'dashed',extend:false},true);
+  if(mode==='fibtime')return fibTimeMarkup([a,b],w,h,defaultStyle('fibtime'),true);
   return shapeMarkup(mode,[a,b],w,h,true);
 }
 function renderDrawingOverlay(){
@@ -1888,7 +1895,7 @@ function renderDrawingOverlay(){
   const staged=drawSequence;
   if(['horizontal','alert','vertical'].includes(state.drawMode))
     live.innerHTML=drawingPreviewMarkup(state.drawMode,current||state.drawStart,current,w,h);
-  else if(['channel','fibext'].includes(state.drawMode)){
+  else if(['channel','fibchannel','fibext'].includes(state.drawMode)){
     if(staged.length===0)live.innerHTML='';
     else if(staged.length===1)
       live.innerHTML=drawingPreviewMarkup(state.drawMode,staged[0],current,w,h);
@@ -1917,11 +1924,22 @@ function addDrawingFromGesture(mode,start,end){
     state.drawings.push(d);selectDrawing(d.id);toast('Vertical time marker added.');
     return true;
   }
-  if(mode==='channel'||mode==='fibext'){
+  if(mode==='channel'||mode==='fibchannel'||mode==='fibext'){
     const points=Array.isArray(start)?[...start,end]:[];
     if(points.length!==3||points.some(p=>!p||!Number.isFinite(p.price)||p.price<=0))return false;
     if(points[0].time===points[1].time){
       toast('A and B must be on different candles.',true);return false;
+    }
+    if(mode==='fibchannel'){
+      const ratios=Geometry.channelLevels(points,time=>{
+        const index=state.data.findIndex(c=>c.time===time);return index<0?null:index;
+      });
+      if(ratios.length<2){toast('Choose valid A, B and C prices for Fibonacci Channel.',true);return false;}
+      const d={id:++drawingSeq,kind:'shape',shape:'fibchannel',points,
+        style:defaultStyle('fibchannel')};
+      state.drawings.push(d);selectDrawing(d.id);
+      toast('Fibonacci Channel · '+ratios.length+' parallel levels saved.');
+      return true;
     }
     if(mode==='channel'){
       const geometry=Geometry.channel(points,time=>{
@@ -1943,8 +1961,8 @@ function addDrawingFromGesture(mode,start,end){
     toast('Trend-based Fibonacci Extension · 3 points saved.');
     return true;
   }
-  if(!start||!['trend','fib','rectangle','measure'].includes(mode))return false;
-  if(mode==='trend'&&start.time===end.time){toast('Choose points on different candles.',true);return false;}
+  if(!start||!['trend','fib','fibtime','rectangle','measure'].includes(mode))return false;
+  if(['trend','fibtime'].includes(mode)&&start.time===end.time){toast('Choose two different candles on the time axis.',true);return false;}
   if(mode==='fib'&&start.price===end.price){toast('Choose different prices for Fibonacci.',true);return false;}
   if(['rectangle','measure'].includes(mode)&&start.time===end.time&&start.price===end.price){
     toast('Move to a different second point.',true);return false;
@@ -1956,6 +1974,16 @@ function addDrawingFromGesture(mode,start,end){
     line.setData(points);
     const d={id:++drawingSeq,kind:'series',line,points,style:defaultStyle('series')};
     state.drawings.push(d);selectDrawing(d.id);toast('Trend line saved.');
+  }else if(mode==='fibtime'){
+    const aIndex=state.data.findIndex(c=>c.time===anchors[0].time),
+      bIndex=state.data.findIndex(c=>c.time===anchors[1].time);
+    if(!Geometry.fibTimeZones(aIndex,bIndex).length){
+      toast('Choose a time range between two different candles.',true);return false;
+    }
+    const d={id:++drawingSeq,kind:'shape',shape:'fibtime',
+      points:anchors,style:defaultStyle('fibtime')};
+    state.drawings.push(d);selectDrawing(d.id);
+    toast('Fibonacci Time Zone · 12 time lines projected.');
   }else if(mode==='fib'){
     const levels=Geometry.levels('fib',anchors,false);
     if(levels.length<2){toast('Retracement is outside positive prices.',true);return false;}
@@ -1975,7 +2003,7 @@ function installPrecisionDraw(){
   const host=$('chartHost');
   let press=null;
   const drawingMode=()=>state.drawMode!=='cursor';
-  const multiMode=()=>['channel','fibext'].includes(state.drawMode);
+  const multiMode=()=>['channel','fibchannel','fibext'].includes(state.drawMode);
   const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();};
   const hint=content=>{$('drawHint').textContent=content;};
   const finish=(mode,start,end)=>{
@@ -2019,12 +2047,12 @@ function installPrecisionDraw(){
     press=null;
     try{host.releasePointerCapture(e.pointerId);}catch{}
     if(['horizontal','vertical','alert'].includes(mode)){finish(mode,null,point);}
-    else if(['channel','fibext'].includes(mode)){
+    else if(['channel','fibchannel','fibext'].includes(mode)){
       if(stage===0){
         if(dragged&&point.time!==drawSequence[0].time){
           drawSequence=[drawSequence[0],point];
-          hint(mode==='channel'?
-            '2/3 → Move mouse to set parallel channel width, then click point C':
+          hint(['channel','fibchannel'].includes(mode)?
+            '2/3 → Move mouse to set channel width, then click point C':
             '2/3 → Move mouse to correction point C; 0% starts at C');
         }else hint('1/3 → Move mouse to mark impulse endpoint B');
       }else if(stage===1){
@@ -2032,7 +2060,7 @@ function installPrecisionDraw(){
           hint('Point B must be on another candle. Choose B again.');
         }else{
           drawSequence=[drawSequence[0],point];
-          hint(mode==='channel'?
+          hint(['channel','fibchannel'].includes(mode)?
             '2/3 → Click C to set channel width':
             '2/3 → Click C to project Fibonacci levels from correction');
         }
@@ -2085,8 +2113,8 @@ function setDrawMode(mode){
   });
   $('drawHint').classList.toggle('hidden',mode==='cursor');
   if(mode!=='cursor')$('drawHint').textContent=
-    ['channel','fibext'].includes(mode)?
-      'Choose A → B impulse (drag or 2 clicks), then click C for '+(mode==='channel'?'channel width':'extension projection'):
+    ['channel','fibchannel','fibext'].includes(mode)?
+      'Choose A → B (drag or 2 clicks), then click C for '+(['channel','fibchannel'].includes(mode)?'channel width':'extension projection'):
       'Press and drag · or click first and second points · Shift snaps OHLC';
   renderDrawingOverlay();
 }

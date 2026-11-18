@@ -4,8 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -25,11 +23,8 @@ public final class NaturalTransitionActivity extends Activity {
         }
         String host = request.getHost();
         if ("open-calendar".equals(host)) {
-            // Watchdog: never trap the user behind a failed ad SDK.
-            new Handler(Looper.getMainLooper()).postDelayed(this::resumeCalendar, 5000);
             AdMobInterstitialController.onNaturalTransition(this, this::resumeCalendar);
         } else if ("privacy-options".equals(host)) {
-            new Handler(Looper.getMainLooper()).postDelayed(this::resumeToApp, 5000);
             AdMobInterstitialController.showPrivacyOptions(this, this::resumeToApp);
         } else {
             finish();

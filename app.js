@@ -1647,6 +1647,83 @@ function drawSegment(x1,y1,x2,y2,style,klass='draw-guide'){
     '" y2="'+y2+'" stroke="'+st.color+'" stroke-width="'+st.width+
     '" stroke-dasharray="'+dashArray(st)+'" vector-effect="non-scaling-stroke"/>';
 }
+
+/* Three-point Fibonacci Channel: ratios are parallel to A-B, and level 1
+ * passes through C. Intervals use bar INDEX so sessions/weekends do not
+ * introduce geometric drift. */
+function fibChannelMarkup(points,w,h,style,selected=false){
+  if(!Array.isArray(points)||points.length!==3)return '';
+  const st=safeStyle(style,'fibchannel');
+  if(st.hidden)return '';
+  const coords=points.map(p=>drawingPos(p.time,p.price));
+  if(coords.some(p=>!p))return '';
+  const x1=coords[0].x,x2=coords[1].x,dx=x2-x1;
+  if(Math.abs(dx)<1)return '';
+  const plotRight=Math.max(10,w-chart.priceScale('right').width()-3);
+  const source=Geometry.channelLevels(points,t=>{
+    const index=state.data.findIndex(b=>b.time===t);
+    return index<0?null:index;
+  });
+  if(!source.length)return '';
+  const anchorMin=Math.min(x1,x2),anchorMax=Math.max(x1,x2);
+  const left=Math.max(0,anchorMin),right=st.extend?plotRight:Math.min(plotRight,anchorMax);
+  if(right<=left)return '';
+  const atFraction=(r,x)=>{
+    const a=r.points[0].price,b=r.points[1].price;
+    const price=a+(b-a)*(x-x1)/dx;
+    return price>0?candles.priceToCoordinate(price):null;
+  };
+  let rendered='';
+  const base=source.find(x=>x.fraction===0),outer=source.find(x=>x.fraction===1);
+  if(base&&outer){
+    const y0l=atFraction(base,left),y0r=atFraction(base,right);
+    const y1l=atFraction(outer,left),y1r=atFraction(outer,right);
+    if([y0l,y0r,y1l,y1r].every(Number.isFinite)){
+      rendered+='<polygon class="fib-channel-shade" points="'+
+        [left+','+y0l,right+','+y0r,right+','+y1r,left+','+y1l].join(' ')+'"/>';
+    }
+  }
+  for(const row of source){
+    const yl=atFraction(row,left),yr=atFraction(row,right);
+    if(!Number.isFinite(yl)||!Number.isFinite(yr))continue;
+    rendered+=drawSegment(left,yl,right,yr,{
+      ...st,color:row.fraction===1?'#ead88e':st.color
+    },'fib-channel-level');
+    const lx=Math.min(right-90,Math.max(left+5,(left+right)*.5));
+    const ly=yl+(yr-yl)*(lx-left)/(right-left);
+    if(Number.isFinite(ly))rendered+=svgLabel(lx,ly-5,
+      num(row.fraction*100,1)+'%',row.fraction===1?'#ead88e':st.color);
+  }
+  if(selected)for(const pt of coords)rendered+=svgCircle(pt.x,pt.y,'#ffd668');
+  return rendered;
+}
+/* Two-point Fibonacci Time Zone — ratios 0,1,2,3,5,8,... apply to
+ * candle-slot separation. Prices affect only the two draggable handles;
+ * drawn levels are vertical and use no price-projection formula. */
+function fibTimeMarkup(points,w,h,style,selected=false){
+  if(!Array.isArray(points)||points.length!==2)return '';
+  const st=safeStyle(style,'fibtime');
+  if(st.hidden)return '';
+  const anchors=points.map(p=>drawingPos(p.time,p.price));
+  if(anchors.some(p=>!p)||Math.abs(anchors[1].x-anchors[0].x)<1)return '';
+  const aIndex=state.data.findIndex(b=>b.time===points[0].time),
+    bIndex=state.data.findIndex(b=>b.time===points[1].time);
+  if(aIndex<0||bIndex<0)return '';
+  const zones=Geometry.fibTimeZones(aIndex,bIndex);
+  if(!zones.length)return '';
+  const pxPerBar=(anchors[1].x-anchors[0].x)/(bIndex-aIndex);
+  const plotRight=Math.max(10,w-chart.priceScale('right').width()-3);
+  let rendered='';
+  for(const zone of zones){
+    const x=anchors[0].x+pxPerBar*(zone.index-aIndex);
+    if(!Number.isFinite(x)||x<0||x>plotRight)continue;
+    rendered+=drawSegment(x,16,x,Math.max(20,h-24),st,'fib-time-zone');
+    rendered+=svgLabel(Math.max(5,Math.min(plotRight-35,x+4)),15,
+      String(zone.fraction),st.color);
+  }
+  if(selected)for(const pt of anchors)rendered+=svgCircle(pt.x,pt.y,'#ffd668');
+  return rendered;
+}
 function shapeMarkup(mode,points,w,h,highlight=false,rawStyle=null){
   const st=safeStyle(rawStyle,mode==='channel'?'channel':'shape');
   if(st.hidden)return '';
@@ -1657,6 +1734,8 @@ function shapeMarkup(mode,points,w,h,highlight=false,rawStyle=null){
     return drawSegment(p.x,0,p.x,h,{...st,dash:st.dash==='solid'?'dashed':st.dash},'draw-vertical')+
       (highlight?svgCircle(p.x,p.y,selection):'');
   if(!q)return '';
+  if(mode==='fibchannel')return fibChannelMarkup(points,w,h,st,highlight);
+  if(mode==='fibtime')return fibTimeMarkup(points,w,h,st,highlight);
   if(mode==='channel'){
     const geometry=Geometry.channel(points,time=>{
       const index=state.data.findIndex(c=>c.time===time);

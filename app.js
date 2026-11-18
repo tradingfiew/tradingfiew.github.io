@@ -907,9 +907,9 @@ function drawingHitTest(point){
   if(!point||!candles||!chart)return null;
   const threshold=window.innerWidth<=730?16:11;
   let best=null;
-  const consider=(id,level,distance)=>{
+  const consider=(id,level,distance,anchorIndex=null)=>{
     if(Number.isFinite(distance)&&distance<=threshold&&(!best||distance<best.distance))
-      best={id,fraction:level,distance};
+      best={id,fraction:level,distance,anchorIndex};
   };
   for(const d of state.drawings){
     try{
@@ -920,6 +920,35 @@ function drawingHitTest(point){
         for(const l of d.levels){
           const y=candles.priceToCoordinate(l.price);
           if(y!==null)consider(d.id,l.fraction,Math.abs(y-point.y));
+        }
+        for(let i=0;i<(d.anchors?.length||0);i++){
+          const p=drawingPos(d.anchors[i].time,d.anchors[i].price);
+          if(p)consider(d.id,null,Math.hypot(p.x-point.x,p.y-point.y),i);
+        }
+      }else if(d.kind==='shape'){
+        const a=drawingPos(d.points[0].time,d.points[0].price);
+        const b=d.points[1]?drawingPos(d.points[1].time,d.points[1].price):null;
+        if(!a)continue;
+        for(let i=0;i<d.points.length;i++){
+          const p=drawingPos(d.points[i].time,d.points[i].price);
+          if(p)consider(d.id,null,Math.hypot(p.x-point.x,p.y-point.y),i);
+        }
+        if(d.shape==='vertical')consider(d.id,null,Math.abs(a.x-point.x));
+        else if(b){
+          const minX=Math.min(a.x,b.x),maxX=Math.max(a.x,b.x),
+            minY=Math.min(a.y,b.y),maxY=Math.max(a.y,b.y);
+          if(point.x>=minX-threshold&&point.x<=maxX+threshold&&
+             point.y>=minY-threshold&&point.y<=maxY+threshold){
+            if(d.shape==='rectangle'){
+              const edge=Math.min(Math.abs(point.x-minX),Math.abs(point.x-maxX),
+                Math.abs(point.y-minY),Math.abs(point.y-maxY));
+              consider(d.id,null,edge);
+            }else{
+              const dx=b.x-a.x,dy=b.y-a.y,den=dx*dx+dy*dy||1,
+                t=Math.max(0,Math.min(1,((point.x-a.x)*dx+(point.y-a.y)*dy)/den));
+              consider(d.id,null,Math.hypot(point.x-a.x-t*dx,point.y-a.y-t*dy));
+            }
+          }
         }
       }else if(d.kind==='series'&&d.points?.length===2){
         const [a,b]=d.points;

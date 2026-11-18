@@ -1661,11 +1661,28 @@ function shapeMarkup(mode,points,w,h,highlight=false,rawStyle=null){
     const upA=drawingPos(geometry.upper[0].time,geometry.upper[0].price);
     const upB=drawingPos(geometry.upper[1].time,geometry.upper[1].price);
     if(!upA||!upB)return '';
+    let lowerEnd=q,upperEnd=upB;
+    if(st.extend&&Math.abs(q.x-p.x)>1){
+      const plotRight=Math.max(10,w-chart.priceScale('right').width()-3);
+      const t=(plotRight-p.x)/(q.x-p.x);
+      const rightPrice=a.price+t*(b.price-a.price);
+      const upperPrice=rightPrice+geometry.offset;
+      const rightY=candles.priceToCoordinate(rightPrice);
+      const upperY=candles.priceToCoordinate(upperPrice);
+      if(rightPrice>0&&upperPrice>0&&Number.isFinite(rightY)&&Number.isFinite(upperY)){
+        lowerEnd={x:plotRight,y:rightY};upperEnd={x:plotRight,y:upperY};
+      }
+    }
+    const starts=p.x<=q.x?[p,upA]:[q,upB];
+    const ends=st.extend&&lowerEnd!==q?[lowerEnd,upperEnd]:
+      p.x<=q.x?[q,upB]:[p,upA];
+    const lowStart=starts[0],upStart=starts[1],lowEnd=ends[0],upEnd=ends[1];
     let out='<polygon class="draw-channel-fill" points="'+
-      [p,q,upB,upA].map(v=>v.x+','+v.y).join(' ')+'"/>';
-    out+=drawSegment(p.x,p.y,q.x,q.y,st)+
-      drawSegment(upA.x,upA.y,upB.x,upB.y,st);
-    const midP={x:p.x,y:(p.y+upA.y)/2},midQ={x:q.x,y:(q.y+upB.y)/2};
+      [lowStart,lowEnd,upEnd,upStart].map(v=>v.x+','+v.y).join(' ')+'"/>';
+    out+=drawSegment(lowStart.x,lowStart.y,lowEnd.x,lowEnd.y,st)+
+      drawSegment(upStart.x,upStart.y,upEnd.x,upEnd.y,st);
+    const midP={x:lowStart.x,y:(lowStart.y+upStart.y)/2},
+      midQ={x:lowEnd.x,y:(lowEnd.y+upEnd.y)/2};
     out+=drawSegment(midP.x,midP.y,midQ.x,midQ.y,
       {...st,width:1,dash:'dotted'},'draw-channel-mid');
     if(highlight)for(const anchor of points){

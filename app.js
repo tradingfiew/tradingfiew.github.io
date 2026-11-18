@@ -18,7 +18,7 @@ let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=
 let drawingDrag=null,drawGesture=null,drawSequence=[],suppressDrawingClickUntil=0;
 const FIB_RETRACE=[0,.236,.382,.5,.618,.786,.886,1];
 const FIB_EXTEND=[0,.236,.382,.5,.618,.786,1,1.272,1.618,2,2.618];
-const DRAW_MODES=['cursor','alert','horizontal','vertical','trend','fib','fibext','channel','rectangle','measure'];
+const DRAW_MODES=['cursor','alert','horizontal','vertical','trend','fib','fibext','fibchannel','fibtime','channel','rectangle','measure'];
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -711,7 +711,7 @@ root.innerHTML=items.length?'<table class="data-table"><thead><tr><th>DETECTED</
 const drawingsStorageKey=()=>('drawings:'+state.symbol+':'+state.tf);
 
 const defaultStyle=kind=>({
-  color:kind==='fib'?'#9e85f6':kind==='channel'?'#53c9fa':'#62aeff',
+  color:kind==='fib'?'#9e85f6':kind==='fibchannel'?'#ad8ff7':kind==='fibtime'?'#d6a7f8':kind==='channel'?'#53c9fa':'#62aeff',
   width:kind==='fib'?1:2,dash:kind==='fib'?'dashed':'solid',
   extend:false,reverse:false,hidden:false,locked:false
 });
@@ -730,7 +730,7 @@ function lightweightLineStyle(style){
     style?.dash==='dashed'?LW.LineStyle.Dashed:LW.LineStyle.Solid;
 }
 function applyDrawingStyle(d){
-  d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.kind==='shape'&&d.shape==='channel'?'channel':d.kind);
+  d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.kind==='shape'&&['channel','fibchannel','fibtime'].includes(d.shape)?d.shape:d.kind);
   const st=d.style;
   try{
     if(d.kind==='price')d.line.applyOptions({
@@ -763,7 +763,7 @@ function serializeDrawing(d){
       style:safeStyle(d.style,'fib')};
   if(d.kind==='shape')return {kind:'shape',shape:d.shape,
       points:d.points.map(p=>({time:p.time,price:p.price})),
-      style:safeStyle(d.style,d.shape==='channel'?'channel':'shape')};
+      style:safeStyle(d.style,['channel','fibchannel','fibtime'].includes(d.shape)?d.shape:'shape')};
   return null;
 }
 function persistDrawings(){
@@ -824,11 +824,11 @@ function restoreDrawings(){
           const d={kind:'fib',renderer,mode,anchors,style,levels,legacyWrong:invalidOldExtension,lines:levels.map(l=>l.line).filter(Boolean),id:++drawingSeq};
           state.drawings.push(d);applyDrawingStyle(d);
         }
-      }else if(entry.kind==='shape'&&['vertical','rectangle','measure','channel'].includes(entry.shape)&&
-          Array.isArray(entry.points)&&entry.points.length===(entry.shape==='vertical'?1:entry.shape==='channel'?3:2)&&
+      }else if(entry.kind==='shape'&&['vertical','rectangle','measure','channel','fibchannel','fibtime'].includes(entry.shape)&&
+          Array.isArray(entry.points)&&entry.points.length===(entry.shape==='vertical'?1:['channel','fibchannel'].includes(entry.shape)?3:2)&&
           entry.points.every(p=>p&&validTime(p.time)&&validPrice(p.price))){
         state.drawings.push({kind:'shape',shape:entry.shape,
-          points:entry.points.map(p=>({time:p.time,price:p.price})),style:safeStyle(entry.style,entry.shape==='channel'?'channel':'shape'),id:++drawingSeq});
+          points:entry.points.map(p=>({time:p.time,price:p.price})),style:safeStyle(entry.style,['channel','fibchannel','fibtime'].includes(entry.shape)?entry.shape:'shape'),id:++drawingSeq});
       }
     }catch(error){console.warn('Skipped invalid stored drawing',error);}
   }
@@ -838,7 +838,7 @@ function restoreDrawings(){
 }
 function drawingTitle(d){
   if(d.kind==='fib')return (d.renderer==='legacy'&&d.mode==='fibext'?'⚠ Old 2-point Extension — Redraw A-B-C':d.mode==='fibext'?'Trend Fibonacci Extension':'Fibonacci Retracement')+' · '+d.levels.length+' levels';
-  if(d.kind==='shape')return d.shape==='rectangle'?'Price Rectangle':d.shape==='measure'?'Price Range':d.shape==='channel'?'Parallel Channel':'Vertical time marker';
+  if(d.kind==='shape')return d.shape==='rectangle'?'Price Rectangle':d.shape==='measure'?'Price Range':d.shape==='channel'?'Parallel Channel':d.shape==='fibchannel'?'Fibonacci Channel':d.shape==='fibtime'?'Fibonacci Time Zone':'Vertical time marker';
   if(d.kind==='series')return 'Trend line';
   return 'Horizontal '+fmt(d.price);
 }
@@ -865,7 +865,7 @@ function drawSelectionOptions(){
 function syncDrawingOptionsBar(d){
   const toolbar=$('drawingOptionsBar');if(!toolbar||!d)return;
   toolbar.classList.remove('hidden');
-  const style=d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.shape==='channel'?'channel':d.kind);
+  const style=d.style=safeStyle(d.style,d.kind==='fib'?'fib':['channel','fibchannel','fibtime'].includes(d.shape)?d.shape:d.kind);
   $('drawingOptionsName').textContent=drawingTitle(d);
   $('drawingStyleColor').value=style.color;
   $('drawingStyleWidth').value=String(style.width);
@@ -873,7 +873,7 @@ function syncDrawingOptionsBar(d){
   const fib=d.kind==='fib',legacy=fib&&d.renderer!=='svg'&&d.mode==='fibext';
   $('drawingReverseBtn').hidden=!fib||legacy;
   $('drawingReverseBtn').setAttribute('aria-pressed',String(style.reverse));
-  $('drawingExtendBtn').hidden=!fib&&d.shape!=='channel';
+  $('drawingExtendBtn').hidden=!fib&&!['channel','fibchannel'].includes(d.shape);
   $('drawingExtendBtn').setAttribute('aria-pressed',String(style.extend));
   $('drawingVisibilityBtn').hidden=legacy;
   $('drawingVisibilityBtn').textContent=style.hidden?'◉ Show':'◉ Hide';
@@ -886,7 +886,7 @@ function installDrawingOptionsBar(){
   const selected=()=>getSelectedDrawing();
   const edit=fn=>{
     const d=selected();if(!d)return;
-    d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.shape==='channel'?'channel':d.kind);
+    d.style=safeStyle(d.style,d.kind==='fib'?'fib':['channel','fibchannel','fibtime'].includes(d.shape)?d.shape:d.kind);
     fn(d,d.style);
     applyDrawingStyle(d);
     renderDrawingPanel();

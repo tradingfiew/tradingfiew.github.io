@@ -995,10 +995,15 @@ function installLineDragging(){
     const item=state.drawings.find(x=>x.id===d.id);
     if(!item)return;
     if(item.kind==='price'){item.price=d.copy.price;item.line.applyOptions({price:item.price});}
-    else if(item.kind==='fib')for(const line of item.levels){
-      const saved=d.copy.levels.find(l=>l.fraction===line.fraction);
-      if(saved){line.price=saved.price;line.line.applyOptions({price:line.price});}
+    else if(item.kind==='fib'){
+      item.anchors=d.copy.anchors?.map(p=>({...p}))||null;
+      for(const line of item.levels){
+        const saved=d.copy.levels.find(l=>l.fraction===line.fraction);
+        if(saved){line.price=saved.price;line.line.applyOptions({price:line.price});}
+      }
     }else if(item.kind==='series'){item.points=d.copy.points;item.line.setData(item.points);}
+    else if(item.kind==='shape')item.points=d.copy.points.map(p=>({...p}));
+    scheduleDrawingOverlay();
   };
   const move=(d,p,shift)=>{
     const py=candles.coordinateToPrice(Math.max(1,Math.min(host.clientHeight-4,p.y)));
@@ -1019,12 +1024,42 @@ function installLineDragging(){
       const next=d.copy.price+offset;if(next<=0)return;
       item.price=next;item.line.applyOptions({price:next});
     }else if(item.kind==='fib'){
-      for(const level of item.levels){
-        if(!shift&&level.fraction!==d.fraction)continue;
-        const old=d.copy.levels.find(v=>v.fraction===level.fraction);
-        if(!old||old.price+offset<=0)continue;
-        level.price=old.price+offset;level.line.applyOptions({price:level.price});
+      if(d.endpoint>=0&&d.copy.anchors?.length===2){
+        const anchors=d.copy.anchors.map(v=>({...v}));
+        const at=barIndex(p.x);if(at<0)return;
+        anchors[d.endpoint]={time:state.data[at].time,price:py};
+        const prices=item.levels.map(l=>anchors[0].price+
+          (anchors[1].price-anchors[0].price)*l.fraction);
+        if(prices.some(price=>price<=0||!Number.isFinite(price)))return;
+        item.anchors=anchors;
+        item.levels.forEach((level,i)=>{level.price=prices[i];level.line.applyOptions({price:level.price});});
+      }else{
+        for(const level of item.levels){
+          if(!shift&&level.fraction!==d.fraction)continue;
+          const old=d.copy.levels.find(v=>v.fraction===level.fraction);
+          if(!old||old.price+offset<=0)continue;
+          level.price=old.price+offset;level.line.applyOptions({price:level.price});
+        }
+        if(shift&&d.copy.anchors){
+          item.anchors=d.copy.anchors.map(v=>({...v,price:v.price+offset}));
+        }else if(d.fraction!==null)item.anchors=null; // edited level is no longer a strict anchored ratio
       }
+      scheduleDrawingOverlay();
+    }else if(item.kind==='shape'){
+      const points=d.copy.points.map(v=>({...v}));
+      if(d.endpoint>=0){
+        const at=barIndex(p.x);if(at<0)return;
+        points[d.endpoint]={time:state.data[at].time,price:py};
+      }else{
+        const begin=barIndex(d.start.x),now=barIndex(p.x);if(begin<0||now<0)return;
+        const indices=points.map(v=>findIndex(v.time));
+        const delta=Math.max(-Math.min(...indices),
+          Math.min(state.data.length-1-Math.max(...indices),now-begin));
+        for(let i=0;i<points.length;i++)
+          points[i]={time:state.data[indices[i]+delta].time,price:points[i].price+offset};
+      }
+      if(points.some(v=>v.price<=0||!Number.isFinite(v.price)))return;
+      item.points=points;scheduleDrawingOverlay();
     }else if(item.kind==='series'){
       let points=d.copy.points.map(v=>({...v}));
       if(d.endpoint>=0){
@@ -1096,7 +1131,7 @@ function installLineDragging(){
         const ok=window.TradingFiewAlerts?.setAlertPrice?.(d.id,d.newPrice,state.activePrice);
         toast(ok?'🔔 Alert moved to '+fmt(d.newPrice)+' · saved.':'Alert position could not be saved.',!ok);
         renderAlertPriceLines();
-      }else{persistDrawings();renderDrawingPanel();toast('Drawing moved and saved.');}
+      }else{persistDrawings();renderDrawingPanel();scheduleDrawingOverlay();toast('Drawing moved and saved.');}
       suppressDrawingClickUntil=Date.now()+400;
     }else if(d.type==='alert')openAlertContextMenu(d.id,e.clientX,e.clientY);
     e.preventDefault();e.stopPropagation();

@@ -350,7 +350,7 @@ test('mobile drawing editor fits every visible editing control without scroll-on
   assert.ok(css.includes('grid-column:span 2'));
   assert.ok(css.includes('overflow-x:clip!important'));
   assert.ok(css.includes('scrollbar-width:thin!important'));
-  assert.ok(html.includes('styles.css?v=20261118-mobile-editor-grid3'));
+  assert.ok(html.includes('styles.css?v=20261118-mobile-compact4'));
   for(const id of ['drawingStyleColor','drawingStyleWidth','drawingStyleDash',
     'drawingReverseBtn','drawingExtendBtn','drawingVisibilityBtn',
     'drawingLockBtn','drawingDeleteBtn','drawingDeselectBtn']){
@@ -377,4 +377,15 @@ test('rotated phones preserve chart layout and expose functional mobile dock nav
  assert.ok(css.includes('workspace[data-mobile-view="markets"] .left-sidebar'));
  assert.ok(css.includes('workspace[data-mobile-view="analysis"] .right-sidebar'));
  assert.ok(css.includes('terminal-mobile-dock{'));
+});
+
+
+test('mobile drawing toolbar uses compact two-row controls and stays visible',()=>{
+ const css=source('styles.css'),html=source('index.html');
+ assert.ok(css.includes('Compact mobile drawing controls: two edit rows'));
+ assert.ok(css.includes('grid-template-columns:repeat(15,minmax(0,1fr))'));
+ assert.ok(css.includes('grid-row:3;grid-column:span 3'));
+ assert.ok(css.includes('height:30px!important'));
+ assert.ok(css.includes('width:28px!important'));
+ assert.ok(html.includes('styles.css?v=20261118-mobile-compact4'));
 });

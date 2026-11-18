@@ -73,8 +73,27 @@
     lastRendered = 0;
     renderCalendar(true);
   }
+  // Only an Android TWA session can request the native user-initiated
+  // interstitial transition. Ordinary web users keep the current modal.
+  let nativeTwa = false;
+  try {
+    if (new URLSearchParams(location.search).get('native') === '1')
+      sessionStorage.setItem('tradingfiew:native-twa', '1');
+    nativeTwa = sessionStorage.getItem('tradingfiew:native-twa') === '1';
+  } catch (error) { nativeTwa = false; }
+
   function open(event) {
     if (!dialog || isOpen()) return;
+    if (nativeTwa && event?.isTrusted && location.hash !== '#usEconomicCalendar') {
+      // An actual tap on the calendar is a natural content transition, not a
+      // surprise full-screen ad while interacting with charts.
+      location.href = 'intent://open-calendar#Intent;scheme=tradingfiew;package=com.ribhlab.tradingfiew;end';
+      // Fall back when viewing in a browser without the Android native host.
+      window.setTimeout(() => {
+        if (!document.hidden && !isOpen()) open();
+      }, 1600);
+      return;
+    }
     opener = event?.currentTarget || document.activeElement;
     dialog.showModal();
     setExpanded(true);
@@ -114,6 +133,11 @@
     document.addEventListener('visibilitychange',() => {
       if (isOpen() && !document.hidden) renderCalendar();
     });
+    if (location.hash === '#usEconomicCalendar') {
+      // Returned from user-driven native calendar transition.
+      history.replaceState(null, '', location.pathname + location.search);
+      open();
+    }
     window.addEventListener('resize',() => {
       if (!isOpen()) return;
       clearTimeout(resizing);

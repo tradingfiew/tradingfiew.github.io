@@ -12,7 +12,7 @@ const boot=name=>{
   return root;
 };
 test('all first-party browser JavaScript parses',()=>{
-  for(const file of ['analysis.js','drawing-geometry.js','market-data.js','market-panels.js','app.js','alerts.js',
+  for(const file of ['analysis.js','drawing-geometry.js','price-schedule-core.js','scheduled-prices.js','market-data.js','market-panels.js','app.js','alerts.js',
       'workspace.js','terminal-ui.js','us-calendar.js','adsense.js','share.js','donate.js',
       'smc-breakout-alerts.js','alerts-sw.js']){
     assert.doesNotThrow(()=>new vm.Script(source(file),{filename:file}),file);
@@ -256,4 +256,56 @@ test('drawing style options persist without covering the chart',()=>{
   assert.ok(css.includes('.drawing-options-bar{'));
   assert.ok(css.includes('overflow-x:auto'));
   assert.ok(css.includes('.selected-drawing-bar{display:none!important}'));
+});
+
+
+test('local-time price schedules reject invalid dates and past one-shot deliveries',()=>{
+  const clock=boot('price-schedule-core.js').TradingFiewPriceScheduleCore;
+  const now=new Date(2026,10,18,12,0,0,0).getTime();
+  assert.equal(clock.build('once','11:00','2026-11-18',now),null);
+  assert.equal(clock.build('once','09:00','2026-02-30',now),null);
+  assert.equal(clock.build('once','25:00','2026-12-18',now),null);
+  const future=clock.build('once','13:15','2026-11-18',now);
+  assert.ok(future);
+  assert.equal(new Date(future.nextAt).getHours(),13);
+  assert.equal(new Date(future.nextAt).getMinutes(),15);
+});
+test('recurring local-time schedules respect daily, weekdays and 15-minute increments',()=>{
+  const clock=boot('price-schedule-core.js').TradingFiewPriceScheduleCore;
+  const friday=new Date(2026,10,20,16,30,0).getTime();
+  const weekdays=clock.build('weekdays','09:30','',friday);
+  assert.equal(new Date(weekdays.nextAt).getDay(),1);
+  assert.equal(new Date(weekdays.nextAt).getHours(),9);
+  assert.equal(new Date(weekdays.nextAt).getMinutes(),30);
+  const daily=clock.build('daily','17:10','',friday);
+  assert.equal(new Date(daily.nextAt).getHours(),17);
+  const cycle=clock.build('every15','16:45','',friday);
+  assert.equal(new Date(cycle.nextAt).getMinutes(),45);
+  assert.equal(clock.nextAt(cycle,cycle.nextAt).valueOf(),cycle.nextAt+15*60000);
+});
+test('scheduled prices only use a fresh verified market quote',()=>{
+  const clock=boot('price-schedule-core.js').TradingFiewPriceScheduleCore;
+  const now=Date.now(),valid={price:27253.94,quoteAt:now/1000,stale:false,marketState:'open'};
+  assert.equal(clock.marketIsFresh(valid,now),true);
+  assert.equal(clock.marketIsFresh({...valid,stale:true},now),false);
+  assert.equal(clock.marketIsFresh({...valid,marketState:'closed'},now),false);
+  assert.equal(clock.marketIsFresh({...valid,price:0},now),false);
+  assert.equal(clock.marketIsFresh({...valid,quoteAt:(now-3*60000)/1000},now),false);
+  assert.equal(clock.marketIsFresh({...valid,quoteAt:null},now),false);
+});
+test('scheduled price notice UI is connected to available market feeds and mobile menu',()=>{
+  const html=source('index.html'),client=source('scheduled-prices.js');
+  for(const id of ['scheduledPricePanel','scheduledPriceForm','scheduledSymbol','scheduledFrequency',
+    'scheduledTime','scheduledDate','scheduledPriceList','scheduledAllowBtn','scheduledTestBtn',
+    'schedulePriceChartBtn','scheduledPermissionStatus']){
+    assert.ok(html.includes('id="'+id+'"'),id+' not present');
+  }
+  assert.ok(html.includes('./price-schedule-core.js'));
+  assert.ok(html.includes('./scheduled-prices.js'));
+  assert.ok(html.includes('data-more-chart-action="schedulePriceChartBtn"'));
+  assert.ok(client.includes('Market.quote('));
+  assert.ok(client.includes('Clock.marketIsFresh('));
+  assert.ok(client.includes('reg.showNotification('));
+  assert.ok(client.includes('root.setInterval(()=>void checkNow(),10000)'));
+  assert.ok(client.includes('300000'));
 });

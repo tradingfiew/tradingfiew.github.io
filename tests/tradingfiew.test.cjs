@@ -406,3 +406,10 @@ test('public privacy policy covers all supported languages and Android permissio
   assert.ok(ads.includes('mobileVignetteOnlyConfirmed:false'));
   assert.ok(html.indexOf('adsbygoogle.js')===-1);
 });
+
+test('Google AdMob app-ads authorized seller remains published at site root',()=>{
+  const lines=source('app-ads.txt').trim().split(/\r?\n/);
+  assert.deepEqual(lines,[
+    'google.com, pub-7945572016731367, DIRECT, f08c47fec0942fa0'
+  ]);
+});

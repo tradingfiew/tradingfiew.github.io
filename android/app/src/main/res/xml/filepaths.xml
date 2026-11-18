@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <cache-path name="splash" path="." />
+    <!-- Android Browser Helper writes the TWA splash bitmap to files/twa_splash/.
+         Only this dedicated directory is shared with the trusted browser.
+         A cache-path alone cannot serve this file and may crash the launcher. -->
+    <files-path name="twa_splash" path="twa_splash/" />
 </paths>

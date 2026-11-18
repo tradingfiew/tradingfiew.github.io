@@ -350,10 +350,19 @@ test('mobile drawing editor fits every visible editing control without scroll-on
   assert.ok(css.includes('grid-column:span 2'));
   assert.ok(css.includes('overflow-x:clip!important'));
   assert.ok(css.includes('scrollbar-width:thin!important'));
-  assert.ok(html.includes('styles.css?v=20261118-mobile-editor-grid1'));
+  assert.ok(html.includes('styles.css?v=20261118-mobile-editor-grid2'));
   for(const id of ['drawingStyleColor','drawingStyleWidth','drawingStyleDash',
     'drawingReverseBtn','drawingExtendBtn','drawingVisibilityBtn',
     'drawingLockBtn','drawingDeleteBtn','drawingDeselectBtn']){
       assert.ok(html.includes('id="'+id+'"'));
   }
+});
+
+
+test('short mobile screens keep a usable chart and landscape phones avoid desktop sidebars',()=>{
+ const css=source('styles.css');
+ assert.ok(css.includes('display:none!important;')&&css.includes('.terminal-rangebar'));
+ assert.ok(css.includes('body.terminal-mode .workspace[data-analysis-panel="collapsed"]'));
+ assert.ok(css.includes('Rotated small phones need a full-width chart'));
+ assert.ok(css.includes('body.terminal-mode .center-pane .instrument-header{display:none!important}'));
 });

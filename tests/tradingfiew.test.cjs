@@ -340,3 +340,20 @@ test('all four Fibonacci tools are present, persisted and selectable from their 
   assert.ok(js.includes("Geometry.channelLevels("));
   assert.ok(js.includes("Geometry.fibTimeZones("));
 });
+
+
+test('mobile drawing editor fits every visible editing control without scroll-only actions',()=>{
+  const css=source('styles.css');
+  const html=source('index.html');
+  assert.ok(css.includes('2026-11 mobile drawing editor audit'));
+  assert.ok(css.includes('grid-template-columns:repeat(6,minmax(0,1fr))'));
+  assert.ok(css.includes('grid-column:span 2'));
+  assert.ok(css.includes('overflow-x:clip!important'));
+  assert.ok(css.includes('scrollbar-width:thin!important'));
+  assert.ok(html.includes('styles.css?v=20261118-mobile-editor-grid1'));
+  for(const id of ['drawingStyleColor','drawingStyleWidth','drawingStyleDash',
+    'drawingReverseBtn','drawingExtendBtn','drawingVisibilityBtn',
+    'drawingLockBtn','drawingDeleteBtn','drawingDeselectBtn']){
+      assert.ok(html.includes('id="'+id+'"'));
+  }
+});

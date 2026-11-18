@@ -350,7 +350,7 @@ test('mobile drawing editor fits every visible editing control without scroll-on
   assert.ok(css.includes('grid-column:span 2'));
   assert.ok(css.includes('overflow-x:clip!important'));
   assert.ok(css.includes('scrollbar-width:thin!important'));
-  assert.ok(html.includes('styles.css?v=20261118-mobile-editor-grid2'));
+  assert.ok(html.includes('styles.css?v=20261118-mobile-editor-grid3'));
   for(const id of ['drawingStyleColor','drawingStyleWidth','drawingStyleDash',
     'drawingReverseBtn','drawingExtendBtn','drawingVisibilityBtn',
     'drawingLockBtn','drawingDeleteBtn','drawingDeselectBtn']){
@@ -365,4 +365,16 @@ test('short mobile screens keep a usable chart and landscape phones avoid deskto
  assert.ok(css.includes('body.terminal-mode .workspace[data-analysis-panel="collapsed"]'));
  assert.ok(css.includes('Rotated small phones need a full-width chart'));
  assert.ok(css.includes('body.terminal-mode .center-pane .instrument-header{display:none!important}'));
+});
+
+
+test('rotated phones preserve chart layout and expose functional mobile dock navigation',()=>{
+ const html=source('index.html'),css=source('styles.css'),ui=source('terminal-ui.js');
+ assert.ok(html.includes('terminal-ui.js?v=20261118-landscape-navigation1'));
+ assert.ok(ui.includes('(orientation:landscape) and (max-height:550px)'));
+ assert.ok(css.includes('Compact landscape smartphones: one full-width terminal'));
+ assert.ok(css.includes('grid-template-columns:repeat(12,minmax(0,1fr))'));
+ assert.ok(css.includes('workspace[data-mobile-view="markets"] .left-sidebar'));
+ assert.ok(css.includes('workspace[data-mobile-view="analysis"] .right-sidebar'));
+ assert.ok(css.includes('terminal-mobile-dock{'));
 });

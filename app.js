@@ -1599,27 +1599,93 @@ function svgLabel(x,y,value,color='#cde1ff'){
   if(![x,y].every(Number.isFinite))return '';
   return '<text class="draw-tag" x="'+x+'" y="'+Math.max(12,y)+'" fill="'+color+'">'+String(value)+'</text>';
 }
-function shapeMarkup(mode,points,w,h,highlight=false){
+
+function drawSegment(x1,y1,x2,y2,style,klass='draw-guide'){
+  if(![x1,y1,x2,y2].every(Number.isFinite))return '';
+  const st=safeStyle(style,'shape');
+  return '<line class="'+klass+'" x1="'+x1+'" y1="'+y1+'" x2="'+x2+
+    '" y2="'+y2+'" stroke="'+st.color+'" stroke-width="'+st.width+
+    '" stroke-dasharray="'+dashArray(st)+'" vector-effect="non-scaling-stroke"/>';
+}
+function shapeMarkup(mode,points,w,h,highlight=false,rawStyle=null){
+  const st=safeStyle(rawStyle,mode==='channel'?'channel':'shape');
+  if(st.hidden)return '';
   const a=points?.[0],b=points?.[1],p=drawingPos(a?.time,a?.price),q=b?drawingPos(b.time,b.price):null;
   if(!p)return '';
-  const color=highlight?'#ffd668':'#62aeff',r=4;
-  if(mode==='vertical')return svgLine(p.x,0,p.x,h,'#c2a0fa','draw-vertical')+svgCircle(p.x,p.y,'#c2a0fa');
+  const color=st.color,selection=highlight?'#ffd668':color;
+  if(mode==='vertical')
+    return drawSegment(p.x,0,p.x,h,{...st,dash:st.dash==='solid'?'dashed':st.dash},'draw-vertical')+
+      (highlight?svgCircle(p.x,p.y,selection):'');
   if(!q)return '';
+  if(mode==='channel'){
+    const geometry=Geometry.channel(points,time=>{
+      const index=state.data.findIndex(c=>c.time===time);
+      return index>=0?index:null;
+    });
+    if(!geometry)return drawSegment(p.x,p.y,q.x,q.y,st)+svgCircle(p.x,p.y,selection);
+    const upA=drawingPos(geometry.upper[0].time,geometry.upper[0].price);
+    const upB=drawingPos(geometry.upper[1].time,geometry.upper[1].price);
+    if(!upA||!upB)return '';
+    let out='<polygon class="draw-channel-fill" points="'+
+      [p,q,upB,upA].map(v=>v.x+','+v.y).join(' ')+'"/>';
+    out+=drawSegment(p.x,p.y,q.x,q.y,st)+
+      drawSegment(upA.x,upA.y,upB.x,upB.y,st);
+    const midP={x:p.x,y:(p.y+upA.y)/2},midQ={x:q.x,y:(q.y+upB.y)/2};
+    out+=drawSegment(midP.x,midP.y,midQ.x,midQ.y,
+      {...st,width:1,dash:'dotted'},'draw-channel-mid');
+    if(highlight)for(const anchor of points){
+      const coords=drawingPos(anchor.time,anchor.price);
+      if(coords)out+=svgCircle(coords.x,coords.y,selection);
+    }
+    return out;
+  }
   if(mode==='rectangle'){
     const x=Math.min(p.x,q.x),y=Math.min(p.y,q.y),
       width=Math.abs(q.x-p.x),height=Math.abs(q.y-p.y);
     return '<rect class="draw-box" x="'+x+'" y="'+y+'" width="'+width+'" height="'+height+
-      '" stroke="'+color+'"/>'+svgCircle(p.x,p.y,color)+svgCircle(q.x,q.y,color);
+      '" stroke="'+color+'" stroke-width="'+st.width+'" stroke-dasharray="'+dashArray(st)+'"/>'+
+      (highlight?svgCircle(p.x,p.y,selection)+svgCircle(q.x,q.y,selection):'');
   }
   if(mode==='measure'){
     const diff=b.price-a.price,pct=(diff/a.price*100);
     const label=(diff>=0?'+':'')+fmt(diff)+' ('+(pct>=0?'+':'')+num(pct,2)+'%)';
     const x=Math.min(p.x,q.x),y=Math.min(p.y,q.y),bw=Math.abs(q.x-p.x),bh=Math.abs(q.y-p.y);
     return '<rect class="draw-range-box" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+bh+'"/>'+
-      svgLine(p.x,p.y,q.x,q.y,'#47d7ab')+svgCircle(p.x,p.y,'#47d7ab')+svgCircle(q.x,q.y,'#47d7ab')+
-      svgLabel(Math.min(w-180,Math.max(6,x+5)),Math.max(13,y-5),label,'#66e6bb');
+      drawSegment(p.x,p.y,q.x,q.y,st)+
+      (highlight?svgCircle(p.x,p.y,selection)+svgCircle(q.x,q.y,selection):'')+
+      svgLabel(Math.max(6,Math.min(w-180,x+6)),Math.max(13,y-6),label,color);
   }
   return '';
+}
+function svgFibDrawing(mode,anchors,w,style,selected=false,precomputed=null){
+  const st=safeStyle(style,'fib');
+  if(st.hidden||!Array.isArray(anchors))return '';
+  const projected=anchors.map(a=>drawingPos(a.time,a.price));
+  if(projected.some(x=>!x))return '';
+  const plotWidth=Math.max(50,w-chart.priceScale('right').width());
+  const x0=Math.max(0,Math.min(...projected.map(p=>p.x)));
+  const right=Math.min(plotWidth-3,st.extend?plotWidth-3:Math.max(...projected.map(p=>p.x)));
+  const levels=precomputed||Geometry.levels(mode,anchors,st.reverse);
+  const color=st.color;
+  let out='';
+  if(selected){
+    for(let i=0;i<projected.length-1;i++){
+      const p=projected[i],q=projected[i+1];
+      out+=drawSegment(p.x,p.y,q.x,q.y,{...st,color:'#b0b9d2',width:1,dash:'dashed'});
+    }
+  }
+  for(const level of levels){
+    if(!Number.isFinite(level.price)||level.price<=0)continue;
+    const y=candles.priceToCoordinate(level.price);
+    if(!Number.isFinite(y))continue;
+    out+=drawSegment(x0,y,right,y,{...st,color:level.fraction===.618?'#f5bb65':color},'draw-fib-level');
+    // Labels belong to their OWN line, not the far right axis of the whole chart.
+    out+=svgLabel(Math.max(6,Math.min(right-105,plotWidth-108)),y-5,
+      num(level.fraction*100,1)+'%  '+fmt(level.price),
+      level.fraction===.618?'#f5bb65':color);
+  }
+  if(selected)for(const p of projected)out+=svgCircle(p.x,p.y,'#ffd668');
+  return out;
 }
 function drawingPreviewMarkup(mode,a,b,w,h){
   const plotWidth=Math.max(10,w-chart.priceScale('right').width());

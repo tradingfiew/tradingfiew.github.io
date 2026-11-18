@@ -1045,7 +1045,31 @@ function drawingHitTest(point){
           if(p)consider(d.id,null,Math.hypot(p.x-point.x,p.y-point.y),i);
         }
         if(d.shape==='vertical')consider(d.id,null,Math.abs(a.x-point.x));
-        else if(d.shape==='channel'&&d.points?.length===3){
+        else if(d.shape==='fibtime'&&b){
+          const plotW=$('chartHost').clientWidth-chart.priceScale('right').width();
+          for(const ratio of Geometry.fibTime){
+            const x=a.x+(b.x-a.x)*ratio;
+            if(x>=0&&x<=plotW)consider(d.id,ratio,Math.abs(point.x-x));
+          }
+        }else if(d.shape==='fibchannel'&&d.points?.length===3){
+          const rows=Geometry.channelLevels(d.points,time=>{
+            const idx=state.data.findIndex(c=>c.time===time);
+            return idx>=0?idx:null;
+          });
+          const minX=Math.min(a.x,b.x);
+          const maxX=d.style?.extend?$('chartHost').clientWidth-chart.priceScale('right').width():Math.max(a.x,b.x);
+          if(maxX>minX&&point.x>=minX-threshold&&point.x<=maxX+threshold){
+            const ratio=(point.x-a.x)/(b.x-a.x||1);
+            for(const level of rows){
+              const price=level.points[0].price+
+                (level.points[1].price-level.points[0].price)*ratio;
+              if(price>0){
+                const y=candles.priceToCoordinate(price);
+                if(Number.isFinite(y))consider(d.id,level.fraction,Math.abs(y-point.y));
+              }
+            }
+          }
+        }else if(d.shape==='channel'&&d.points?.length===3){
           const channel=Geometry.channel(d.points,time=>{
             const i=state.data.findIndex(v=>v.time===time);return i>=0?i:null;
           });

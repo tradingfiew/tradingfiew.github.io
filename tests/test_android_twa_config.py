@@ -62,11 +62,39 @@ class AndroidTwaConfigTest(unittest.TestCase):
             "https://tradingfiew.github.io/",
         )
 
+    def test_interstitial_only_admob_with_ump_privacy_and_valid_app_id(self):
+        root = ET.parse(BASE / "android/app/src/main/AndroidManifest.xml").getroot()
+        app = root.find("application")
+        ads_meta = [
+            m for m in app.findall("meta-data")
+            if m.get(ANDROID + "name") == "com.google.android.gms.ads.APPLICATION_ID"
+        ]
+        self.assertEqual(len(ads_meta), 1)
+        self.assertEqual(ads_meta[0].get(ANDROID + "value"), "${admobAppId}")
+        build = (BASE / "android/app/build.gradle").read_text()
+        self.assertIn("play-services-ads:25.5.0", build)
+        self.assertIn("user-messaging-platform:4.0.0", build)
+        self.assertIn("TRADINGFIEW_ADMOB_APP_ID", build)
+        self.assertIn("ca-app-pub-7945572016731367/8117339646", build)
+        self.assertNotIn("9838506070", build)
+        interstitial = (BASE / "android/app/src/main/java/com/ribhlab/tradingfiew/AdMobInterstitialController.java").read_text()
+        self.assertIn("MIN_GAP_MS = 300_000L", interstitial)
+        self.assertIn("canRequestAds()", interstitial)
+        self.assertNotIn("AdView", interstitial)
+
+    def test_ad_transitions_require_user_initiated_intent(self):
+        manifest = ET.parse(BASE / "android/app/src/main/AndroidManifest.xml").getroot()
+        activities = {a.get(ANDROID + "name") for a in manifest.find("application").findall("activity")}
+        self.assertIn(".NaturalTransitionActivity", activities)
+        controller = (BASE / "android/app/src/main/java/com/ribhlab/tradingfiew/AdMobInterstitialController.java").read_text()
+        self.assertIn("onNaturalTransition(Activity activity", controller)
+        self.assertIn("MIN_ENGAGEMENT_MS = 60_000L", controller)
+
     def test_app_has_monotonic_update_version_and_correct_identity(self):
         build = (BASE / "android/app/build.gradle").read_text()
         self.assertRegex(build, r"applicationId\s+'com\.ribhlab\.tradingfiew'")
-        self.assertRegex(build, r"versionCode\s+3")
-        self.assertRegex(build, r"versionName\s+'1\.0\.2'")
+        self.assertRegex(build, r"versionCode\s+4")
+        self.assertRegex(build, r"versionName\s+'1\.0\.3'")
         self.assertIn("targetSdk 36", build)
 
 

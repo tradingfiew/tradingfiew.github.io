@@ -12,7 +12,7 @@ const boot=name=>{
   return root;
 };
 test('all first-party browser JavaScript parses',()=>{
-  for(const file of ['analysis.js','market-data.js','market-panels.js','app.js','alerts.js',
+  for(const file of ['analysis.js','drawing-geometry.js','market-data.js','market-panels.js','app.js','alerts.js',
       'workspace.js','terminal-ui.js','us-calendar.js','adsense.js','share.js','donate.js',
       'smc-breakout-alerts.js','alerts-sw.js']){
     assert.doesNotThrow(()=>new vm.Script(source(file),{filename:file}),file);
@@ -233,4 +233,27 @@ test('channel and Fibonacci toolbars contain functioning interactive controls',(
   assert.ok(js.includes("mode==='channel'||mode==='fibext'"));
   assert.ok(js.includes("Geometry.fibPrice("));
   assert.ok(js.includes("Geometry.channel("));
+});
+
+
+test('legacy two-point fib extensions are preserved, marked and never rendered as valid levels',()=>{
+  const js=source('app.js'),html=source('index.html');
+  assert.ok(js.includes("invalidOldExtension=renderer==='legacy'&&mode==='fibext'"));
+  assert.ok(js.includes("if(invalidOldExtension)style.hidden=true"));
+  assert.ok(js.includes("!invalidOldExtension?candles.createPriceLine"));
+  assert.ok(js.includes("legacyWrong:invalidOldExtension"));
+  assert.ok(html.includes('id="drawingRepairBtn"'));
+  assert.ok(js.includes("setDrawMode('fibext')"));
+});
+test('drawing style options persist without covering the chart',()=>{
+  const js=source('app.js'),css=source('styles.css');
+  assert.ok(js.includes('function safeStyle('));
+  for(const v of ["st.color=e.target.value","st.width=Number(e.target.value)",
+    "st.dash=e.target.value","st.reverse=!st.reverse","st.extend=!st.extend",
+    "st.hidden=!st.hidden","st.locked=!st.locked"]){
+      assert.ok(js.includes(v),'style action '+v);
+  }
+  assert.ok(css.includes('.drawing-options-bar{'));
+  assert.ok(css.includes('overflow-x:auto'));
+  assert.ok(css.includes('.selected-drawing-bar{display:none!important}'));
 });

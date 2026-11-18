@@ -1811,7 +1811,7 @@ body.light .scheduled-price-grid input,body.light .scheduled-price-grid select{c
  * 6 equal grid tracks => 3 complete equal controls per row; no offscreen action.
  * The chart below uses flex's remaining height and keeps touch interaction.
  */
-@media(max-width:730px){
+@media(max-width:730px), (orientation:landscape) and (max-height:550px) and (min-width:731px) and (max-width:960px){
   body.terminal-mode .center-pane .drawing-options-bar{
     display:grid!important;
     grid-template-columns:repeat(6,minmax(0,1fr));
@@ -1936,12 +1936,61 @@ body.light .scheduled-price-grid input,body.light .scheduled-price-grid select{c
   }
 }
 @media(max-width:730px) and (max-height:650px){
-  /* Keep candles usable when the multi-row toolbar is shown on short phones. */
-  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .rsi-panel{
-    flex-basis:44px!important;
-    height:44px!important;
-  }
-  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .legend-strip{
+  /* Editing takes priority over optional studies and range presets on short screens.
+     Restore studies automatically as soon as the selection bar closes. */
+  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .rsi-panel,
+  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .legend-strip,
+  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .terminal-rangebar{
     display:none!important;
   }
+}
+@media(orientation:landscape) and (max-height:550px) and (min-width:731px) and (max-width:960px){
+  /* Rotated small phones need a full-width chart, not a 2-column desktop panel. */
+  body.terminal-mode .topbar{
+    flex:0 0 39px!important;height:39px!important;min-height:39px!important;
+    padding:3px 10px!important;
+  }
+  body.terminal-mode .workspace,
+  body.terminal-mode .workspace[data-market-watch="open"],
+  body.terminal-mode .workspace[data-analysis-panel="collapsed"]{
+    display:block!important;width:100%!important;min-width:0!important;
+    height:auto!important;min-height:0!important;
+    flex:1 1 0!important;overflow:hidden!important;
+  }
+  body.terminal-mode .workspace .left-sidebar,
+  body.terminal-mode .workspace .right-sidebar{display:none!important}
+  body.terminal-mode .workspace .center-pane{
+    display:flex!important;flex-direction:column!important;
+    height:100%!important;width:100%!important;
+    min-width:0!important;max-width:none!important;overflow:hidden!important;
+  }
+  body.terminal-mode .center-pane .instrument-header{display:none!important}
+  body.terminal-mode .center-pane .chart-toolbar{
+    flex:0 0 41px!important;height:41px!important;min-height:41px!important;
+    padding:3px 9px!important;gap:4px!important;
+    display:flex!important;flex-wrap:nowrap!important;
+  }
+  body.terminal-mode .center-pane .chart-space{
+    flex:1 1 0!important;display:flex!important;
+    height:auto!important;min-height:0!important;overflow:hidden!important;
+  }
+  body.terminal-mode .center-pane .chart-inner{
+    flex:1 1 0!important;min-height:0!important;height:100%!important;
+  }
+  body.terminal-mode .center-pane .chart-holder{
+    flex:1 1 0!important;min-height:75px!important;
+    height:auto!important;max-height:none!important;
+  }
+  body.terminal-mode .center-pane .rsi-panel,
+  body.terminal-mode .center-pane .legend-strip,
+  body.terminal-mode .center-pane .terminal-rangebar{
+    display:none!important;
+  }
+  body.terminal-mode .center-pane .draw-tools{
+    min-height:0!important;overflow-y:auto!important;
+  }
+  body.terminal-mode .center-pane .chart-footer{
+    flex:0 0 22px!important;height:22px!important;min-height:22px!important;
+  }
+  body.terminal-mode .terminal-mobile-dock{display:none!important}
 }

@@ -1687,35 +1687,40 @@ function svgFibDrawing(mode,anchors,w,style,selected=false,precomputed=null){
   if(selected)for(const p of projected)out+=svgCircle(p.x,p.y,'#ffd668');
   return out;
 }
-function drawingPreviewMarkup(mode,a,b,w,h){
+
+function drawingPreviewMarkup(mode,a,b,w,h,c=null){
   const plotWidth=Math.max(10,w-chart.priceScale('right').width());
   if(!a)return '';
-  const color='#ffdc72';
+  const color='#ffd66a';
   if(mode==='horizontal'||mode==='alert'){
     const y=candles.priceToCoordinate(a.price);
     if(!Number.isFinite(y))return '';
     return svgLine(0,y,plotWidth,y,color)+svgLabel(8,y-8,(mode==='alert'?'🔔 ':'')+fmt(a.price),color);
   }
-  if(mode==='vertical')return shapeMarkup(mode,[a],w,h);
-  if(!b)return svgCircle(a.x,a.y,color);
+  if(mode==='vertical')return shapeMarkup(mode,[a],w,h,true);
+  const p=drawingPos(a.time,a.price),q=b?drawingPos(b.time,b.price):null;
+  if(!p)return '';
+  if(!q)return svgCircle(p.x,p.y,color);
+  if(mode==='channel'){
+    if(c)return shapeMarkup('channel',[a,b,c],w,h,true,{color:'#62bfff',width:2,dash:'solid'});
+    return drawSegment(p.x,p.y,q.x,q.y,{color,width:2,dash:'solid'})+
+      svgCircle(p.x,p.y,color)+svgCircle(q.x,q.y,color)+
+      svgLabel(q.x+8,q.y-9,'2/3 · choose channel width',color);
+  }
+  if(mode==='fibext'){
+    if(c)return svgFibDrawing('fibext',[a,b,c],w,
+      {color:'#f5bd68',width:1,dash:'dashed',extend:false},true);
+    return drawSegment(p.x,p.y,q.x,q.y,{color,width:2,dash:'solid'})+
+      svgCircle(p.x,p.y,color)+svgCircle(q.x,q.y,color)+
+      svgLabel(q.x+8,q.y-9,'2/3 · place correction C',color);
+  }
   if(mode==='trend'){
-    return svgLine(a.x,a.y,b.x,b.y,color)+svgCircle(a.x,a.y,color)+
-      svgCircle(b.x,b.y,color)+svgLabel(Math.min(plotWidth-115,Math.max(10,b.x+9)),b.y-10,fmt(b.price),color);
+    return svgLine(p.x,p.y,q.x,q.y,color)+svgCircle(p.x,p.y,color)+
+      svgCircle(q.x,q.y,color)+svgLabel(Math.min(plotWidth-115,Math.max(10,q.x+9)),q.y-10,fmt(b.price),color);
   }
-  if(mode==='fib'||mode==='fibext'){
-    let result=svgLine(a.x,a.y,b.x,b.y,'#9e85f6');
-    const fractions=mode==='fib'?FIB_RETRACE:FIB_EXTEND;
-    for(const fraction of fractions){
-      const price=a.price+(b.price-a.price)*fraction;
-      if(price<=0)continue;
-      const y=candles.priceToCoordinate(price);
-      if(!Number.isFinite(y))continue;
-      result+=svgLine(0,y,plotWidth,y,fraction===.618?'#f9bd66':'#a28bff','draw-fib');
-      result+=svgLabel(8,y-4,num(fraction*100,1)+'%  '+fmt(price),fraction===.618?'#f9bd66':'#c2aeff');
-    }
-    return result+svgCircle(a.x,a.y,color)+svgCircle(b.x,b.y,color);
-  }
-  return shapeMarkup(mode,[a,b],w,h);
+  if(mode==='fib')return svgFibDrawing('fib',[a,b],w,
+    {color:'#9e85f6',width:1,dash:'dashed',extend:false},true);
+  return shapeMarkup(mode,[a,b],w,h,true);
 }
 function renderDrawingOverlay(){
   if(!chart||!candles)return;
@@ -1725,21 +1730,35 @@ function renderDrawingOverlay(){
   overlay.setAttribute('viewBox','0 0 '+w+' '+h);
   let markup='';
   for(const d of state.drawings){
-    if(d.kind==='shape')markup+=shapeMarkup(d.shape,d.points,w,h,state.selectedDrawingId===d.id);
+    if(d.style?.hidden)continue;
+    if(d.kind==='shape')markup+=shapeMarkup(d.shape,d.points,w,h,state.selectedDrawingId===d.id,d.style);
     if(d.kind==='fib'&&d.anchors){
-      const a=drawingPos(d.anchors[0].time,d.anchors[0].price);
-      const b=drawingPos(d.anchors[1].time,d.anchors[1].price);
-      if(a&&b&&state.selectedDrawingId===d.id){
-        markup+=svgLine(a.x,a.y,b.x,b.y,'#d4b2ff')+svgCircle(a.x,a.y,'#ffd668')+svgCircle(b.x,b.y,'#ffd668');
+      if(d.renderer==='svg')markup+=svgFibDrawing(d.mode,d.anchors,w,d.style,
+        state.selectedDrawingId===d.id,d.levels);
+      else if(state.selectedDrawingId===d.id){
+        const coords=d.anchors.map(a=>drawingPos(a.time,a.price)).filter(Boolean);
+        if(coords.length===d.anchors.length){
+          for(let i=0;i<coords.length-1;i++){
+            markup+=svgLine(coords[i].x,coords[i].y,coords[i+1].x,coords[i+1].y,'#d4b2ff');
+          }
+          for(const p of coords)markup+=svgCircle(p.x,p.y,'#ffd668');
+        }
       }
     }
   }
   shapes.innerHTML=markup;
   if(state.drawMode==='cursor'){live.replaceChildren();return;}
-  const a=state.drawStart||null,b=drawGesture?.latest||null;
+  const current=drawGesture?.latest||null;
+  const staged=state.drawSequence||[];
   if(['horizontal','alert','vertical'].includes(state.drawMode))
-    live.innerHTML=drawingPreviewMarkup(state.drawMode,b||a,b,w,h);
-  else live.innerHTML=drawingPreviewMarkup(state.drawMode,a,b,w,h);
+    live.innerHTML=drawingPreviewMarkup(state.drawMode,current||state.drawStart,current,w,h);
+  else if(['channel','fibext'].includes(state.drawMode)){
+    if(staged.length===0)live.innerHTML='';
+    else if(staged.length===1)
+      live.innerHTML=drawingPreviewMarkup(state.drawMode,staged[0],current,w,h);
+    else
+      live.innerHTML=drawingPreviewMarkup(state.drawMode,staged[0],staged[1],w,h,current);
+  }else live.innerHTML=drawingPreviewMarkup(state.drawMode,state.drawStart,current,w,h);
 }
 function scheduleDrawingOverlay(){
   if(!chart||!candles)return;

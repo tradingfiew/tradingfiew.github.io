@@ -1749,3 +1749,16 @@ body.terminal-mode .center-pane .selected-drawing-bar{display:none!important}
  .drawing-options-bar .drawing-opt-btn,.drawing-options-bar select{min-height:30px;font-size:10px}
  .drawing-options-bar input[type=color]{height:28px}
 }
+
+/* Four distinct Fibonacci tools, finger-safe on mobile. */
+.draw-button[data-draw="fibchannel"],.draw-button[data-draw="fibtime"]{
+ font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;letter-spacing:-1.4px;
+}
+.drawing-overlay .fib-channel-level,.drawing-overlay .fib-time-zone{
+ vector-effect:non-scaling-stroke;
+}
+.drawing-overlay .fib-time-zone{stroke-dasharray:4 4}
+.drawing-overlay .fib-channel-shade{fill:rgba(122,106,237,.075);stroke:none}
+@media(max-width:730px){
+ .draw-button[data-draw="fibchannel"],.draw-button[data-draw="fibtime"]{font-size:15px;min-height:32px;}
+}

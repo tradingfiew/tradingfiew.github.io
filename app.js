@@ -1097,8 +1097,20 @@ function installLineDragging(){
       const point=item.points[i],x=chart.timeScale().timeToCoordinate(point.time),y=candles.priceToCoordinate(point.value);
       if(Number.isFinite(x)&&Number.isFinite(y)&&Math.hypot(x-p.x,y-p.y)<(window.innerWidth<=730?22:14)){endpoint=i;break;}
     }
-    if((item?.kind==='fib'||item?.kind==='shape')&&hit.anchorIndex!==null&&hit.anchorIndex!==undefined)
-      endpoint=hit.anchorIndex;
+    if(item?.kind==='fib'||item?.kind==='shape'){
+      const anchors=item.kind==='fib'?item.anchors:item.points;
+      if(Array.isArray(anchors)){
+        let nearest=null;
+        for(let i=0;i<anchors.length;i++){
+          const anchor=drawingPos(anchors[i].time,anchors[i].price);
+          if(!anchor)continue;
+          const dist=Math.hypot(anchor.x-p.x,anchor.y-p.y);
+          if(dist<(window.innerWidth<=730?24:16)&&(!nearest||dist<nearest.dist))
+            nearest={index:i,dist};
+        }
+        if(nearest)endpoint=nearest.index;
+      }
+    }
     drawingDrag={...hit,start:p,startPrice:candles.coordinateToPrice(p.y),startX:e.clientX,startY:e.clientY,
       pointerId:e.pointerId,request:state.request,moved:false,endpoint,newPrice:alert?.target,
       copy:item?.kind==='price'?{price:item.price}:item?.kind==='fib'?{
@@ -1712,7 +1724,7 @@ function clearDrawings({forget=true,notice=true}={}){
     try{
       if(d.kind==='price')candles.removePriceLine(d.line);
       else if(d.kind==='fib')d.levels.forEach(l=>candles.removePriceLine(l.line));
-      else chart.removeSeries(d.line);
+      else if(d.kind==='series')chart.removeSeries(d.line);
     }catch(e){console.warn('Drawing clear skipped',e);}
   }
   state.drawings=[];resetDrawingSelection();

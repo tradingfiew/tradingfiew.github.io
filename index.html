@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20261118-channel-toolbar1">
+  <link rel="stylesheet" href="./styles.css?v=20261118-fibonacci-four1">
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
@@ -42,8 +42,8 @@
   <script defer src="./alerts.js?v=20261117-menu1"></script>
   <script defer src="./market-panels.js?v=20261117-confirmed-bars1"></script>
   <script defer src="./terminal-ui.js?v=20261117-toolbar-more1"></script>
-  <script defer src="./drawing-geometry.js?v=20261118-channel1"></script>
-  <script defer src="./app.js?v=20261118-channel-toolbar3"></script>
+  <script defer src="./drawing-geometry.js?v=20261118-fibonacci-four1"></script>
+  <script defer src="./app.js?v=20261118-fibonacci-four1"></script>
   <script defer src="./us-calendar.js?v=20261117-calendar-modal2"></script>
   <script defer src="./adsense.js?v=20261117-mobile-vignette-policy1"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
@@ -208,6 +208,8 @@
             <button class="draw-button" data-draw="trend" title="Trend line">╱</button>
             <button class="draw-button" data-draw="fib" title="Fibonacci Retracement · drag from swing start to end" aria-label="Fibonacci retracement">⅔</button>
             <button class="draw-button" data-draw="fibext" title="Trend-based Fibonacci Extension: A → B impulse, then C correction (3 points)" aria-label="3-point Fibonacci extension">φ+</button>
+            <button class="draw-button" data-draw="fibchannel" title="Canal de Fibonacci / Fibonacci Channel · A → B baseline, C channel width" aria-label="Fibonacci channel">≋</button>
+            <button class="draw-button" data-draw="fibtime" title="Fuseau horaire de Fibonacci / Fibonacci Time Zone · choose A and B to project time intervals" aria-label="Fibonacci time zone">│φ</button>
             <button class="draw-button" data-draw="channel" title="Parallel Channel: A → B baseline, then C width" aria-label="Parallel channel">▱</button>
             <button class="draw-button" data-draw="rectangle" title="Rectangle · drag from one corner to opposite corner" aria-label="Price rectangle">▭</button>
             <button class="draw-button" data-draw="measure" title="Measure price change and percentage · drag between two points" aria-label="Price range measurement">↕</button>
@@ -228,7 +230,7 @@
               </div>
               <section id="drawingsPanel" class="drawings-panel hidden" aria-label="Manage your drawings">
                 <header class="drawings-panel-header"><strong>My drawings <span id="drawingsTotal">0</span></strong><button type="button" id="closeDrawingsPanelBtn" aria-label="Close drawings panel">×</button></header>
-                <p class="drawings-panel-help">Click any drawn line to edit color, width, dash, reverse, visibility or delete in the top toolbar. Channel: A→B baseline then C width. Fibonacci Extension: A→B impulse then C retracement (3 points). Drag any line or anchor with mouse or finger. Drag a trend endpoint to reshape it; drag the segment to move it. Shift-drag a Fibonacci level to move every level. Draw: press → drag → release, or click the first point → move the mouse to preview → click the second point. Shift near a candle snaps to its OHLC. Drag handles to edit, then use the list to delete.</p>
+                <p class="drawings-panel-help">Click any drawn line to edit color, width, dash, reverse, visibility or delete in the top toolbar. Channel: A→B baseline then C width. Fibonacci Extension: A→B impulse then C retracement (3 points). Fibonacci Channel: A→B line then C width; Time Zone: A→B time span. Drag any line or anchor with mouse or finger. Drag a trend endpoint to reshape it; drag the segment to move it. Shift-drag a Fibonacci level to move every level. Draw: press → drag → release, or click the first point → move the mouse to preview → click the second point. Shift near a candle snaps to its OHLC. Drag handles to edit, then use the list to delete.</p>
                 <div id="drawingList" class="drawing-list"></div>
                 <button type="button" id="clearAllDrawingsBtn" class="drawing-clear-all" disabled>Clear all drawings</button>
               </section>

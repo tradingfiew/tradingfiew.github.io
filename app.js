@@ -1014,11 +1014,16 @@ function drawingHitTest(point){
   };
   for(const d of state.drawings){
     try{
+      if(d.style?.hidden)continue;
       if(d.kind==='price'){
         const y=candles.priceToCoordinate(d.price);
         if(y!==null)consider(d.id,null,Math.abs(y-point.y));
       }else if(d.kind==='fib'){
-        for(const l of d.levels){
+        const xs=(d.anchors||[]).map(a=>drawingPos(a.time,a.price)?.x).filter(Number.isFinite);
+        const eligible=d.renderer!=='svg'||!xs.length||
+          (point.x>=Math.min(...xs)-threshold&&
+           point.x<=(d.style?.extend?$('chartHost').clientWidth-chart.priceScale('right').width():Math.max(...xs))+threshold);
+        if(eligible)for(const l of d.levels){
           const y=candles.priceToCoordinate(l.price);
           if(y!==null)consider(d.id,l.fraction,Math.abs(y-point.y));
         }
@@ -1035,7 +1040,23 @@ function drawingHitTest(point){
           if(p)consider(d.id,null,Math.hypot(p.x-point.x,p.y-point.y),i);
         }
         if(d.shape==='vertical')consider(d.id,null,Math.abs(a.x-point.x));
-        else if(b){
+        else if(d.shape==='channel'&&d.points?.length===3){
+          const channel=Geometry.channel(d.points,time=>{
+            const i=state.data.findIndex(v=>v.time===time);return i>=0?i:null;
+          });
+          if(channel){
+            const upA=drawingPos(channel.upper[0].time,channel.upper[0].price);
+            const upB=drawingPos(channel.upper[1].time,channel.upper[1].price);
+            const distSegment=(u,v)=>{
+              if(!u||!v)return Infinity;
+              const dx=v.x-u.x,dy=v.y-u.y,t=Math.max(0,Math.min(1,
+                ((point.x-u.x)*dx+(point.y-u.y)*dy)/(dx*dx+dy*dy||1)));
+              return Math.hypot(point.x-u.x-t*dx,point.y-u.y-t*dy);
+            };
+            consider(d.id,null,distSegment(a,b));
+            consider(d.id,null,distSegment(upA,upB));
+          }
+        }else if(b){
           const minX=Math.min(a.x,b.x),maxX=Math.max(a.x,b.x),
             minY=Math.min(a.y,b.y),maxY=Math.max(a.y,b.y);
           if(point.x>=minX-threshold&&point.x<=maxX+threshold&&

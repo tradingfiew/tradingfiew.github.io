@@ -2088,3 +2088,111 @@ body.light .scheduled-price-grid input,body.light .scheduled-price-grid select{c
     min-height:36px!important;height:36px!important;
   }
 }
+
+/* Compact mobile drawing controls: two edit rows + a small title row.
+   Keep all actions visible without a horizontal scrollbar, including 320px. */
+@media(max-width:730px){
+  body.terminal-mode .center-pane .drawing-options-bar{
+    grid-template-columns:repeat(15,minmax(0,1fr))!important;
+    gap:3px 4px!important;
+    padding:3px 5px!important;
+    align-items:center!important;
+    min-height:0!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-name{
+    grid-row:1;grid-column:1/14;
+    max-width:100%;min-width:0;
+    font-size:10px;line-height:1.1;
+    padding:0 2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingDeselectBtn{
+    grid-row:1;grid-column:14/16;
+    min-height:24px;height:24px;
+    font-size:16px;padding:0;
+    border-radius:4px;
+  }
+  body.terminal-mode .center-pane .drawing-option-label{
+    grid-row:2;grid-column:span 5;
+    min-width:0!important;
+    flex-direction:row!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+    white-space:nowrap!important;
+    gap:3px!important;
+    font-size:9px!important;
+    line-height:1;
+    overflow:hidden;
+  }
+  body.terminal-mode .center-pane .drawing-option-label :is(select,input[type=color]){
+    min-width:0!important;max-width:100%!important;width:100%!important;
+    flex:1 1 0;
+    height:29px!important;min-height:29px!important;
+    padding:2px 3px!important;
+    font-size:10px!important;
+    border-radius:4px;
+  }
+  body.terminal-mode .center-pane .drawing-option-label input[type=color]{
+    padding:2px!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar .drawing-opt-btn:not(#drawingDeselectBtn){
+    grid-row:3;grid-column:span 3;
+    width:100%!important;min-width:0!important;
+    min-height:30px!important;height:30px!important;
+    padding:3px 1px!important;
+    font-size:9.2px!important;
+    line-height:1!important;
+    border-radius:4px;
+    white-space:nowrap!important;
+    overflow:hidden;text-overflow:clip;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingRepairBtn:not([hidden]){
+    grid-row:4;grid-column:1/-1;
+    height:28px!important;min-height:28px!important;
+  }
+  body.terminal-mode .center-pane .draw-tools{
+    width:32px!important;flex:0 0 32px!important;
+    padding:4px 1px 6px!important;
+    gap:2px!important;
+  }
+  body.terminal-mode .center-pane .draw-button{
+    width:28px!important;
+    height:30px!important;min-height:30px!important;
+    font-size:14px!important;
+  }
+  body.terminal-mode .center-pane .draw-button[data-draw="fibext"],
+  body.terminal-mode .center-pane .draw-button[data-draw="fibchannel"],
+  body.terminal-mode .center-pane .draw-button[data-draw="fibtime"]{
+    font-size:11px!important;letter-spacing:-.5px;
+  }
+}
+@media(orientation:landscape) and (max-height:550px) and (min-width:731px) and (max-width:960px){
+  body.terminal-mode .center-pane .drawing-options-bar{
+    gap:2px 5px!important;
+    padding:2px 6px!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-name{
+    font-size:10px;
+    line-height:1;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingDeselectBtn{
+    height:22px!important;min-height:22px!important;
+  }
+  body.terminal-mode .center-pane .drawing-option-label{
+    font-size:9px!important;
+    gap:3px!important;
+  }
+  body.terminal-mode .center-pane .drawing-option-label :is(select,input[type=color]){
+    height:24px!important;min-height:24px!important;
+    padding:2px 3px!important;
+    font-size:10px!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar .drawing-opt-btn:not(#drawingDeselectBtn){
+    height:26px!important;min-height:26px!important;
+    padding:2px 3px!important;font-size:9.5px!important;
+  }
+  body.terminal-mode .center-pane .draw-button{
+    height:28px!important;min-height:28px!important;
+    font-size:13px!important;
+  }
+}

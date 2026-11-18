@@ -1771,19 +1771,45 @@ function addDrawingFromGesture(mode,start,end){
   if(mode==='horizontal'){
     const line=candles.createPriceLine({price:end.price,color:'#62aeff',lineWidth:2,
       lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,title:'USER LEVEL'});
-    const d={id:++drawingSeq,kind:'price',price:end.price,line};
+    const d={id:++drawingSeq,kind:'price',price:end.price,line,style:defaultStyle('price')};
     state.drawings.push(d);selectDrawing(d.id);toast('Horizontal level '+fmt(end.price)+' saved.');
     return true;
   }
   if(mode==='alert'){addChartPriceAlert(end.price);return true;}
   if(mode==='vertical'){
-    const d={id:++drawingSeq,kind:'shape',shape:'vertical',points:[{time:end.time,price:end.price}]};
+    const d={id:++drawingSeq,kind:'shape',shape:'vertical',points:[{time:end.time,price:end.price}],style:defaultStyle('shape')};
     state.drawings.push(d);selectDrawing(d.id);toast('Vertical time marker added.');
     return true;
   }
-  if(!start||!['trend','fib','fibext','rectangle','measure'].includes(mode))return false;
+  if(mode==='channel'||mode==='fibext'){
+    const points=Array.isArray(start)?[...start,end]:[];
+    if(points.length!==3||points.some(p=>!p||!Number.isFinite(p.price)||p.price<=0))return false;
+    if(points[0].time===points[1].time){
+      toast('A and B must be on different candles.',true);return false;
+    }
+    if(mode==='channel'){
+      const geometry=Geometry.channel(points,time=>{
+        const i=state.data.findIndex(c=>c.time===time);
+        return i<0?null:i;
+      });
+      if(!geometry){toast('Channel points must have a valid positive price range.',true);return false;}
+      const d={id:++drawingSeq,kind:'shape',shape:'channel',points,
+        style:defaultStyle('channel')};
+      state.drawings.push(d);selectDrawing(d.id);
+      toast('Parallel Channel added · select it to edit width and color.');
+      return true;
+    }
+    const levels=Geometry.levels('fibext',points,false);
+    if(levels.length<2){toast('Extension is outside the positive price range.',true);return false;}
+    const d={id:++drawingSeq,kind:'fib',renderer:'svg',mode:'fibext',
+      anchors:points,levels,lines:[],style:defaultStyle('fib')};
+    state.drawings.push(d);selectDrawing(d.id);
+    toast('Trend-based Fibonacci Extension · 3 points saved.');
+    return true;
+  }
+  if(!start||!['trend','fib','rectangle','measure'].includes(mode))return false;
   if(mode==='trend'&&start.time===end.time){toast('Choose points on different candles.',true);return false;}
-  if(['fib','fibext'].includes(mode)&&start.price===end.price){toast('Choose two different prices for Fibonacci.',true);return false;}
+  if(mode==='fib'&&start.price===end.price){toast('Choose different prices for Fibonacci.',true);return false;}
   if(['rectangle','measure'].includes(mode)&&start.time===end.time&&start.price===end.price){
     toast('Move to a different second point.',true);return false;
   }
@@ -1792,24 +1818,17 @@ function addDrawingFromGesture(mode,start,end){
     const line=addLine('#64b7ff',2);
     const points=anchors.map(p=>({time:p.time,value:p.price})).sort((a,b)=>a.time-b.time);
     line.setData(points);
-    const d={id:++drawingSeq,kind:'series',line,points};
+    const d={id:++drawingSeq,kind:'series',line,points,style:defaultStyle('series')};
     state.drawings.push(d);selectDrawing(d.id);toast('Trend line saved.');
-  }else if(['fib','fibext'].includes(mode)){
-    const levels=[];
-    for(const fraction of mode==='fib'?FIB_RETRACE:FIB_EXTEND){
-      const p=start.price+(end.price-start.price)*fraction;
-      if(!Number.isFinite(p)||p<=0)continue;
-      const line=candles.createPriceLine({price:p,
-        color:fraction===.618?'#f9bd66':'rgba(158,133,246,.70)',
-        lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,
-        title:(mode==='fibext'?'EXT ':'FIB ')+num(fraction*100,1)+'%'});
-      levels.push({fraction,price:p,line});
-    }
-    if(levels.length<2){toast('These Fibonacci levels are outside positive prices.',true);return false;}
-    const d={id:++drawingSeq,kind:'fib',mode,anchors,levels,lines:levels.map(l=>l.line)};
-    state.drawings.push(d);selectDrawing(d.id);toast(mode==='fibext'?'Fibonacci Extension saved.':'Fibonacci Retracement saved.');
+  }else if(mode==='fib'){
+    const levels=Geometry.levels('fib',anchors,false);
+    if(levels.length<2){toast('Retracement is outside positive prices.',true);return false;}
+    const d={id:++drawingSeq,kind:'fib',renderer:'svg',mode:'fib',
+      anchors,levels,lines:[],style:defaultStyle('fib')};
+    state.drawings.push(d);selectDrawing(d.id);
+    toast('Fibonacci Retracement saved · 0% at B, 100% at A.');
   }else{
-    const d={id:++drawingSeq,kind:'shape',shape:mode,points:anchors};
+    const d={id:++drawingSeq,kind:'shape',shape:mode,points:anchors,style:defaultStyle('shape')};
     state.drawings.push(d);selectDrawing(d.id);
     toast(mode==='measure'?'Price range measured.':'Rectangle saved.');
   }

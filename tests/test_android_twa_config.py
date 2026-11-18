@@ -44,11 +44,29 @@ class AndroidTwaConfigTest(unittest.TestCase):
         )
         self.assertEqual(provider_authority, "com.ribhlab.tradingfiew.fileprovider")
 
+    def test_manage_data_launcher_is_declared_as_required_by_browser_helper(self):
+        # Browser Helper 2.7 calls setComponentEnabledSetting for this
+        # component during TWA launch; omission causes a fatal exception.
+        root = ET.parse(BASE / "android/app/src/main/AndroidManifest.xml").getroot()
+        app = root.find("application")
+        expected = "com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+        activities = [a for a in app.findall("activity")
+                      if a.get(ANDROID + "name") == expected]
+        self.assertEqual(len(activities), 1)
+        self.assertNotEqual(activities[0].get(ANDROID + "enabled"), "false")
+        self.assertEqual(app.get(ANDROID + "manageSpaceActivity"), expected)
+        metadata = {m.get(ANDROID + "name"): m.get(ANDROID + "value")
+                    for m in activities[0].findall("meta-data")}
+        self.assertEqual(
+            metadata["android.support.customtabs.trusted.MANAGE_SPACE_URL"],
+            "https://tradingfiew.github.io/",
+        )
+
     def test_app_has_monotonic_update_version_and_correct_identity(self):
         build = (BASE / "android/app/build.gradle").read_text()
         self.assertRegex(build, r"applicationId\s+'com\.ribhlab\.tradingfiew'")
-        self.assertRegex(build, r"versionCode\s+2")
-        self.assertRegex(build, r"versionName\s+'1\.0\.1'")
+        self.assertRegex(build, r"versionCode\s+3")
+        self.assertRegex(build, r"versionName\s+'1\.0\.2'")
         self.assertIn("targetSdk 36", build)
 
 

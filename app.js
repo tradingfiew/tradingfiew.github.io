@@ -981,7 +981,8 @@ function installLineDragging(){
   };
   const hitAt=p=>{
     const drawing=drawingHitTest(p);
-    let hit=drawing?{type:'drawing',id:drawing.id,fraction:drawing.fraction,distance:drawing.distance}:null;
+    let hit=drawing?{type:'drawing',id:drawing.id,fraction:drawing.fraction,
+      anchorIndex:drawing.anchorIndex,distance:drawing.distance}:null;
     if($('toggleAlertLines').checked)for(const a of window.TradingFiewAlerts?.getPriceLevels?.(state.symbol)||[]){
       const y=candles.priceToCoordinate(a.target),distance=Math.abs(y-p.y);
       if(Number.isFinite(y)&&distance<=(window.innerWidth<=730?13:8)&&(!hit||distance<hit.distance))
@@ -1054,10 +1055,15 @@ function installLineDragging(){
       const point=item.points[i],x=chart.timeScale().timeToCoordinate(point.time),y=candles.priceToCoordinate(point.value);
       if(Number.isFinite(x)&&Number.isFinite(y)&&Math.hypot(x-p.x,y-p.y)<(window.innerWidth<=730?22:14)){endpoint=i;break;}
     }
+    if((item?.kind==='fib'||item?.kind==='shape')&&hit.anchorIndex!==null&&hit.anchorIndex!==undefined)
+      endpoint=hit.anchorIndex;
     drawingDrag={...hit,start:p,startPrice:candles.coordinateToPrice(p.y),startX:e.clientX,startY:e.clientY,
       pointerId:e.pointerId,request:state.request,moved:false,endpoint,newPrice:alert?.target,
-      copy:item?.kind==='price'?{price:item.price}:item?.kind==='fib'?{levels:item.levels.map(v=>({fraction:v.fraction,price:v.price}))}:
-        item?.kind==='series'?{points:item.points.map(v=>({...v}))}:null};
+      copy:item?.kind==='price'?{price:item.price}:item?.kind==='fib'?{
+        levels:item.levels.map(v=>({fraction:v.fraction,price:v.price})),
+        anchors:item.anchors?.map(v=>({...v}))||null}:
+        item?.kind==='series'?{points:item.points.map(v=>({...v}))}:
+        item?.kind==='shape'?{points:item.points.map(v=>({...v}))}:null};
     if(item)selectDrawing(item.id,hit.fraction);
     hideChartContextMenu();
     chart.applyOptions({handleScroll:false,handleScale:false});

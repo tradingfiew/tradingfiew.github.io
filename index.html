@@ -42,7 +42,7 @@
   <script defer src="./alerts.js?v=20261117-menu1"></script>
   <script defer src="./market-panels.js?v=20261117-confirmed-bars1"></script>
   <script defer src="./terminal-ui.js?v=20261117-toolbar-more1"></script>
-  <script defer src="./app.js?v=20261117-stream-audit1"></script>
+  <script defer src="./app.js?v=20261118-drawing-preview1"></script>
   <script defer src="./us-calendar.js?v=20261117-calendar-modal2"></script>
   <script defer src="./adsense.js?v=20261117-mobile-vignette-policy1"></script>
   <script defer src="./donate.js?v=20261117-3"></script>
@@ -192,7 +192,11 @@
             <button class="draw-button" data-draw="horizontal" title="Horizontal price level">━</button>
             <button class="draw-button alert-draw-button" data-draw="alert" title="Choose alert tool, then tap a price; right-click chart for menu" aria-label="Set chart price alert" aria-pressed="false"><svg class="alert-icon-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button>
             <button class="draw-button" data-draw="trend" title="Trend line">╱</button>
-            <button class="draw-button" data-draw="fib" title="Fibonacci retracement">⅔</button>
+            <button class="draw-button" data-draw="fib" title="Fibonacci Retracement · drag from swing start to end" aria-label="Fibonacci retracement">⅔</button>
+            <button class="draw-button" data-draw="fibext" title="Fibonacci Extension · includes 127.2%, 161.8%, 261.8%" aria-label="Fibonacci extension">φ+</button>
+            <button class="draw-button" data-draw="rectangle" title="Rectangle · drag from one corner to opposite corner" aria-label="Price rectangle">▭</button>
+            <button class="draw-button" data-draw="measure" title="Measure price change and percentage · drag between two points" aria-label="Price range measurement">↕</button>
+            <button class="draw-button" data-draw="vertical" title="Vertical time line · tap a candle" aria-label="Vertical time marker">│</button>
             <div class="vertical-separator"></div>
             <button id="drawingManagerBtn" class="draw-button draw-manager-button" title="Manage drawings (select, delete)" aria-label="Manage drawings" aria-expanded="false" aria-controls="drawingsPanel">☷<span id="drawingCount" class="drawing-count">0</span></button>
             <button id="undoDrawingBtn" class="draw-button" title="Undo latest drawing" aria-label="Undo latest drawing" disabled>↶</button>
@@ -201,7 +205,7 @@
           <div class="chart-inner">
             <div class="ohlc-strip" id="ohlcStrip"><span>O <b id="oVal">—</b></span><span>H <b id="hVal">—</b></span><span>L <b id="lVal">—</b></span><span>C <b id="cVal">—</b></span><span class="strip-v"><span id="volumeStripLabel">VOL</span> <b id="volumeStripValue">—</b></span><span class="strip-r" id="stripRSI">RSI 14 —</span></div>
             <div class="legend-strip"><span><i class="legend-dot ema20"></i>EMA 20</span><span><i class="legend-dot ema50"></i>EMA 50</span><span><i class="legend-dot ema200"></i>EMA 200</span><span><i class="legend-dot bullish"></i>Bullish FVG</span><span><i class="legend-dot bearish"></i>Bearish FVG</span></div>
-            <div id="syncedCrosshairGuide" class="synced-crosshair-guide" hidden aria-hidden="true"></div><div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><output id="livePriceBadge" class="live-price-badge" hidden aria-label="Current market price and candle countdown on chart" title="Current market price"><span class="axis-price">—</span><span class="axis-countdown">—</span></output><div id="alertLineHandles" class="alert-line-handles" aria-label="Draggable chart alert levels"></div><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div>
+            <div id="syncedCrosshairGuide" class="synced-crosshair-guide" hidden aria-hidden="true"></div><div class="chart-holder"><div id="chartHost" class="chart-host"></div><canvas id="zoneOverlay" class="zone-overlay" aria-hidden="true"></canvas><svg id="drawingOverlay" class="drawing-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g id="drawingShapes"></g><g id="drawingLive"></g></svg><output id="livePriceBadge" class="live-price-badge" hidden aria-label="Current market price and candle countdown on chart" title="Current market price"><span class="axis-price">—</span><span class="axis-countdown">—</span></output><div id="alertLineHandles" class="alert-line-handles" aria-label="Draggable chart alert levels"></div><div id="chartState" class="chart-state"><div class="spinner"></div><strong>Loading market data</strong><span>Connecting to public exchange feed...</span></div><div id="drawHint" class="draw-hint hidden"></div>
               <div id="selectedDrawingBar" class="selected-drawing-bar hidden" role="group" aria-label="Selected chart drawing">
                 <span id="selectedDrawingLabel">Selected drawing</span>
                 <button type="button" id="deleteSelectedDrawingBtn" class="selected-delete" title="Delete selected line or Fibonacci">Delete ✕</button>
@@ -209,7 +213,7 @@
               </div>
               <section id="drawingsPanel" class="drawings-panel hidden" aria-label="Manage your drawings">
                 <header class="drawings-panel-header"><strong>My drawings <span id="drawingsTotal">0</span></strong><button type="button" id="closeDrawingsPanelBtn" aria-label="Close drawings panel">×</button></header>
-                <p class="drawings-panel-help">Drag any horizontal line, trend line or Fibonacci level directly with the mouse or finger. Drag a trend endpoint to reshape it; drag the segment to move it. Shift-drag a Fibonacci level to move every level. Tap to select, or use the list to delete.</p>
+                <p class="drawings-panel-help">Drag any horizontal line, trend line or Fibonacci level directly with the mouse or finger. Drag a trend endpoint to reshape it; drag the segment to move it. Shift-drag a Fibonacci level to move every level. Draw: press → drag → release, or click the first point → move the mouse to preview → click the second point. Shift near a candle snaps to its OHLC. Drag handles to edit, then use the list to delete.</p>
                 <div id="drawingList" class="drawing-list"></div>
                 <button type="button" id="clearAllDrawingsBtn" class="drawing-clear-all" disabled>Clear all drawings</button>
               </section>

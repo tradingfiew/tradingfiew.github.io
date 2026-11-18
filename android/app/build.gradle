@@ -17,7 +17,7 @@ android {
         applicationId 'com.ribhlab.tradingfiew'
         minSdk 24
         targetSdk 36
-        versionCode 1
+        versionCode 2
         versionName '1.0.0'
     }
 
@@ -32,14 +32,22 @@ android {
         }
     }
 
+    buildFeatures { buildConfig true }
+
     buildTypes {
         release {
+            manifestPlaceholders = [admobAppId: 'ca-app-pub-7945572016731367~1161939707']
+            buildConfigField 'String', 'BANNER_ID', '"ca-app-pub-7945572016731367/9838506070"'
+            buildConfigField 'String', 'INTERSTITIAL_ID', '"ca-app-pub-7945572016731367/8117339646"'
             minifyEnabled false
             if (signedBuild) {
                 signingConfig signingConfigs.release
             }
         }
         debug {
+            manifestPlaceholders = [admobAppId: 'ca-app-pub-3940256099942544~3347511713']
+            buildConfigField 'String', 'BANNER_ID', '"ca-app-pub-3940256099942544/6300978111"'
+            buildConfigField 'String', 'INTERSTITIAL_ID', '"ca-app-pub-3940256099942544/1033173712"'
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'
         }
@@ -56,6 +64,6 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
-    implementation 'androidx.browser:browser:1.10.0'
+    implementation 'com.google.android.gms:play-services-ads:25.5.0'
+    implementation 'com.google.android.ump:user-messaging-platform:4.0.0'
 }

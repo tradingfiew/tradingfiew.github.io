@@ -2,4 +2,5 @@
 <resources>
     <color name="background_color">#0B1424</color>
     <color name="accent_color">#40DBA1</color>
+    <color name="launcher_background">#000025</color>
 </resources>

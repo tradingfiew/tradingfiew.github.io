@@ -389,3 +389,20 @@ test('mobile drawing toolbar uses compact two-row controls and stays visible',()
  assert.ok(css.includes('width:28px!important'));
  assert.ok(html.includes('styles.css?v=20261118-mobile-compact4'));
 });
+
+
+test('public privacy policy covers all supported languages and Android permissions',()=>{
+  const html=source('privacy.html');
+  const manifest=source('android/app/src/main/AndroidManifest.xml');
+  const ads=source('adsense.js');
+  assert.ok(html.includes('rel="canonical" href="https://tradingfiew.github.io/privacy.html"'));
+  for(const id of ['english','francais','arabic'])assert.ok(html.includes('id="'+id+'"'));
+  assert.ok(html.includes('com.ribhlab.tradingfiew'));
+  for(const word of ['Binance','biquote','TradingView','GitHub Pages','POST_NOTIFICATIONS',
+                       'My Space','mailto:rachid022note7@gmail.com'])assert.ok(html.includes(word),word);
+  assert.ok(manifest.includes('android.permission.POST_NOTIFICATIONS'));
+  assert.ok(manifest.includes('android.permission.INTERNET'));
+  assert.ok(ads.includes('siteReady:false'));
+  assert.ok(ads.includes('mobileVignetteOnlyConfirmed:false'));
+  assert.ok(html.indexOf('adsbygoogle.js')===-1);
+});

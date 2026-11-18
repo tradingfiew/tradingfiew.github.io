@@ -52,17 +52,38 @@ jobs:
             echo "Signing secrets missing: outputs are UNSIGNED and NOT ready to submit to Google Play."
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build APK and Android App Bundle
-        run: gradle --no-daemon -p android :app:assembleRelease :app:bundleRelease
-      - name: Generate checksums
+      - name: Build DEBUG using official AdMob TEST IDs
+        run: gradle --no-daemon -p android :app:assembleDebug
+      - name: Upload debug APK for Android QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradingFiew-Android-1.0.3-DEBUG-AdMobTest
+          if-no-files-found: error
+          retention-days: 14
+          path: android/app/build/outputs/apk/debug/*.apk
+      - name: Build release ONLY if real TradingFiew AdMob ID and signing keys exist
+        if: steps.signing.outputs.signed == 'true'
+        env:
+          TRADINGFIEW_ADMOB_APP_ID: ${{ secrets.TRADINGFIEW_ADMOB_APP_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$TRADINGFIEW_ADMOB_APP_ID" =~ ^ca-app-pub-7945572016731367~[0-9]{10}$ ]]; then
+            echo "::error::Missing or invalid TradingFiew AdMob App ID. No release output until its real ID is provided."
+            exit 1
+          fi
+          gradle --no-daemon -p android :app:assembleRelease :app:bundleRelease
+      - name: Generate release checksums
+        if: steps.signing.outputs.signed == 'true'
         run: |
           cd android/app/build/outputs
           find . -type f \( -name '*.apk' -o -name '*.aab' \) -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt
           cat SHA256SUMS.txt
-      - name: Upload release build artifacts
+      - name: Upload verified signed release build artifacts
+        if: steps.signing.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: TradingFiew-Android-${{ steps.signing.outputs.signed == 'true' && 'SIGNED' || 'UNSIGNED' }}
+          name: TradingFiew-Android-1.0.3-SIGNED
           if-no-files-found: error
           retention-days: 30
           path: |

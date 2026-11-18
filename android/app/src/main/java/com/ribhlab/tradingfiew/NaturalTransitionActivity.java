@@ -35,7 +35,7 @@ public final class NaturalTransitionActivity extends Activity {
         resume("https://tradingfiew.github.io/?native=1#usEconomicCalendar");
     }
     private void resumeToApp() {
-        resume("https://tradingfiew.github.io/?native=1#privacy");
+        resume("https://tradingfiew.github.io/privacy.html?native=1");
     }
     private void resume(String url) {
         if (!finished.compareAndSet(false,true)) return;

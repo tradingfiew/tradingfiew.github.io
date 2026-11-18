@@ -35,7 +35,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 1100
           script: |
-            set -euo pipefail
+            set -eu
             mkdir -p android-startup-v2
             adb wait-for-device
             adb shell getprop sys.boot_completed | tee android-startup-v2/boot.txt

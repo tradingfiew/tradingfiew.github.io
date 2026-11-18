@@ -805,11 +805,15 @@ function restoreDrawings(){
           entry.anchors.every(p=>p&&validTime(p.time)&&validPrice(p.price))?
           entry.anchors.map(p=>({time:p.time,price:p.price})):null;
         const style=safeStyle(entry.style,'fib');
+        const invalidOldExtension=renderer==='legacy'&&mode==='fibext';
+        // A 2-point projection cannot be represented as a valid 3-point
+        // trend-based Fib Extension. Retain data but suppress misleading levels.
+        if(invalidOldExtension)style.hidden=true;
         const levels=[];
         const calculated=renderer==='svg'&&anchors?Geometry.levels(mode,anchors,style.reverse):entry.levels;
         for(const l of calculated.slice(0,14)){
           if(!l||!validPrice(l.price)||!Number.isFinite(l.fraction)||l.fraction<0||l.fraction>2.618)continue;
-          const line=renderer==='legacy'?candles.createPriceLine({
+          const line=renderer==='legacy'&&!invalidOldExtension?candles.createPriceLine({
             price:l.price,color:style.color,lineWidth:style.width,
             lineStyle:lightweightLineStyle(style),axisLabelVisible:!style.hidden,
             title:(mode==='fibext'?'OLD EXT ':'FIB ')+(l.fraction*100).toFixed(1)+'%'
@@ -817,7 +821,7 @@ function restoreDrawings(){
           levels.push({fraction:l.fraction,price:l.price,line});
         }
         if(levels.length){
-          const d={kind:'fib',renderer,mode,anchors,style,levels,lines:levels.map(l=>l.line).filter(Boolean),id:++drawingSeq};
+          const d={kind:'fib',renderer,mode,anchors,style,levels,legacyWrong:invalidOldExtension,lines:levels.map(l=>l.line).filter(Boolean),id:++drawingSeq};
           state.drawings.push(d);applyDrawingStyle(d);
         }
       }else if(entry.kind==='shape'&&['vertical','rectangle','measure','channel'].includes(entry.shape)&&
@@ -833,7 +837,7 @@ function restoreDrawings(){
   scheduleDrawingOverlay();
 }
 function drawingTitle(d){
-  if(d.kind==='fib')return (d.renderer==='legacy'&&d.mode==='fibext'?'Legacy 2-point Extension (fix C)':d.mode==='fibext'?'Trend Fibonacci Extension':'Fibonacci Retracement')+' · '+d.levels.length+' levels';
+  if(d.kind==='fib')return (d.renderer==='legacy'&&d.mode==='fibext'?'⚠ Old 2-point Extension — Redraw A-B-C':d.mode==='fibext'?'Trend Fibonacci Extension':'Fibonacci Retracement')+' · '+d.levels.length+' levels';
   if(d.kind==='shape')return d.shape==='rectangle'?'Price Rectangle':d.shape==='measure'?'Price Range':d.shape==='channel'?'Parallel Channel':'Vertical time marker';
   if(d.kind==='series')return 'Trend line';
   return 'Horizontal '+fmt(d.price);
@@ -871,6 +875,7 @@ function syncDrawingOptionsBar(d){
   $('drawingReverseBtn').setAttribute('aria-pressed',String(style.reverse));
   $('drawingExtendBtn').hidden=!fib&&d.shape!=='channel';
   $('drawingExtendBtn').setAttribute('aria-pressed',String(style.extend));
+  $('drawingVisibilityBtn').hidden=legacy;
   $('drawingVisibilityBtn').textContent=style.hidden?'◉ Show':'◉ Hide';
   $('drawingVisibilityBtn').setAttribute('aria-pressed',String(style.hidden));
   $('drawingLockBtn').textContent=style.locked?'🔒 Unlock':'♙ Lock';

@@ -38,22 +38,22 @@ jobs:
             adb shell getprop sys.boot_completed | tee android-startup-v2/boot.txt
             adb install -r tradingfiew-release.apk
             adb shell pm list packages | grep -E 'chrome|tradingfiew' > android-startup-v2/packages.txt || true
+            adb shell am set-debug-app --persistent com.android.chrome
+            adb shell 'echo "chrome --disable-fre --no-first-run" > /data/local/tmp/chrome-command-line'
             adb logcat -c
             adb shell am start -W -n com.ribhlab.tradingfiew/com.ribhlab.tradingfiew.LauncherActivity 2>&1 | tee android-startup-v2/activity.txt
             sleep 10
             adb logcat -d -v time > android-startup-v2/logcat.txt
             adb shell dumpsys activity activities > android-startup-v2/activities.txt
             grep -n -B 5 -A 50 -E 'FATAL EXCEPTION|Caused by:|Process: com.ribhlab.tradingfiew' android-startup-v2/logcat.txt > android-startup-v2/crash-check.txt || true
+            adb shell uiautomator dump /sdcard/tradingfiew.xml
+            adb pull /sdcard/tradingfiew.xml android-startup-v2/ui.xml
+            adb exec-out screencap -p > android-startup-v2/screen.png
             cat android-startup-v2/activity.txt
-            if grep -q 'FATAL EXCEPTION' android-startup-v2/crash-check.txt; then
-              echo "::error::Detected startup fatal exception; logcat artifact includes cause"
-              cat android-startup-v2/crash-check.txt
-              exit 1
-            fi
-            if grep -Eq 'Error type 3|Activity class .* does not exist|Exception' android-startup-v2/activity.txt; then
-              echo "::error::Launcher could not start."
-              exit 1
-            fi
+            grep -Ei 'watchlist|timeframe|TradingFiew|candlestick' android-startup-v2/ui.xml >/dev/null
+            ! grep -q 'FirstRunActivity' android-startup-v2/activities.txt || ! grep -E 'mResumedActivity:.*FirstRunActivity' android-startup-v2/activities.txt
+            test "$(grep -c 'FATAL EXCEPTION' android-startup-v2/logcat.txt)" -eq 0
+            grep -q 'Status: ok' android-startup-v2/activity.txt
             echo 'ANDROID_LAUNCHER_SUCCESS_NO_FATAL_MAIN_PROCESS' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()

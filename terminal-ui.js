@@ -17,7 +17,7 @@ function resize(){
     root.requestAnimationFrame(()=>root.TradingFiewChartAPI?.resize?.());
   });
 }
-function isMobile(){return root.matchMedia("(max-width:730px)").matches;}
+function isMobile(){return root.matchMedia("(max-width:730px), (orientation:landscape) and (max-height:550px) and (min-width:731px) and (max-width:960px)").matches;}
 function syncPanelLabels(){
   $("toggleMarketsBtn").setAttribute("aria-pressed",String(marketOpen));
   $("toggleAnalysisBtn").setAttribute("aria-pressed",String(analysisOpen));

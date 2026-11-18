@@ -10,11 +10,23 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
+        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Translucent.NoTitleBar">
 
         <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
         <meta-data android:name="web_manifest_url" android:value="https://tradingfiew.github.io/site.webmanifest" />
+
+        <!-- Android Browser Helper's LauncherActivity invokes this component
+             through PackageManager.setComponentEnabledSetting() at startup.
+             Omitting it causes a guaranteed fatal AndroidRuntime crash. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+            android:exported="true">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="https://tradingfiew.github.io/" />
+        </activity>
 
         <activity
             android:name=".LauncherActivity"

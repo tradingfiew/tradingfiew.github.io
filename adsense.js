@@ -48,6 +48,8 @@ function loadAdSense(onLoad){
   document.head.appendChild(script);
 }
 function init(){
+  // Native Android is monetized exclusively by the consent-gated AdMob SDK.
+  if(/TradingFiewAndroid\//.test(navigator.userAgent||"")){removeMobilePlacements();return;}
   if(isMobile()){
     // This is enforced even while ads are disabled/pending approval so there
     // are never empty advertisement placeholders occupying the phone screen.

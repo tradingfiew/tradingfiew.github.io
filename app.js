@@ -1,7 +1,7 @@
 /* RibhLab SMC Terminal | no secrets, no trading orders, all market data public. */
 (function(){
 'use strict';
-const LW=window.LightweightCharts,Engine=window.SmcEngine,Markets=window.TradingFiewMarkets,Space=window.TradingFiewWorkspace;
+const LW=window.LightweightCharts,Engine=window.SmcEngine,Markets=window.TradingFiewMarkets,Space=window.TradingFiewWorkspace,Geometry=window.TradingFiewDrawingGeometry;
 const $=id=>document.getElementById(id);
 const intervals={'5m':'1h','15m':'4h','1h':'4h','4h':'1d','1d':'1w'};
 const activeMarket=()=>Markets.get(state.symbol)||coins[0];
@@ -15,10 +15,10 @@ let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanva
 let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
 let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=88,sharedCrosshairTime=null,livePriceBadgePending=false;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
-let drawingDrag=null,drawGesture=null,suppressDrawingClickUntil=0;
+let drawingDrag=null,drawGesture=null,drawSequence=[],suppressDrawingClickUntil=0;
 const FIB_RETRACE=[0,.236,.382,.5,.618,.786,.886,1];
 const FIB_EXTEND=[0,.236,.382,.5,.618,.786,1,1.272,1.618,2,2.618];
-const DRAW_MODES=['cursor','alert','horizontal','vertical','trend','fib','fibext','rectangle','measure'];
+const DRAW_MODES=['cursor','alert','horizontal','vertical','trend','fib','fibext','channel','rectangle','measure'];
 const preference=key=>Space?.get(key)??null;
 const remember=(key,value)=>Space?.set(key,value);
 const num=(v,dec)=>Number.isFinite(v)?v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}):'—';
@@ -709,14 +709,61 @@ root.innerHTML=items.length?'<table class="data-table"><thead><tr><th>DETECTED</
 /* Drawings persist by anonymous local browser workspace + market/timeframe.
  * Chart series and price-line instances are never serialized. */
 const drawingsStorageKey=()=>('drawings:'+state.symbol+':'+state.tf);
+
+const defaultStyle=kind=>({
+  color:kind==='fib'?'#9e85f6':kind==='channel'?'#53c9fa':'#62aeff',
+  width:kind==='fib'?1:2,dash:kind==='fib'?'dashed':'solid',
+  extend:false,reverse:false,hidden:false,locked:false
+});
+function safeStyle(raw,kind){
+  const base=defaultStyle(kind),v=raw&&typeof raw==='object'?raw:{};
+  return {
+    color:/^#[0-9a-f]{6}$/i.test(v.color||'')?v.color:base.color,
+    width:[1,2,3,4].includes(Number(v.width))?Number(v.width):base.width,
+    dash:['solid','dashed','dotted'].includes(v.dash)?v.dash:base.dash,
+    extend:v.extend===true,reverse:v.reverse===true,hidden:v.hidden===true,locked:v.locked===true
+  };
+}
+function dashArray(style){return style?.dash==='dashed'?'6 4':style?.dash==='dotted'?'2 4':'';}
+function lightweightLineStyle(style){
+  return style?.dash==='dotted'?LW.LineStyle.Dotted:
+    style?.dash==='dashed'?LW.LineStyle.Dashed:LW.LineStyle.Solid;
+}
+function applyDrawingStyle(d){
+  d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.kind==='shape'&&d.shape==='channel'?'channel':d.kind);
+  const st=d.style;
+  try{
+    if(d.kind==='price')d.line.applyOptions({
+      color:st.hidden?'rgba(0,0,0,0)':st.color,lineWidth:st.width,
+      lineStyle:lightweightLineStyle(st),axisLabelVisible:!st.hidden});
+    if(d.kind==='series')d.line.applyOptions({
+      color:st.hidden?'rgba(0,0,0,0)':st.color,lineWidth:st.width,
+      lineStyle:lightweightLineStyle(st)});
+    if(d.kind==='fib')for(const l of d.levels)if(l.line)l.line.applyOptions({
+      color:st.hidden?'rgba(0,0,0,0)':st.color,lineWidth:st.width,
+      lineStyle:lightweightLineStyle(st),axisLabelVisible:!st.hidden});
+  }catch(e){console.warn('Cannot apply drawing style',e);}
+  scheduleDrawingOverlay();
+}
+function recomputeFib(d){
+  if(d.kind!=='fib'||!Array.isArray(d.anchors))return false;
+  const points=Geometry.levels(d.mode,d.anchors,d.style?.reverse);
+  if(points.length<2)return false;
+  d.levels=points;
+  scheduleDrawingOverlay();
+  return true;
+}
+
 function serializeDrawing(d){
-  if(d.kind==='price')return {kind:'price',price:d.price};
-  if(d.kind==='series')return {kind:'series',points:d.points.map(p=>({time:p.time,value:p.value}))};
-  if(d.kind==='fib')return {kind:'fib',mode:d.mode||'fib',
+  if(d.kind==='price')return {kind:'price',price:d.price,style:safeStyle(d.style,'price')};
+  if(d.kind==='series')return {kind:'series',points:d.points.map(p=>({time:p.time,value:p.value})),style:safeStyle(d.style,'series')};
+  if(d.kind==='fib')return {kind:'fib',mode:d.mode||'fib',renderer:d.renderer||'legacy',
       anchors:d.anchors?.map(p=>({time:p.time,price:p.price}))||null,
-      levels:d.levels.map(l=>({fraction:l.fraction,price:l.price}))};
+      levels:d.levels.map(l=>({fraction:l.fraction,price:l.price})),
+      style:safeStyle(d.style,'fib')};
   if(d.kind==='shape')return {kind:'shape',shape:d.shape,
-      points:d.points.map(p=>({time:p.time,price:p.price}))};
+      points:d.points.map(p=>({time:p.time,price:p.price})),
+      style:safeStyle(d.style,d.shape==='channel'?'channel':'shape')};
   return null;
 }
 function persistDrawings(){
@@ -740,7 +787,7 @@ function restoreDrawings(){
           price:entry.price,color:'#62aeff',lineWidth:2,lineStyle:LW.LineStyle.Dashed,
           axisLabelVisible:true,title:'USER LEVEL'
         });
-        state.drawings.push({kind:'price',price:entry.price,line,id:++drawingSeq});
+        state.drawings.push({kind:'price',price:entry.price,line,style:safeStyle(entry.style,'price'),id:++drawingSeq});
       }
       else if(entry.kind==='series'&&Array.isArray(entry.points)&&entry.points.length===2){
         const points=entry.points;
@@ -748,31 +795,36 @@ function restoreDrawings(){
         const sorted=[...points].sort((a,b)=>a.time-b.time);
         const line=addLine('#64b7ff',2);
         line.setData(sorted);
-        state.drawings.push({kind:'series',line,points:sorted,id:++drawingSeq});
+        state.drawings.push({kind:'series',line,points:sorted,style:safeStyle(entry.style,'series'),id:++drawingSeq});
       }
       else if(entry.kind==='fib'&&Array.isArray(entry.levels)){
+        const renderer=entry.renderer==='svg'?'svg':'legacy';
+        const mode=entry.mode==='fibext'?'fibext':'fib';
+        const count=mode==='fibext'&&renderer==='svg'?3:2;
+        const anchors=Array.isArray(entry.anchors)&&entry.anchors.length===count&&
+          entry.anchors.every(p=>p&&validTime(p.time)&&validPrice(p.price))?
+          entry.anchors.map(p=>({time:p.time,price:p.price})):null;
+        const style=safeStyle(entry.style,'fib');
         const levels=[];
-        for(const l of entry.levels.slice(0,14)){
+        const calculated=renderer==='svg'&&anchors?Geometry.levels(mode,anchors,style.reverse):entry.levels;
+        for(const l of calculated.slice(0,14)){
           if(!l||!validPrice(l.price)||!Number.isFinite(l.fraction)||l.fraction<0||l.fraction>2.618)continue;
-          const line=candles.createPriceLine({
-            price:l.price,color:l.fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
-            lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,
-            title:(entry.mode==='fibext'?'EXT ':'FIB ')+(l.fraction*100).toFixed(1)+'%'
-          });
+          const line=renderer==='legacy'?candles.createPriceLine({
+            price:l.price,color:style.color,lineWidth:style.width,
+            lineStyle:lightweightLineStyle(style),axisLabelVisible:!style.hidden,
+            title:(mode==='fibext'?'OLD EXT ':'FIB ')+(l.fraction*100).toFixed(1)+'%'
+          }):null;
           levels.push({fraction:l.fraction,price:l.price,line});
         }
         if(levels.length){
-          const anchors=Array.isArray(entry.anchors)&&entry.anchors.length===2&&
-            entry.anchors.every(p=>p&&validTime(p.time)&&validPrice(p.price))?
-            entry.anchors.map(p=>({time:p.time,price:p.price})):null;
-          state.drawings.push({kind:'fib',mode:entry.mode==='fibext'?'fibext':'fib',
-            anchors,lines:levels.map(l=>l.line),levels,id:++drawingSeq});
+          const d={kind:'fib',renderer,mode,anchors,style,levels,lines:levels.map(l=>l.line).filter(Boolean),id:++drawingSeq};
+          state.drawings.push(d);applyDrawingStyle(d);
         }
-      }else if(entry.kind==='shape'&&['vertical','rectangle','measure'].includes(entry.shape)&&
-          Array.isArray(entry.points)&&entry.points.length===(entry.shape==='vertical'?1:2)&&
+      }else if(entry.kind==='shape'&&['vertical','rectangle','measure','channel'].includes(entry.shape)&&
+          Array.isArray(entry.points)&&entry.points.length===(entry.shape==='vertical'?1:entry.shape==='channel'?3:2)&&
           entry.points.every(p=>p&&validTime(p.time)&&validPrice(p.price))){
         state.drawings.push({kind:'shape',shape:entry.shape,
-          points:entry.points.map(p=>({time:p.time,price:p.price})),id:++drawingSeq});
+          points:entry.points.map(p=>({time:p.time,price:p.price})),style:safeStyle(entry.style,entry.shape==='channel'?'channel':'shape'),id:++drawingSeq});
       }
     }catch(error){console.warn('Skipped invalid stored drawing',error);}
   }
@@ -781,8 +833,8 @@ function restoreDrawings(){
   scheduleDrawingOverlay();
 }
 function drawingTitle(d){
-  if(d.kind==='fib')return (d.mode==='fibext'?'Fibonacci Extension':'Fibonacci Retracement')+' · '+d.levels.length+' levels';
-  if(d.kind==='shape')return d.shape==='rectangle'?'Price Rectangle':d.shape==='measure'?'Price Range':'Vertical time marker';
+  if(d.kind==='fib')return (d.renderer==='legacy'&&d.mode==='fibext'?'Legacy 2-point Extension (fix C)':d.mode==='fibext'?'Trend Fibonacci Extension':'Fibonacci Retracement')+' · '+d.levels.length+' levels';
+  if(d.kind==='shape')return d.shape==='rectangle'?'Price Rectangle':d.shape==='measure'?'Price Range':d.shape==='channel'?'Parallel Channel':'Vertical time marker';
   if(d.kind==='series')return 'Trend line';
   return 'Horizontal '+fmt(d.price);
 }
@@ -796,15 +848,9 @@ function drawSelectionOptions(){
   for(const d of state.drawings){
     const active=d.id===state.selectedDrawingId;
     try{
-      if(d.kind==='price')d.line.applyOptions({color:active?'#ffd668':'#62aeff',lineWidth:active?3:2});
-      else if(d.kind==='series')d.line.applyOptions({color:active?'#ffd668':'#64b7ff',lineWidth:active?3:2});
-      else if(d.kind==='fib')for(const level of d.levels){
-        const chosen=active&&(state.selectedFibLevel===null||state.selectedFibLevel===level.fraction);
-        level.line.applyOptions({
-          color:chosen?'#ffd668':level.fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
-          lineWidth:chosen?3:1
-        });
-      }
+      if(d.kind==='price')applyDrawingStyle(d);
+      else if(d.kind==='series')applyDrawingStyle(d);
+      else if(d.kind==='fib')applyDrawingStyle(d);
     }catch(error){console.warn('Drawing highlight skipped',error);}
   }
   scheduleDrawingOverlay();
@@ -820,11 +866,13 @@ function renderDrawingPanel(){
   const show=!!selected;
   $('selectedDrawingBar').classList.toggle('hidden',!show);
   if(show){
+    syncDrawingOptionsBar(selected);
     const fibLevel=selected.kind==='fib'&&state.selectedFibLevel!==null?
       ' · '+(state.selectedFibLevel*100).toFixed(1)+'%':'';
     $('selectedDrawingLabel').textContent=drawingTitle(selected)+fibLevel;
     $('deleteSelectedDrawingBtn').textContent=fibLevel?'Delete level ✕':'Delete ✕';
   }
+  if(!show)$('drawingOptionsBar')?.classList.add('hidden');
   const parent=$('drawingList');
   parent.replaceChildren();
   if(!count){
@@ -878,14 +926,14 @@ function removeDrawing(id,fraction=null){
   if(deletingOnlyLevel){
     const entry=d.levels.find(l=>l.fraction===Number(fraction));
     if(!entry)return;
-    try{candles.removePriceLine(entry.line);}catch(e){console.warn('Cannot remove Fibonacci level',e);}
+    if(entry.line)try{candles.removePriceLine(entry.line);}catch(e){console.warn('Cannot remove Fibonacci level',e);}
     d.levels=d.levels.filter(l=>l!==entry);
     d.lines=d.levels.map(l=>l.line);
     if(!d.levels.length)state.drawings.splice(index,1);
   }else{
     try{
       if(d.kind==='price')candles.removePriceLine(d.line);
-      else if(d.kind==='fib')d.levels.forEach(l=>candles.removePriceLine(l.line));
+      else if(d.kind==='fib')d.levels.forEach(l=>{if(l.line)candles.removePriceLine(l.line);});
       else if(d.kind==='series')chart.removeSeries(d.line);
     }catch(e){console.warn('Drawing deletion failed',e);}
     state.drawings.splice(index,1);
@@ -1715,7 +1763,7 @@ function clearDrawings({forget=true,notice=true}={}){
   for(const d of toRemove){
     try{
       if(d.kind==='price')candles.removePriceLine(d.line);
-      else if(d.kind==='fib')d.levels.forEach(l=>candles.removePriceLine(l.line));
+      else if(d.kind==='fib')d.levels.forEach(l=>{if(l.line)candles.removePriceLine(l.line);});
       else if(d.kind==='series')chart.removeSeries(d.line);
     }catch(e){console.warn('Drawing clear skipped',e);}
   }

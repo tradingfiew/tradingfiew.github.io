@@ -32,7 +32,19 @@ public final class NaturalTransitionActivity extends Activity {
     }
 
     private void resumeCalendar() {
-        resume("https://tradingfiew.github.io/?native=1#usEconomicCalendar");
+        // The in-app calendar stays open in Chrome/TWA. The user deliberately
+        // requested TradingView's separate full calendar (a natural pause).
+        if (!finished.compareAndSet(false,true)) return;
+        try {
+            Intent external = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://www.tradingview.com/economic-calendar/"));
+            external.addCategory(Intent.CATEGORY_BROWSABLE);
+            startActivity(external);
+        } catch (RuntimeException error) {
+            Log.w(TAG, "External calendar unavailable; leaving existing TWA unchanged", error);
+        } finally {
+            finish();
+        }
     }
     private void resumeToApp() {
         resume("https://tradingfiew.github.io/privacy.html?native=1");

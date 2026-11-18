@@ -14,15 +14,10 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.6.0'
-      - name: Compile debug APK with exact native manifest
-        run: gradle --no-daemon -p android :app:assembleDebug
+      - name: Verify signed 1.0.2 release APK
+        run: |
+          curl --fail --location --retry 3 -o tradingfiew-release.apk https://github.com/univcours/ribhlab/releases/download/tradingfiew-android-v1.0.2-rivo-key/TradingFiew-Android-1.0.2-RivoScanKey-SIGNED.apk
+          echo '6da15380df94ed59da564690846c8e03e46e4b12d0d4895b5980fe22110ebda2  tradingfiew-release.apk' | sha256sum --check
       - name: Enable emulator acceleration for the runner
         run: sudo setfacl -m "u:$(id -un):rw" /dev/kvm
       - name: Boot small Android API30 emulator and validate launcher
@@ -41,10 +36,10 @@ jobs:
             mkdir -p android-startup-v2
             adb wait-for-device
             adb shell getprop sys.boot_completed | tee android-startup-v2/boot.txt
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r tradingfiew-release.apk
             adb shell pm list packages | grep -E 'chrome|tradingfiew' > android-startup-v2/packages.txt || true
             adb logcat -c
-            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.LauncherActivity 2>&1 | tee android-startup-v2/activity.txt
+            adb shell am start -W -n com.ribhlab.tradingfiew/com.ribhlab.tradingfiew.LauncherActivity 2>&1 | tee android-startup-v2/activity.txt
             sleep 10
             adb logcat -d -v time > android-startup-v2/logcat.txt
             adb shell dumpsys activity activities > android-startup-v2/activities.txt

@@ -1,0 +1,67 @@
+name: TradingFiew Android 1.0.2 startup QA on emulator API 30
+on:
+  push:
+    paths:
+      - '.github/workflows/android-startup-qa-v2.yml'
+      - 'android/app/src/main/AndroidManifest.xml'
+      - 'android/app/src/main/java/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  startup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Compile debug APK with exact native manifest
+        run: gradle --no-daemon -p android :app:assembleDebug
+      - name: Boot small Android API30 emulator and validate launcher
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048M
+          heap-size: 384M
+          disable-animations: true
+          emulator-boot-timeout: 1100
+          script: |
+            set -euo pipefail
+            mkdir -p android-startup-v2
+            adb wait-for-device
+            adb shell getprop sys.boot_completed | tee android-startup-v2/boot.txt
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm list packages | grep -E 'chrome|tradingfiew' > android-startup-v2/packages.txt || true
+            adb logcat -c
+            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.LauncherActivity 2>&1 | tee android-startup-v2/activity.txt
+            sleep 10
+            adb logcat -d -v time > android-startup-v2/logcat.txt
+            adb shell dumpsys activity activities > android-startup-v2/activities.txt
+            grep -n -B 5 -A 50 -E 'FATAL EXCEPTION|Caused by:|Process: com.ribhlab.tradingfiew' android-startup-v2/logcat.txt > android-startup-v2/crash-check.txt || true
+            cat android-startup-v2/activity.txt
+            if grep -q 'FATAL EXCEPTION' android-startup-v2/crash-check.txt; then
+              echo "::error::Detected startup fatal exception; logcat artifact includes cause"
+              cat android-startup-v2/crash-check.txt
+              exit 1
+            fi
+            if grep -Eq 'Error type 3|Activity class .* does not exist|Exception' android-startup-v2/activity.txt; then
+              echo "::error::Launcher could not start."
+              exit 1
+            fi
+            echo 'ANDROID_LAUNCHER_SUCCESS_NO_FATAL_MAIN_PROCESS' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TradingFiew-Android-1.0.2-emulator-startup-logcat
+          path: android-startup-v2/
+          if-no-files-found: warn
+          retention-days: 10

@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '*.js'
+      - 'android/**'
       - '*.html'
       - '*.css'
       - 'tests/**'
@@ -10,6 +11,7 @@ on:
   pull_request:
     paths:
       - '*.js'
+      - 'android/**'
       - '*.html'
       - '*.css'
       - 'tests/**'
@@ -31,3 +33,5 @@ jobs:
           node-version: '22'
       - name: Run regression tests
         run: node --test tests/tradingfiew.test.cjs
+      - name: Validate native Android startup configuration
+        run: python3 -m unittest discover -s tests -p 'test_android_twa_config.py' -v

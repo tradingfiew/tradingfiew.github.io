@@ -1804,3 +1804,144 @@ body.light .scheduled-price-grid input,body.light .scheduled-price-grid select{c
  .scheduled-price-actions{width:100%}
 }
 @media(max-width:420px){.scheduled-price-grid{grid-template-columns:1fr}}
+
+
+/* 2026-11 mobile drawing editor audit:
+ * All relevant controls must remain in-viewport without horizontal scrolling.
+ * 6 equal grid tracks => 3 complete equal controls per row; no offscreen action.
+ * The chart below uses flex's remaining height and keeps touch interaction.
+ */
+@media(max-width:730px){
+  body.terminal-mode .center-pane .drawing-options-bar{
+    display:grid!important;
+    grid-template-columns:repeat(6,minmax(0,1fr));
+    grid-auto-flow:row;
+    align-content:start;
+    align-items:center;
+    gap:5px 6px;
+    box-sizing:border-box;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    height:auto!important;
+    flex:0 0 auto!important;
+    padding:7px 8px;
+    overflow-x:clip!important;
+    overflow-y:visible!important;
+    scrollbar-width:none;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar.hidden{display:none!important}
+  body.terminal-mode .center-pane .drawing-options-name{
+    grid-row:1;grid-column:1/6;
+    align-self:center;
+    width:100%;max-width:none;min-width:0;
+    margin:0;
+    padding:0 3px;
+    font-size:11px;line-height:1.35;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingDeselectBtn{
+    grid-row:1;grid-column:6;
+    margin:0;
+    width:100%;
+    min-width:0;
+    min-height:34px;
+    height:34px;
+    font-size:18px;
+    padding:0;
+    justify-self:stretch;
+  }
+  body.terminal-mode .center-pane .drawing-option-label{
+    grid-row:2;
+    grid-column:span 2;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:space-between;
+    gap:3px;
+    width:100%;max-width:100%;min-width:0;
+    margin:0;
+    font-size:10px;
+    line-height:1.2;
+    white-space:normal;
+  }
+  body.terminal-mode .center-pane .drawing-option-label input[type=color],
+  body.terminal-mode .center-pane .drawing-option-label select{
+    box-sizing:border-box;
+    width:100%;max-width:100%;min-width:0;
+    height:34px;min-height:34px;
+    padding:4px 5px;
+    font-size:12px;
+    color-scheme:dark;
+    background:var(--elev);
+  }
+  body.terminal-mode .center-pane .drawing-option-label input[type=color]{
+    padding:3px;
+    cursor:pointer;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar .drawing-opt-btn:not(#drawingDeselectBtn){
+    grid-column:span 2;
+    width:100%;min-width:0;
+    min-height:36px;
+    height:auto;
+    padding:7px 3px;
+    font-size:10.5px;
+    line-height:1.15;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    text-align:center;
+    touch-action:manipulation;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingRepairBtn:not([hidden]){
+    grid-column:1/-1;
+    min-height:34px;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar button[hidden]{
+    display:none!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar :is(button,select,input):focus-visible{
+    outline:2px solid var(--green);
+    outline-offset:1px;
+  }
+  /* The drawing rail is intentionally vertical: make its overflow discoverable
+     and keep symbols large enough to tap without a precise mouse pointer. */
+  body.terminal-mode .center-pane .draw-tools{
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain;
+    scrollbar-width:thin!important;
+    scrollbar-color:var(--muted) transparent;
+    scroll-padding-block:12px;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:8px;
+  }
+  body.terminal-mode .center-pane .draw-button{
+    width:31px;
+    min-height:34px;
+    height:34px;
+    touch-action:manipulation;
+  }
+}
+@media(max-width:380px){
+  body.terminal-mode .center-pane .drawing-options-bar{
+    padding:5px 6px;
+    gap:4px;
+  }
+  body.terminal-mode .center-pane .drawing-option-label{font-size:9.5px}
+  body.terminal-mode .center-pane .drawing-options-bar .drawing-opt-btn:not(#drawingDeselectBtn){
+    min-height:34px;
+    padding:5px 2px;
+    font-size:10px;
+  }
+}
+@media(max-width:730px) and (max-height:650px){
+  /* Keep candles usable when the multi-row toolbar is shown on short phones. */
+  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .rsi-panel{
+    flex-basis:44px!important;
+    height:44px!important;
+  }
+  body.terminal-mode .center-pane:has(.drawing-options-bar:not(.hidden)) .legend-strip{
+    display:none!important;
+  }
+}

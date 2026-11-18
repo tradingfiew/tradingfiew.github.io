@@ -1994,3 +1994,97 @@ body.light .scheduled-price-grid input,body.light .scheduled-price-grid select{c
   }
   body.terminal-mode .terminal-mobile-dock{display:none!important}
 }
+
+
+/* Compact landscape smartphones: one full-width terminal, three concise rows of
+ * drawing controls and a working navigation dock. Preserve candlestick space. */
+@media(orientation:landscape) and (max-height:550px) and (min-width:731px) and (max-width:960px){
+  body.terminal-mode .center-pane .drawing-options-bar{
+    display:grid!important;
+    grid-template-columns:repeat(12,minmax(0,1fr));
+    align-items:center;
+    gap:3px 5px;
+    padding:4px 8px;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    overflow:hidden!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-name{
+    grid-row:1;grid-column:1/12;
+    font-size:11px;line-height:1.2;
+    white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingDeselectBtn{
+    grid-row:1;grid-column:12;min-height:26px;height:26px;
+    width:100%;font-size:15px;
+  }
+  body.terminal-mode .center-pane .drawing-option-label{
+    grid-row:2;grid-column:span 4;
+    display:flex;flex-direction:row;align-items:center;
+    justify-content:flex-start;gap:5px;
+    min-width:0;
+    font-size:10px;
+  }
+  body.terminal-mode .center-pane .drawing-option-label :is(select,input[type=color]){
+    flex:1 1 auto!important;
+    width:auto!important;max-width:100%!important;min-width:0!important;
+    height:28px!important;min-height:28px!important;
+    padding:2px 5px!important;
+    font-size:11px!important;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar .drawing-opt-btn:not(#drawingDeselectBtn){
+    grid-column:span 2;
+    min-height:29px!important;height:29px!important;
+    padding:3px 4px;
+    font-size:10px;
+    white-space:nowrap;
+  }
+  body.terminal-mode .center-pane .drawing-options-bar #drawingRepairBtn:not([hidden]){
+    grid-column:span 3;
+  }
+  body.terminal-mode .workspace[data-mobile-view="markets"] .center-pane,
+  body.terminal-mode .workspace[data-mobile-view="analysis"] .center-pane,
+  body.terminal-mode .workspace[data-mobile-view="depth"] .center-pane{
+    display:none!important;
+  }
+  body.terminal-mode .workspace[data-mobile-view="markets"] .left-sidebar{
+    display:flex!important;flex-direction:column;
+    height:100%!important;width:100%!important;min-height:0;
+    overflow:hidden!important;border-right:0;
+  }
+  body.terminal-mode .workspace[data-mobile-view="analysis"] .right-sidebar,
+  body.terminal-mode .workspace[data-mobile-view="depth"] .right-sidebar{
+    display:block!important;height:100%!important;width:100%!important;
+    min-height:0;overflow:auto!important;padding:10px 13px;
+    border:0;position:relative;inset:auto;box-shadow:none;
+  }
+  body.terminal-mode .workspace[data-mobile-view="depth"] .right-sidebar>*:not(#orderBookPanel){display:none!important}
+  body.terminal-mode .workspace[data-mobile-view="analysis"] .right-sidebar>#orderBookPanel{display:none!important}
+  body.terminal-mode .terminal-mobile-dock{
+    display:flex!important;flex:0 0 37px;height:37px;min-height:37px;
+    align-items:stretch;justify-content:space-around;
+    width:100%;padding:2px 8px;gap:5px;
+    border-top:1px solid var(--stroke);background:var(--panel);
+    z-index:60;
+  }
+  body.terminal-mode .terminal-mobile-dock button{
+    flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;
+    gap:4px;min-width:0;
+    border:1px solid transparent;border-radius:6px;
+    background:transparent;color:var(--muted);
+    font-size:11px;font-weight:700;padding:2px 4px;
+  }
+  body.terminal-mode .terminal-mobile-dock button span{font-size:15px;line-height:1}
+  body.terminal-mode .terminal-mobile-dock button.selected{
+    border-color:rgba(50,202,155,.2);background:var(--mintwash);color:var(--green);
+  }
+}
+@media(orientation:landscape) and (max-height:420px) and (min-width:731px) and (max-width:960px){
+  body.terminal-mode .topbar{display:none!important}
+  body.terminal-mode .center-pane .ohlc-strip{display:none!important}
+  body.terminal-mode .center-pane .chart-toolbar{
+    flex:0 0 36px!important;
+    min-height:36px!important;height:36px!important;
+  }
+}

@@ -84,16 +84,6 @@
 
   function open(event) {
     if (!dialog || isOpen()) return;
-    if (nativeTwa && event?.isTrusted && location.hash !== '#usEconomicCalendar') {
-      // An actual tap on the calendar is a natural content transition, not a
-      // surprise full-screen ad while interacting with charts.
-      location.href = 'intent://open-calendar#Intent;scheme=tradingfiew;package=com.ribhlab.tradingfiew;end';
-      // Fall back when viewing in a browser without the Android native host.
-      window.setTimeout(() => {
-        if (!document.hidden && !isOpen()) open();
-      }, 1600);
-      return;
-    }
     opener = event?.currentTarget || document.activeElement;
     dialog.showModal();
     setExpanded(true);
@@ -121,6 +111,21 @@
     });
     $('closeUsCalendar')?.addEventListener('click',close);
     $('refreshUsCalendar')?.addEventListener('click',refresh);
+    // The small in-app calendar always opens instantly. Only the separate
+    // external FULL-calendar link can invoke a native interstitial. This is a
+    // genuine user-requested transition; editing charts is never interrupted.
+    if (nativeTwa) {
+      const fullCalendar = dialog.querySelector('a[href^="https://www.tradingview.com/economic-calendar/"]');
+      fullCalendar?.addEventListener('click', event => {
+        if (!event.isTrusted) return;
+        event.preventDefault();
+        location.href = 'intent://open-calendar#Intent;scheme=tradingfiew;package=com.ribhlab.tradingfiew;end';
+        window.setTimeout(() => {
+          if (!document.hidden) location.href = 'https://www.tradingview.com/economic-calendar/';
+        }, 1600);
+      });
+    }
+
     dialog.addEventListener('close',onClose);
     dialog.addEventListener('click',e => {
       if (e.target !== dialog) return;

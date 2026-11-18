@@ -39,6 +39,11 @@ jobs:
             adb logcat -c
             adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.LauncherActivity > android-smoke/activity-start.txt 2>&1 || true
             sleep 12
+            # TWA calendar transition must not crash even if no ad is loaded.
+            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.NaturalTransitionActivity \
+              -a android.intent.action.VIEW -d 'tradingfiew://open-calendar' \
+              > android-smoke/calendar-start.txt 2>&1 || true
+            sleep 5
             adb logcat -d -v time > android-smoke/logcat.txt
             adb shell dumpsys activity activities > android-smoke/activities.txt
             grep -n -A 65 -B 8 'FATAL EXCEPTION' android-smoke/logcat.txt | head -150 > android-smoke/crash-excerpt.txt || true
@@ -48,11 +53,11 @@ jobs:
               echo "::error::Android app crashed at launch. Inspect logcat artifact."
               exit 1
             fi
-            if grep -Eq 'Error type 3|Exception|Activity class .* does not exist' android-smoke/activity-start.txt; then
+            if grep -Eq 'Error type 3|Exception|Activity class .* does not exist' android-smoke/activity-start.txt android-smoke/calendar-start.txt; then
               echo "::error::Android activity could not start."
               exit 1
             fi
-            echo "Native Android activity launched without a detectable Java crash."
+            echo "TradingFiew 1.0.3 DEBUG launched without a detected native crash; calendar interstitial tested with Google TEST IDs only."
       - name: Upload logs and activity state
         uses: actions/upload-artifact@v4
         if: always()

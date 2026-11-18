@@ -152,7 +152,7 @@ function linkedCrosshair(param,source){
   finally{syncingCrosshair=false;}
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
-  scheduleAlertLayout();drawZones();
+  scheduleAlertLayout();drawZones();scheduleDrawingOverlay();
   if(sharedCrosshairTime!==null)requestAnimationFrame(layoutSharedCrosshairGuide);
   scheduleLivePriceBadgeLayout();
   synchronizeVisibleRange(chart,rsiChart,range);
@@ -185,7 +185,7 @@ installPrecisionDraw();
 document.addEventListener('tradingfiew:alerts-changed',renderAlertPriceLines);
 zoneCanvas=$('zoneOverlay');resizeObserver=new ResizeObserver(()=>{
   scheduleAlertLayout();
-  drawZones();
+  drawZones();scheduleDrawingOverlay();
   if(state.analysis){renderMarkers();renderSupportResistance();}
 });resizeObserver.observe($('chartHost'));
 try{markersApi=LW.createSeriesMarkers?LW.createSeriesMarkers(candles,[]):null;}catch{markersApi=null;}
@@ -712,7 +712,11 @@ const drawingsStorageKey=()=>('drawings:'+state.symbol+':'+state.tf);
 function serializeDrawing(d){
   if(d.kind==='price')return {kind:'price',price:d.price};
   if(d.kind==='series')return {kind:'series',points:d.points.map(p=>({time:p.time,value:p.value}))};
-  if(d.kind==='fib')return {kind:'fib',levels:d.levels.map(l=>({fraction:l.fraction,price:l.price}))};
+  if(d.kind==='fib')return {kind:'fib',mode:d.mode||'fib',
+      anchors:d.anchors?.map(p=>({time:p.time,price:p.price}))||null,
+      levels:d.levels.map(l=>({fraction:l.fraction,price:l.price}))};
+  if(d.kind==='shape')return {kind:'shape',shape:d.shape,
+      points:d.points.map(p=>({time:p.time,price:p.price}))};
   return null;
 }
 function persistDrawings(){
@@ -748,24 +752,37 @@ function restoreDrawings(){
       }
       else if(entry.kind==='fib'&&Array.isArray(entry.levels)){
         const levels=[];
-        for(const l of entry.levels.slice(0,9)){
-          if(!l||!validPrice(l.price)||!Number.isFinite(l.fraction)||l.fraction<0||l.fraction>1)continue;
+        for(const l of entry.levels.slice(0,14)){
+          if(!l||!validPrice(l.price)||!Number.isFinite(l.fraction)||l.fraction<0||l.fraction>2.618)continue;
           const line=candles.createPriceLine({
             price:l.price,color:l.fraction===.618?'#f9bd66':'rgba(158,133,246,.65)',
             lineWidth:1,lineStyle:LW.LineStyle.Dashed,axisLabelVisible:true,
-            title:'FIB '+(l.fraction*100).toFixed(1)+'%'
+            title:(entry.mode==='fibext'?'EXT ':'FIB ')+(l.fraction*100).toFixed(1)+'%'
           });
           levels.push({fraction:l.fraction,price:l.price,line});
         }
-        if(levels.length)state.drawings.push({kind:'fib',lines:levels.map(l=>l.line),levels,id:++drawingSeq});
+        if(levels.length){
+          const anchors=Array.isArray(entry.anchors)&&entry.anchors.length===2&&
+            entry.anchors.every(p=>p&&validTime(p.time)&&validPrice(p.price))?
+            entry.anchors.map(p=>({time:p.time,price:p.price})):null;
+          state.drawings.push({kind:'fib',mode:entry.mode==='fibext'?'fibext':'fib',
+            anchors,lines:levels.map(l=>l.line),levels,id:++drawingSeq});
+        }
+      }else if(entry.kind==='shape'&&['vertical','rectangle','measure'].includes(entry.shape)&&
+          Array.isArray(entry.points)&&entry.points.length===(entry.shape==='vertical'?1:2)&&
+          entry.points.every(p=>p&&validTime(p.time)&&validPrice(p.price))){
+        state.drawings.push({kind:'shape',shape:entry.shape,
+          points:entry.points.map(p=>({time:p.time,price:p.price})),id:++drawingSeq});
       }
     }catch(error){console.warn('Skipped invalid stored drawing',error);}
   }
   resetDrawingSelection();
   renderDrawingPanel();
+  scheduleDrawingOverlay();
 }
 function drawingTitle(d){
-  if(d.kind==='fib')return 'Fibonacci '+d.levels.length+' levels';
+  if(d.kind==='fib')return (d.mode==='fibext'?'Fibonacci Extension':'Fibonacci Retracement')+' · '+d.levels.length+' levels';
+  if(d.kind==='shape')return d.shape==='rectangle'?'Price Rectangle':d.shape==='measure'?'Price Range':'Vertical time marker';
   if(d.kind==='series')return 'Trend line';
   return 'Horizontal '+fmt(d.price);
 }
@@ -790,6 +807,7 @@ function drawSelectionOptions(){
       }
     }catch(error){console.warn('Drawing highlight skipped',error);}
   }
+  scheduleDrawingOverlay();
 }
 function renderDrawingPanel(){
   const count=state.drawings.length;
@@ -873,7 +891,7 @@ function removeDrawing(id,fraction=null){
     state.drawings.splice(index,1);
   }
   resetDrawingSelection();
-  renderDrawingPanel();persistDrawings();
+  renderDrawingPanel();persistDrawings();scheduleDrawingOverlay();
   toast(deletingOnlyLevel?'Fibonacci level deleted.':'Drawing deleted.');
 }
 function deleteSelectedDrawing(){
@@ -1623,6 +1641,7 @@ function clearDrawings({forget=true,notice=true}={}){
   state.drawings=[];resetDrawingSelection();
   renderDrawingPanel();setDrawMode('cursor');
   if(forget)persistDrawings();
+  scheduleDrawingOverlay();
   if(notice&&toRemove.length)toast('All drawings cleared.');
 }
 function downloadCsv(){
@@ -1710,7 +1729,7 @@ function resizeChartWindow(){
     if(rsiTimelineReady)restoreSharedTimeScale();
     if(sharedCrosshairTime!==null)layoutSharedCrosshairGuide();
     scheduleLivePriceBadgeLayout();
-    drawZones();
+    drawZones();scheduleDrawingOverlay();
   }catch(error){console.warn('Chart window resizing issue',error);}
 }
 function setChartWindow(open,{save=true}={}){

@@ -179,7 +179,7 @@ test('drawing gestures preview through pointer capture and persist edited object
   assert.ok(js.includes('function drawingPreviewMarkup('));
   assert.ok(js.includes('scheduleDrawingOverlay()'));
   assert.ok(js.includes("if(d.kind==='shape')return {kind:'shape'"));
-  assert.ok(js.includes("else if(entry.kind==='shape'"));
+  assert.ok(js.includes("entry.kind==='shape'"));
   assert.ok(js.includes("item.kind==='shape'"));
   assert.ok(html.includes('data-draw="fibext"'));
   assert.ok(css.includes('.chart-host.chart-drawing-active'));

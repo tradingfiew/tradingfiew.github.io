@@ -23,6 +23,8 @@ jobs:
           gradle-version: '9.6.0'
       - name: Compile debug APK with exact native manifest
         run: gradle --no-daemon -p android :app:assembleDebug
+      - name: Enable emulator acceleration for the runner
+        run: sudo setfacl -m "u:$(id -un):rw" /dev/kvm
       - name: Boot small Android API30 emulator and validate launcher
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -32,7 +34,7 @@ jobs:
           profile: pixel_2
           ram-size: 2048M
           heap-size: 384M
-          disable-animations: true
+          disable-animations: false
           emulator-boot-timeout: 1100
           script: |
             set -eu

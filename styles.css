@@ -1718,3 +1718,34 @@ dialog.us-calendar-dialog .us-calendar-provider-error{
 .draw-button[data-draw="rectangle"],.draw-button[data-draw="measure"],.draw-button[data-draw="vertical"]{font-size:21px!important}
 .draw-tools:has(.draw-button.active) .draw-button.active{box-shadow:inset 0 0 0 1px currentColor}
 @media(max-width:730px){.drawing-overlay .draw-tag{font-size:10px}.draw-button[data-draw="fibext"]{font-size:11px!important}}
+
+/* Context toolbar integrated below chart actions. Never obscure candles. */
+.drawing-options-bar{display:flex;align-items:center;gap:6px;padding:5px 8px;
+ flex:0 0 auto;min-height:39px;width:100%;min-width:0;
+ border-bottom:1px solid var(--stroke);background:var(--panel);
+ position:relative;z-index:16;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+.drawing-options-bar.hidden{display:none!important}
+.drawing-options-name{flex:0 0 auto;color:var(--text);font:700 11px 'DM Sans',sans-serif;
+ max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:4px}
+.drawing-option-label{display:flex;align-items:center;gap:5px;white-space:nowrap;
+ color:var(--muted);font:700 10px 'DM Sans',sans-serif;flex:0 0 auto}
+.drawing-options-bar input[type=color]{width:30px;height:26px;cursor:pointer;border:1px solid var(--stroke);
+ padding:2px;border-radius:5px;background:var(--elev)}
+.drawing-options-bar select,.drawing-options-bar .drawing-opt-btn{
+ background:var(--elev);border:1px solid var(--stroke);border-radius:6px;
+ padding:5px 7px;min-height:29px;color:var(--text);font:700 10px 'DM Sans',sans-serif;white-space:nowrap}
+.drawing-options-bar .drawing-opt-btn:hover,.drawing-options-bar select:hover{border-color:var(--green)}
+.drawing-options-bar .drawing-opt-btn[aria-pressed=true]{background:var(--mintwash);color:var(--green)}
+.drawing-options-bar .drawing-opt-danger{color:#ff8294;border-color:rgba(230,96,121,.4)}
+.drawing-options-bar #drawingDeselectBtn{margin-left:auto;min-width:29px}
+body.terminal-mode .center-pane .selected-drawing-bar{display:none!important}
+.drawing-overlay .draw-channel-fill{fill:rgba(65,171,245,.10);pointer-events:none}
+.drawing-overlay .draw-channel-mid{stroke-dasharray:3 5}
+.drawing-overlay .draw-fib-level{vector-effect:non-scaling-stroke}
+.drawing-overlay .draw-selected-anchor{filter:drop-shadow(0 0 3px rgba(255,215,105,.55))}
+@media(max-width:730px){
+ .drawing-options-bar{gap:5px;padding:4px 5px;min-height:37px}
+ .drawing-options-name{max-width:110px;font-size:10px}
+ .drawing-options-bar .drawing-opt-btn,.drawing-options-bar select{min-height:30px;font-size:10px}
+ .drawing-options-bar input[type=color]{height:28px}
+}

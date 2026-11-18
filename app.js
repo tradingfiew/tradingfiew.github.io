@@ -1100,7 +1100,7 @@ function installLineDragging(){
       item.anchors=d.copy.anchors?.map(p=>({...p}))||null;
       for(const line of item.levels){
         const saved=d.copy.levels.find(l=>l.fraction===line.fraction);
-        if(saved){line.price=saved.price;line.line.applyOptions({price:line.price});}
+        if(saved){line.price=saved.price;if(line.line)line.line.applyOptions({price:line.price});}
       }
     }else if(item.kind==='series'){item.points=d.copy.points;item.line.setData(item.points);}
     else if(item.kind==='shape')item.points=d.copy.points.map(p=>({...p}));
@@ -1125,25 +1125,38 @@ function installLineDragging(){
       const next=d.copy.price+offset;if(next<=0)return;
       item.price=next;item.line.applyOptions({price:next});
     }else if(item.kind==='fib'){
-      if(d.endpoint>=0&&d.copy.anchors?.length===2){
+      if(d.endpoint>=0&&d.copy.anchors?.length>=2){
         const anchors=d.copy.anchors.map(v=>({...v}));
         const at=barIndex(p.x);if(at<0)return;
         anchors[d.endpoint]={time:state.data[at].time,price:py};
-        const prices=item.levels.map(l=>anchors[0].price+
-          (anchors[1].price-anchors[0].price)*l.fraction);
+        const prices=item.levels.map(l=>item.renderer==='svg'?
+          Geometry.fibPrice(item.mode,anchors,l.fraction,item.style?.reverse):
+          anchors[0].price+(anchors[1].price-anchors[0].price)*l.fraction);
         if(prices.some(price=>price<=0||!Number.isFinite(price)))return;
         item.anchors=anchors;
-        item.levels.forEach((level,i)=>{level.price=prices[i];level.line.applyOptions({price:level.price});});
+        item.levels.forEach((level,i)=>{
+          level.price=prices[i];if(level.line)level.line.applyOptions({price:level.price});
+        });
+      }else if(item.renderer==='svg'&&d.copy.anchors?.length>=2){
+        // Strict ratio geometry: moving a fib level shifts the whole construction;
+        // never corrupt only one level while keeping stale anchor percentages.
+        const anchors=d.copy.anchors.map(v=>({...v,price:v.price+offset}));
+        if(anchors.some(v=>v.price<=0))return;
+        const prices=item.levels.map(l=>Geometry.fibPrice(
+          item.mode,anchors,l.fraction,item.style?.reverse));
+        if(prices.some(price=>price<=0||!Number.isFinite(price)))return;
+        item.anchors=anchors;
+        item.levels.forEach((level,i)=>{level.price=prices[i];});
       }else{
         for(const level of item.levels){
           if(!shift&&level.fraction!==d.fraction)continue;
           const old=d.copy.levels.find(v=>v.fraction===level.fraction);
           if(!old||old.price+offset<=0)continue;
-          level.price=old.price+offset;level.line.applyOptions({price:level.price});
+          level.price=old.price+offset;if(level.line)level.line.applyOptions({price:level.price});
         }
         if(shift&&d.copy.anchors){
           item.anchors=d.copy.anchors.map(v=>({...v,price:v.price+offset}));
-        }else if(d.fraction!==null)item.anchors=null; // edited level is no longer a strict anchored ratio
+        }else if(d.fraction!==null)item.anchors=null;
       }
       scheduleDrawingOverlay();
     }else if(item.kind==='shape'){
@@ -1184,6 +1197,7 @@ function installLineDragging(){
     const p=coords(e);if(!p)return;
     const hit=hitAt(p);if(!hit)return;
     const item=state.drawings.find(v=>v.id===hit.id);
+    if(item?.style?.locked||item?.style?.hidden)return;
     const alert=hit.type==='alert'?window.TradingFiewAlerts?.getAlert?.(hit.id):null;
     if(hit.type==='alert'&&!alert)return;
     let endpoint=-1;

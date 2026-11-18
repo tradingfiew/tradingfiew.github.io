@@ -184,3 +184,53 @@ test('drawing gestures preview through pointer capture and persist edited object
   assert.ok(html.includes('data-draw="fibext"'));
   assert.ok(css.includes('.chart-host.chart-drawing-active'));
 });
+
+
+test('fib retracement 0 at B and 100 at A; reverse direction is deterministic',()=>{
+  const g=boot('drawing-geometry.js').TradingFiewDrawingGeometry;
+  const anchors=[{time:1,price:120},{time:2,price:100}];
+  assert.equal(g.fibPrice('fib',anchors,0),100);
+  assert.equal(g.fibPrice('fib',anchors,1),120);
+  assert.equal(g.fibPrice('fib',anchors,.618),112.36);
+  assert.equal(g.fibPrice('fib',anchors,0,true),120);
+  assert.equal(g.fibPrice('fib',anchors,1,true),100);
+});
+test('trend-based fib extension is C + ratio*(B-A), not old two-point extrapolation',()=>{
+  const g=boot('drawing-geometry.js').TradingFiewDrawingGeometry;
+  const anchors=[{time:1,price:100},{time:2,price:150},{time:3,price:130}];
+  assert.equal(g.fibPrice('fibext',anchors,0),130);
+  assert.equal(g.fibPrice('fibext',anchors,1),180);
+  assert.ok(Math.abs(g.fibPrice('fibext',anchors,1.618)-210.9)<1e-9);
+  assert.ok(Math.abs(g.fibPrice('fibext',anchors,1.618,true)-49.1)<1e-9);
+  assert.equal(g.fibPrice('fibext',anchors.slice(0,2),1.618),null);
+  assert.equal(g.fibPrice('fibext',anchors,1.618).toFixed(1),'210.9');
+});
+test('parallel channel uses third price anchor as exact offset over baseline',()=>{
+  const g=boot('drawing-geometry.js').TradingFiewDrawingGeometry;
+  const anchors=[{time:100,price:100},{time:200,price:120},{time:300,price:125}];
+  const idx=new Map([[100,0],[200,10],[300,20]]);
+  const channel=g.channel(anchors,time=>idx.get(time));
+  assert.ok(channel);
+  assert.equal(channel.offset,-15);
+  assert.equal(channel.upper[0].price,85);
+  assert.equal(channel.upper[1].price,105);
+  assert.equal(channel.upper[1].price-channel.upper[0].price,
+    anchors[1].price-anchors[0].price);
+  assert.equal(g.channel(anchors.slice(0,2),time=>idx.get(time)),null);
+});
+test('channel and Fibonacci toolbars contain functioning interactive controls',()=>{
+  const html=source('index.html'),js=source('app.js');
+  for(const id of ['drawingOptionsBar','drawingStyleColor','drawingStyleWidth','drawingStyleDash',
+    'drawingReverseBtn','drawingExtendBtn','drawingVisibilityBtn','drawingLockBtn',
+    'drawingDeleteBtn','drawingDeselectBtn','drawingRepairBtn']){
+    assert.ok(html.includes('id="'+id+'"'),id);
+  }
+  assert.ok(html.includes('data-draw="channel"'));
+  assert.ok(html.includes('./drawing-geometry.js'));
+  assert.ok(js.includes("function installDrawingOptionsBar()"));
+  assert.ok(js.includes("function syncDrawingOptionsBar(d)"));
+  assert.ok(js.includes("const staged=drawSequence;"));
+  assert.ok(js.includes("mode==='channel'||mode==='fibext'"));
+  assert.ok(js.includes("Geometry.fibPrice("));
+  assert.ok(js.includes("Geometry.channel("));
+});

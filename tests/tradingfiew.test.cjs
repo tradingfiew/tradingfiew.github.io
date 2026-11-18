@@ -148,3 +148,39 @@ test('silent live WebSockets are downgraded to REST fallback',()=>{
   assert.ok(app.includes("connection('STALE FEED'"));
   assert.ok(app.includes("startPolling(request);"));
 });
+
+
+test('drawing UI exposes preview and all precise tools with unique modes',()=>{
+  const html=source('index.html');
+  const modes=[...html.matchAll(/data-draw="([^"]+)"/g)].map(m=>m[1]);
+  assert.equal(new Set(modes).size,modes.length,'duplicate drawing control');
+  for(const mode of ['cursor','horizontal','alert','trend','fib','fibext','rectangle','measure','vertical'])
+    assert.ok(modes.includes(mode),mode+' drawing tool missing');
+  for(const id of ['drawingOverlay','drawingShapes','drawingLive'])
+    assert.ok(html.includes('id="'+id+'"'),id+' missing');
+});
+test('Fibonacci retracement and extensions contain exact standard ratios',()=>{
+  const js=source('app.js');
+  const levels=name=>{
+    const hit=js.match(new RegExp('const '+name+'=\\[([^\\]]+)\\]'));
+    assert.ok(hit,name+' not declared');
+    return hit[1].split(',').map(Number);
+  };
+  const retrace=levels('FIB_RETRACE'),extension=levels('FIB_EXTEND');
+  for(const val of [0,.236,.382,.5,.618,.786,1])assert.ok(retrace.includes(val),'retracement missing '+val);
+  for(const val of [1,1.272,1.618,2,2.618])assert.ok(extension.includes(val),'extension missing '+val);
+  assert.ok(retrace.every((n,i)=>i===0||n>retrace[i-1]));
+  assert.ok(extension.every((n,i)=>i===0||n>extension[i-1]));
+});
+test('drawing gestures preview through pointer capture and persist edited objects',()=>{
+  const js=source('app.js'),html=source('index.html'),css=source('styles.css');
+  assert.ok(js.includes('function installPrecisionDraw()'));
+  assert.ok(js.includes('host.setPointerCapture(e.pointerId)'));
+  assert.ok(js.includes('function drawingPreviewMarkup('));
+  assert.ok(js.includes('scheduleDrawingOverlay()'));
+  assert.ok(js.includes("if(d.kind==='shape')return {kind:'shape'"));
+  assert.ok(js.includes("else if(entry.kind==='shape'"));
+  assert.ok(js.includes("item.kind==='shape'"));
+  assert.ok(html.includes('data-draw="fibext"'));
+  assert.ok(css.includes('.chart-host.chart-drawing-active'));
+});

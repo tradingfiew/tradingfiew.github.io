@@ -855,6 +855,59 @@ function drawSelectionOptions(){
   }
   scheduleDrawingOverlay();
 }
+
+/* Contextual editor appears ABOVE the chart, never covers candles.
+   A selection is durable: one tap to select, edit values, or delete. */
+function syncDrawingOptionsBar(d){
+  const toolbar=$('drawingOptionsBar');if(!toolbar||!d)return;
+  toolbar.classList.remove('hidden');
+  const style=d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.shape==='channel'?'channel':d.kind);
+  $('drawingOptionsName').textContent=drawingTitle(d);
+  $('drawingStyleColor').value=style.color;
+  $('drawingStyleWidth').value=String(style.width);
+  $('drawingStyleDash').value=style.dash;
+  const fib=d.kind==='fib',legacy=fib&&d.renderer!=='svg'&&d.mode==='fibext';
+  $('drawingReverseBtn').hidden=!fib||legacy;
+  $('drawingReverseBtn').setAttribute('aria-pressed',String(style.reverse));
+  $('drawingExtendBtn').hidden=!fib&&d.shape!=='channel';
+  $('drawingExtendBtn').setAttribute('aria-pressed',String(style.extend));
+  $('drawingVisibilityBtn').textContent=style.hidden?'◉ Show':'◉ Hide';
+  $('drawingVisibilityBtn').setAttribute('aria-pressed',String(style.hidden));
+  $('drawingLockBtn').textContent=style.locked?'🔒 Unlock':'♙ Lock';
+  $('drawingLockBtn').setAttribute('aria-pressed',String(style.locked));
+  $('drawingRepairBtn').hidden=!legacy;
+}
+function installDrawingOptionsBar(){
+  const selected=()=>getSelectedDrawing();
+  const edit=fn=>{
+    const d=selected();if(!d)return;
+    d.style=safeStyle(d.style,d.kind==='fib'?'fib':d.shape==='channel'?'channel':d.kind);
+    fn(d,d.style);
+    applyDrawingStyle(d);
+    renderDrawingPanel();
+    persistDrawings();
+  };
+  $('drawingStyleColor').addEventListener('input',e=>edit((d,st)=>{st.color=e.target.value;}));
+  $('drawingStyleWidth').addEventListener('change',e=>edit((d,st)=>{st.width=Number(e.target.value);}));
+  $('drawingStyleDash').addEventListener('change',e=>edit((d,st)=>{st.dash=e.target.value;}));
+  $('drawingReverseBtn').addEventListener('click',()=>edit((d,st)=>{
+    if(d.kind!=='fib'||d.renderer!=='svg')return;
+    st.reverse=!st.reverse;
+    recomputeFib(d);
+  }));
+  $('drawingExtendBtn').addEventListener('click',()=>edit((d,st)=>{st.extend=!st.extend;}));
+  $('drawingVisibilityBtn').addEventListener('click',()=>edit((d,st)=>{st.hidden=!st.hidden;}));
+  $('drawingLockBtn').addEventListener('click',()=>edit((d,st)=>{st.locked=!st.locked;}));
+  $('drawingDeleteBtn').addEventListener('click',()=>{const d=selected();if(d)removeDrawing(d.id,null);});
+  $('drawingDeselectBtn').addEventListener('click',()=>{resetDrawingSelection();renderDrawingPanel();});
+  $('drawingRepairBtn').addEventListener('click',()=>{
+    const d=selected();if(!d||d.kind!=='fib'||d.mode!=='fibext'||d.renderer==='svg')return;
+    removeDrawing(d.id,null);
+    setDrawMode('fibext');
+    toast('Mark A → B impulse, then C correction to calculate a true extension.');
+  });
+}
+
 function renderDrawingPanel(){
   const count=state.drawings.length;
   $('drawingCount').textContent=count;
@@ -1922,6 +1975,7 @@ $('closeDrawingsPanelBtn').addEventListener('click',()=>{
   $('drawingManagerBtn').setAttribute('aria-expanded','false');
 });
 $('deleteSelectedDrawingBtn').addEventListener('click',deleteSelectedDrawing);
+installDrawingOptionsBar();
 $('deselectDrawingBtn').addEventListener('click',()=>{resetDrawingSelection();renderDrawingPanel();});
 $('drawingList').addEventListener('click',e=>{
   const remove=e.target.closest('[data-delete-drawing]');

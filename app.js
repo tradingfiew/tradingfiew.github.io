@@ -1784,7 +1784,7 @@ function renderDrawingOverlay(){
   shapes.innerHTML=markup;
   if(state.drawMode==='cursor'){live.replaceChildren();return;}
   const current=drawGesture?.latest||null;
-  const staged=state.drawSequence||[];
+  const staged=drawSequence;
   if(['horizontal','alert','vertical'].includes(state.drawMode))
     live.innerHTML=drawingPreviewMarkup(state.drawMode,current||state.drawStart,current,w,h);
   else if(['channel','fibext'].includes(state.drawMode)){

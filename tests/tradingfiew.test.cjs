@@ -230,7 +230,7 @@ test('channel and Fibonacci toolbars contain functioning interactive controls',(
   assert.ok(js.includes("function installDrawingOptionsBar()"));
   assert.ok(js.includes("function syncDrawingOptionsBar(d)"));
   assert.ok(js.includes("const staged=drawSequence;"));
-  assert.ok(js.includes("mode==='channel'||mode==='fibext'"));
+  assert.ok(js.includes("mode==='channel'||mode==='fibchannel'||mode==='fibext'"));
   assert.ok(js.includes("Geometry.fibPrice("));
   assert.ok(js.includes("Geometry.channel("));
 });

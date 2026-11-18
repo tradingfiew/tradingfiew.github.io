@@ -1,0 +1,35 @@
+name: Export Android SDK signing tools (no secrets)
+on:
+  push:
+    paths:
+      - '.github/workflows/tradingfiew-signing-tools.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy public Android signing tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools"
+          APK_SIGNER="$(find "$TOOLS" -path '*/lib/apksigner.jar' -type f | sort -V | tail -n 1)"
+          ZIPALIGN="$(find "$TOOLS" -name zipalign -type f | sort -V | tail -n 1)"
+          test -s "$APK_SIGNER"
+          test -x "$ZIPALIGN"
+          mkdir -p signing-tools
+          cp "$APK_SIGNER" signing-tools/apksigner.jar
+          cp "$ZIPALIGN" signing-tools/zipalign
+          chmod +x signing-tools/zipalign
+          (cd signing-tools && sha256sum apksigner.jar zipalign > SHA256SUMS.txt)
+      - name: Upload Android signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradingFiew-Signing-Tools
+          retention-days: 7
+          if-no-files-found: error
+          path: signing-tools/

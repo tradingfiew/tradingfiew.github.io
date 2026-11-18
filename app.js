@@ -1020,10 +1020,6 @@ function installLineDragging(){
       return;
     }
     const item=state.drawings.find(x=>x.id===d.id);if(!item)return;
-    if(location.search.includes('drawDebug=1'))window.__TFDrawDebug={
-      phase:'move-start',id:d.id,type:d.type,kind:item.kind,endpoint:d.endpoint,
-      price:py,offset,startPrice:d.startPrice,pointer:p,request:d.request,activeRequest:state.request
-    };
     if(item.kind==='price'){
       const next=d.copy.price+offset;if(next<=0)return;
       item.price=next;item.line.applyOptions({price:next});
@@ -1064,9 +1060,6 @@ function installLineDragging(){
       }
       if(points.some(v=>v.price<=0||!Number.isFinite(v.price)))return;
       item.points=points;scheduleDrawingOverlay();
-      if(location.search.includes('drawDebug=1'))window.__TFDrawDebug={
-        ...window.__TFDrawDebug,phase:'shape-updated',points:points.map(v=>({...v}))
-      };
     }else if(item.kind==='series'){
       let points=d.copy.points.map(v=>({...v}));
       if(d.endpoint>=0){
@@ -1469,7 +1462,6 @@ function installChartContextHandlers(){
 /* Precision drawing tool: HTML pointer capture avoids LW chart clicks/pans
  * stealing the gesture, while SVG provides a real preview while moving.
  * Works with drag-and-release AND click-first / move / click-second. */
-const drawingSvgNS='http://www.w3.org/2000/svg';
 function drawingPos(time,price){
   const x=chart.timeScale().timeToCoordinate(time);
   const y=candles.priceToCoordinate(price);

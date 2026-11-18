@@ -309,3 +309,34 @@ test('scheduled price notice UI is connected to available market feeds and mobil
   assert.ok(client.includes('root.setInterval(()=>void checkNow(),10000)'));
   assert.ok(client.includes('300000'));
 });
+
+
+test('Fibonacci Channel uses parallel price ratios; Time Zone uses candle intervals',()=>{
+  const g=boot('drawing-geometry.js').TradingFiewDrawingGeometry;
+  const points=[{time:100,price:100},{time:110,price:120},{time:120,price:125}];
+  const indices=new Map([[100,0],[110,10],[120,20]]);
+  const values=g.channelLevels(points,time=>indices.get(time));
+  assert.ok(values.length>=9);
+  const zero=values.find(x=>x.fraction===0),one=values.find(x=>x.fraction===1);
+  assert.equal(zero.points[0].price,100);
+  assert.equal(one.points[0].price,85);
+  assert.equal(one.points[1].price,105);
+  assert.equal(one.points[1].price-one.points[0].price,20);
+  const zones=g.fibTimeZones(100,110);
+  assert.equal(zones.find(x=>x.fraction===13).index,230);
+  assert.equal(zones.find(x=>x.fraction===21).index,310);
+  assert.ok(zones.every((x,i)=>i===0||x.index>zones[i-1].index));
+});
+test('all four Fibonacci tools are present, persisted and selectable from their geometry',()=>{
+  const html=source('index.html'),js=source('app.js');
+  for(const mode of ['fib','fibext','fibchannel','fibtime']){
+    assert.ok(html.includes('data-draw="'+mode+'"'),mode);
+    assert.ok(js.includes("'"+mode+"'"),mode+' not registered');
+  }
+  assert.ok(js.includes("function fibChannelMarkup("));
+  assert.ok(js.includes("function fibTimeMarkup("));
+  assert.ok(js.includes("d.shape==='fibchannel'"));
+  assert.ok(js.includes("d.shape==='fibtime'"));
+  assert.ok(js.includes("Geometry.channelLevels("));
+  assert.ok(js.includes("Geometry.fibTimeZones("));
+});

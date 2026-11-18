@@ -33,13 +33,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20261118-fibonacci-four1">
+  <link rel="stylesheet" href="./styles.css?v=20261118-price-schedule1">
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
   <script defer src="./analysis.js"></script>
   <script defer src="./smc-breakout-alerts.js?v=20261117-1"></script>
   <script defer src="./market-data.js?v=20261117-feed-validation1"></script>
   <script defer src="./workspace.js"></script>
   <script defer src="./alerts.js?v=20261117-menu1"></script>
+  <script defer src="./price-schedule-core.js?v=20261118-1"></script>
+  <script defer src="./scheduled-prices.js?v=20261118-1"></script>
   <script defer src="./market-panels.js?v=20261117-confirmed-bars1"></script>
   <script defer src="./terminal-ui.js?v=20261117-toolbar-more1"></script>
   <script defer src="./drawing-geometry.js?v=20261118-fibonacci-four1"></script>
@@ -169,6 +171,7 @@
           <div class="toolbar-spacer"></div>
           <button type="button" id="usCalendarChartBtn" class="toolbar-icon us-calendar-trigger us-calendar-chart-trigger" aria-label="Open US economic calendar" aria-haspopup="dialog" aria-controls="usEconomicCalendar" aria-expanded="false" title="US economic calendar: upcoming releases and results"><svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3M14 14h3M8 18h3"/></svg></button>
           <button type="button" id="alertsChartBtn" class="toolbar-icon" title="Create or manage alerts" aria-label="Create or manage alerts"><svg class="alert-icon-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button>
+          <button type="button" id="schedulePriceChartBtn" class="toolbar-icon" aria-label="Schedule price notifications at a chosen time" title="Schedule a market price notification by date and time"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></button>
           <button id="csvBtn" class="toolbar-icon" title="Export OHLCV CSV" aria-label="Export CSV">⇩</button>
           <button id="chartSnapshotBtn" class="toolbar-icon" title="Save chart image" aria-label="Save chart as PNG">▣</button>
           <button id="refreshChartBtn" class="toolbar-icon" title="Refresh market chart" aria-label="Refresh market chart">↻</button>
@@ -178,6 +181,7 @@
           <div class="chart-more-wrap" id="chartMoreWrap">
             <button type="button" id="chartMoreBtn" class="toolbar-icon" title="More chart actions" aria-label="More chart actions" aria-controls="chartMoreMenu" aria-expanded="false" aria-haspopup="menu">⋯</button>
             <div id="chartMoreMenu" class="chart-more-menu" role="menu" hidden>
+              <button type="button" role="menuitem" data-more-chart-action="schedulePriceChartBtn">◷ Schedule a price notice</button>
               <button type="button" role="menuitem" data-more-chart-action="chartSnapshotBtn">▣ Save chart image</button>
               <button type="button" role="menuitem" data-more-chart-action="fitBtn">⇤ Focus on latest candles</button>
               <button type="button" role="menuitem" data-more-chart-action="refreshChartBtn">↻ Refresh chart</button>
@@ -457,6 +461,38 @@
         <p class="alerts-chart-help"><strong>From chart menu:</strong> right-click any price and choose “Add alert”. On mobile, hold your finger on the chart for the menu, or select the 🔔 tool and tap a level. Click an existing amber alert line to edit, pause, mute, turn notifications on or off, or delete it. Drag a line up or down to change its price; the new price saves when released.</p>
         <p class="alerts-scope-note">Alerts only work while TradingFiew is running in your browser. Delivery with the site fully closed requires a separate push server, which is not configured. Phone settings may suppress sounds or notifications.</p>
       </div>
+      <section class="scheduled-price-panel" id="scheduledPricePanel" aria-labelledby="scheduledPriceTitle">
+        <div class="scheduled-price-heading"><div><div class="eyebrow">PRICE AT YOUR TIME</div>
+          <h3 id="scheduledPriceTitle">⏰ Scheduled market price notifications <span id="scheduledPriceCount">0</span></h3>
+          <p>Get the latest available price for any supported market at a time you choose.</p></div>
+        </div>
+        <form id="scheduledPriceForm" autocomplete="off">
+          <div class="scheduled-price-grid">
+            <label>Find a market <input id="scheduledSearch" type="search" placeholder="Gold, USTEC, BTC, EURUSD…" aria-label="Search supported markets"></label>
+            <label>Market <select id="scheduledSymbol" required aria-label="Market for scheduled price"></select></label>
+            <label>Repeat <select id="scheduledFrequency" aria-label="Frequency for scheduled price">
+              <option value="once">Just once</option><option value="daily">Every day</option>
+              <option value="weekdays">Monday – Friday</option>
+              <option value="every15">Every 15 minutes</option><option value="every30">Every 30 minutes</option>
+              <option value="every60">Every hour</option>
+            </select></label>
+            <label id="scheduledDateWrap">Date <input id="scheduledDate" type="date" aria-label="Scheduled delivery date"></label>
+            <label><span id="scheduledFirstTimeLabel">Time</span> <input id="scheduledTime" type="time" required aria-label="Delivery time in device timezone"></label>
+          </div>
+          <div class="scheduled-price-controls"><button id="scheduledSaveBtn" type="submit">+ Schedule notification</button>
+            <button id="scheduledCancelEdit" type="button" hidden>Cancel editing</button>
+          </div>
+        </form>
+        <div class="scheduled-price-settings">
+          <p id="scheduledTimezone" class="scheduled-price-note">Device local timezone.</p>
+          <div class="scheduled-price-controls"><button type="button" id="scheduledAllowBtn">Allow notifications</button>
+            <button type="button" id="scheduledTestBtn">Test with current price</button></div>
+          <p id="scheduledPermissionStatus" class="scheduled-price-note" role="status" aria-live="polite"></p>
+          <p class="scheduled-price-note scheduled-price-limit">Schedules are saved on this device and checked when TradingFiew is running. Browser/Android TWA fully closed = no guaranteed exact-time notification; background Push delivery needs a dedicated server. If a missed check is over 5 minutes late, it will be marked missed rather than presented as an on-time price.</p>
+          <p id="scheduledPriceStatus" role="status" aria-live="polite" class="scheduled-price-note"></p>
+        </div>
+        <div id="scheduledPriceList" class="scheduled-price-list" aria-label="My scheduled market price notifications"></div>
+      </section>
       <div class="alerts-manager-heading"><h3>My alerts <span id="alertsActiveSummary">0 active</span></h3><button id="alertsDeleteAllBtn" type="button">Delete all</button></div>
       <div id="alertsList" class="alerts-list" aria-live="polite"></div>
       <div class="alerts-history-heading"><h3>Recent alerts</h3><button type="button" id="alertsClearHistoryBtn">Clear history</button></div>

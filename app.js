@@ -1834,23 +1834,32 @@ function addDrawingFromGesture(mode,start,end){
   }
   return true;
 }
+
 function installPrecisionDraw(){
   const host=$('chartHost');
   let press=null;
   const drawingMode=()=>state.drawMode!=='cursor';
-  const stop=(e)=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();};
-  const finish=(mode,a,b)=>{
-    const ok=addDrawingFromGesture(mode,a,b);
-    if(ok){drawGesture=null;state.drawStart=null;suppressDrawingClickUntil=Date.now()+380;}
+  const multiMode=()=>['channel','fibext'].includes(state.drawMode);
+  const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();};
+  const hint=content=>{$('drawHint').textContent=content;};
+  const finish=(mode,start,end)=>{
+    const ok=addDrawingFromGesture(mode,start,end);
+    if(ok){
+      drawGesture=null;state.drawStart=null;drawSequence=[];
+      suppressDrawingClickUntil=Date.now()+380;
+    }
     renderDrawingOverlay();
   };
   host.addEventListener('pointerdown',e=>{
     if(!drawingMode()||e.button!==0||!state.data.length)return;
     const p=drawingPriceAt(e);
     if(!p)return;
-    const already=!!state.drawStart, mode=state.drawMode;
-    if(!already)state.drawStart=p;
-    press={id:e.pointerId,mode,wasSecond:already,startClientX:e.clientX,startClientY:e.clientY,moved:false};
+    const mode=state.drawMode,stage=drawSequence.length;
+    const already=!!state.drawStart;
+    if(!multiMode()&&!already)state.drawStart=p;
+    if(multiMode()&&stage===0)drawSequence=[p];
+    press={id:e.pointerId,mode,stage,wasSecond:already,
+      startClientX:e.clientX,startClientY:e.clientY,moved:false};
     drawGesture={latest:p,mode};
     try{host.setPointerCapture(e.pointerId);}catch{}
     renderDrawingOverlay();
@@ -1860,7 +1869,8 @@ function installPrecisionDraw(){
     if(!drawingMode()||!state.data.length)return;
     const point=drawingPriceAt(e);
     if(!point)return;
-    if(press&&press.id===e.pointerId&&Math.hypot(e.clientX-press.startClientX,e.clientY-press.startClientY)>5)
+    if(press&&press.id===e.pointerId&&
+       Math.hypot(e.clientX-press.startClientX,e.clientY-press.startClientY)>5)
       press.moved=true;
     drawGesture={...drawGesture,latest:point,mode:state.drawMode};
     renderDrawingOverlay();
@@ -1868,25 +1878,53 @@ function installPrecisionDraw(){
   },true);
   host.addEventListener('pointerup',e=>{
     if(!drawingMode()||!press||e.pointerId!==press.id)return;
-    const p=drawingPriceAt(e)||drawGesture?.latest||state.drawStart;
-    const mode=press.mode,dragged=press.moved,second=press.wasSecond;
+    const point=drawingPriceAt(e)||drawGesture?.latest||state.drawStart;
+    const mode=press.mode,dragged=press.moved,second=press.wasSecond,stage=press.stage;
     press=null;
     try{host.releasePointerCapture(e.pointerId);}catch{}
-    if(['horizontal','vertical','alert'].includes(mode))finish(mode,null,p);
-    else if(dragged||second)finish(mode,state.drawStart,p);
+    if(['horizontal','vertical','alert'].includes(mode)){finish(mode,null,point);}
+    else if(['channel','fibext'].includes(mode)){
+      if(stage===0){
+        if(dragged&&point.time!==drawSequence[0].time){
+          drawSequence=[drawSequence[0],point];
+          hint(mode==='channel'?
+            '2/3 → Move mouse to set parallel channel width, then click point C':
+            '2/3 → Move mouse to correction point C; 0% starts at C');
+        }else hint('1/3 → Move mouse to mark impulse endpoint B');
+      }else if(stage===1){
+        if(point.time===drawSequence[0].time){
+          hint('Point B must be on another candle. Choose B again.');
+        }else{
+          drawSequence=[drawSequence[0],point];
+          hint(mode==='channel'?
+            '2/3 → Click C to set channel width':
+            '2/3 → Click C to project Fibonacci levels from correction');
+        }
+      }else if(stage===2){
+        const anchors=drawSequence.slice(0,2);
+        finish(mode,anchors,point);
+      }
+      renderDrawingOverlay();
+    }else if(dragged||second){finish(mode,state.drawStart,point);}
     else{
-      $('drawHint').textContent='Move pointer to preview · tap the second point to confirm · Shift snaps to candle OHLC';
+      hint('Move pointer to preview · click second point to confirm · Shift snaps OHLC');
       renderDrawingOverlay();
     }
     stop(e);
   },true);
   host.addEventListener('pointercancel',e=>{
     if(!press||press.id!==e.pointerId)return;
-    press=null;drawGesture=null;state.drawStart=null;renderDrawingOverlay();stop(e);
+    press=null;drawGesture=null;state.drawStart=null;drawSequence=[];
+    renderDrawingOverlay();stop(e);
   },true);
-  host.addEventListener('pointerleave',()=>{if(!press&&!state.drawStart){drawGesture=null;renderDrawingOverlay();}});
+  host.addEventListener('pointerleave',()=>{
+    if(!press&&!state.drawStart&&drawSequence.length===0){drawGesture=null;renderDrawingOverlay();}
+  });
   document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'){press=null;drawGesture=null;state.drawStart=null;renderDrawingOverlay();}
+    if(e.key==='Escape'){
+      press=null;drawGesture=null;state.drawStart=null;drawSequence=[];
+      renderDrawingOverlay();
+    }
   });
 }
 function onChartClick(param){
@@ -1899,7 +1937,7 @@ function onChartClick(param){
 function setDrawMode(mode){
   if(!DRAW_MODES.includes(mode))mode='cursor';
   hideChartContextMenu();
-  state.drawMode=mode;state.drawStart=null;drawGesture=null;
+  state.drawMode=mode;state.drawStart=null;drawGesture=null;drawSequence=[];
   const host=$('chartHost');
   host.classList.toggle('chart-alert-mode',mode==='alert');
   host.classList.toggle('chart-drawing-active',mode!=='cursor');
@@ -1911,7 +1949,9 @@ function setDrawMode(mode){
   });
   $('drawHint').classList.toggle('hidden',mode==='cursor');
   if(mode!=='cursor')$('drawHint').textContent=
-    'Press and drag to draw · or tap first point then move and tap second · Shift snaps OHLC';
+    ['channel','fibext'].includes(mode)?
+      'Choose A → B impulse (drag or 2 clicks), then click C for '+(mode==='channel'?'channel width':'extension projection'):
+      'Press and drag · or click first and second points · Shift snaps OHLC';
   renderDrawingOverlay();
 }
 

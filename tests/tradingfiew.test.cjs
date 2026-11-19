@@ -413,3 +413,39 @@ test('Google AdMob app-ads authorized seller remains published at site root',()=
     'google.com, pub-7945572016731367, DIRECT, f08c47fec0942fa0'
   ]);
 });
+
+
+test('tapping a market row immediately opens its selected chart including on mobile',()=>{
+  const app=source('app.js'),ui=source('terminal-ui.js'),html=source('index.html');
+  assert.ok(app.includes('if(row)selectMarketPair(row.dataset.pair);'),'market list must use unified selection');
+  assert.ok(app.includes('if(changed){clearDrawings({forget:false,notice:false});state.symbol=symbol;}'));
+  assert.ok(app.includes('window.TradingFiewTerminalUI?.onPairSelected?.()'));
+  assert.ok(app.includes('renderedMarketKey!==null&&renderedMarketKey!==marketKey'));
+  assert.ok(app.includes('if(switchedInstrument)clearOldMarketChart()'));
+  assert.ok(app.includes('if(request!==state.request)return;'),'late data must be ignored');
+  assert.ok(app.includes('selectSymbol:selectMarketPair,'),'other selectors must use same logic');
+  assert.ok(app.includes('aria-pressed='));
+  assert.ok(ui.includes('if(isMobile())switchView("chart")'));
+  assert.ok(html.includes('terminal-ui.js?v=20261119-auto-pair-switch1'));
+  assert.ok(html.includes('app.js?v=20261119-auto-pair-switch1'));
+});
+test('mobile pair selection actually switches the mobile dock to chart',()=>{
+  const ui=source('terminal-ui.js');
+  const workspace={dataset:{}};
+  const root={
+    TradingFiewWorkspace:{set(){}},
+    matchMedia:()=>({matches:true}),
+    requestAnimationFrame:()=>{}
+  };
+  const fakeDoc={
+    getElementById(id){if(id==='terminal')return workspace;return null;},
+    querySelectorAll(){return[];},
+    readyState:'loading',
+    addEventListener(){}
+  };
+  vm.runInNewContext(ui,{window:root,document:fakeDoc,console},{filename:'terminal-ui.js'});
+  assert.equal(typeof root.TradingFiewTerminalUI.onPairSelected,'function');
+  workspace.dataset.mobileView='markets';
+  root.TradingFiewTerminalUI.onPairSelected();
+  assert.equal(workspace.dataset.mobileView,'chart');
+});

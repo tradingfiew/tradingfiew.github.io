@@ -370,7 +370,7 @@ test('short mobile screens keep a usable chart and landscape phones avoid deskto
 
 test('rotated phones preserve chart layout and expose functional mobile dock navigation',()=>{
  const html=source('index.html'),css=source('styles.css'),ui=source('terminal-ui.js');
- assert.ok(html.includes('terminal-ui.js?v=20261118-landscape-navigation1'));
+ assert.ok(html.includes('terminal-ui.js?v=20261119-auto-pair-switch1'));
  assert.ok(ui.includes('(orientation:landscape) and (max-height:550px)'));
  assert.ok(css.includes('Compact landscape smartphones: one full-width terminal'));
  assert.ok(css.includes('grid-template-columns:repeat(12,minmax(0,1fr))'));

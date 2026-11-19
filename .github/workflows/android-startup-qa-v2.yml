@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify signed 1.0.2 release APK
         run: |
           curl --fail --location --retry 3 -o tradingfiew-release.apk https://github.com/univcours/ribhlab/releases/download/tradingfiew-android-v1.0.2-rivo-key/TradingFiew-Android-1.0.2-RivoScanKey-SIGNED.apk
@@ -55,7 +55,7 @@ jobs:
             test "$(grep -c 'FATAL EXCEPTION' android-startup-v2/logcat.txt)" -eq 0
             grep -q 'Status: ok' android-startup-v2/activity.txt
             echo 'ANDROID_LAUNCHER_SUCCESS_NO_FATAL_MAIN_PROCESS' >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: TradingFiew-Android-1.0.2-emulator-startup-logcat

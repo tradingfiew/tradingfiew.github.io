@@ -3,6 +3,11 @@ on:
   push:
     paths:
       - '.github/workflows/tradingfiew-real-release-qa.yml'
+      - 'index.html'
+      - 'browser-compat.js'
+      - 'app.js'
+      - 'scripts/android-real-release-smoke.sh'
+      - 'scripts/android-accept-chrome-first-run.py'
   workflow_dispatch:
 permissions:
   contents: read

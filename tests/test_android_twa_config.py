@@ -93,8 +93,8 @@ class AndroidTwaConfigTest(unittest.TestCase):
     def test_app_has_monotonic_update_version_and_correct_identity(self):
         build = (BASE / "android/app/build.gradle").read_text()
         self.assertRegex(build, r"applicationId\s+'com\.ribhlab\.tradingfiew'")
-        self.assertRegex(build, r"versionCode\s+4")
-        self.assertRegex(build, r"versionName\s+'1\.0\.3'")
+        self.assertRegex(build, r"versionCode\s+5")
+        self.assertRegex(build, r"versionName\s+'1\.0\.4'")
         self.assertIn("targetSdk 36", build)
 
 

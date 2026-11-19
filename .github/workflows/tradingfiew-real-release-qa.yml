@@ -1,0 +1,107 @@
+name: TradingFiew signed RELEASE startup — verify real chart not Chrome welcome
+on:
+  push:
+    paths:
+      - '.github/workflows/tradingfiew-real-release-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the real signed TradingFiew 1.0.3 release
+        run: |
+          set -euo pipefail
+          RELEASE=https://github.com/univcours/ribhlab/releases/download/tradingfiew-android-v1.0.3-admob-rivo-key
+          mkdir -p release-smoke
+          curl -fL --retry 3 "$RELEASE/TradingFiew-Android-1.0.3-RivoScanKey-SIGNED.apk" -o release-smoke/tradingfiew-release.apk
+          curl -fL --retry 3 "$RELEASE/SHA256SUMS.txt" -o release-smoke/SHA256SUMS.txt
+          (cd release-smoke && sed -E 's#([^ /]*TradingFiew-Android-1.0.3-RivoScanKey-SIGNED.apk)#tradingfiew-release.apk#' SHA256SUMS.txt | grep 'tradingfiew-release.apk' | sha256sum --check -)
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$AAPT" dump badging release-smoke/tradingfiew-release.apk | grep -F "name='com.ribhlab.tradingfiew' versionCode='4' versionName='1.0.3'"
+          "$APKSIGNER" verify --verbose release-smoke/tradingfiew-release.apk
+      - name: Enable hardware virtualization
+        run: sudo setfacl -m "u:$(id -un):rw" /dev/kvm
+      - name: Boot Android + complete Chrome first-run + verify signed app loads real chart
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048M
+          heap-size: 384M
+          emulator-boot-timeout: 900
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            adb install -r release-smoke/tradingfiew-release.apk
+            adb shell am start -a android.intent.action.VIEW -d 'https://tradingfiew.github.io/?native=1' -p com.android.chrome || true
+            sleep 5
+            # If Chrome shows first-run on the clean test device, accept it before
+            # testing the app. Prior CI falsely counted Chrome onboarding as success.
+            python3 - <<'PY'
+            import re,subprocess,time,xml.etree.ElementTree as ET
+            choices=('Accept & continue','Accept and continue','Use without an account',
+                     'No thanks','Not now','Continue without an account',
+                     'Continue as guest','Got it','Skip')
+            for attempt in range(6):
+                subprocess.run(['adb','shell','uiautomator','dump','/sdcard/window.xml'],
+                               stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=35)
+                xml=subprocess.run(['adb','exec-out','cat','/sdcard/window.xml'],
+                                   capture_output=True,check=True,timeout=15).stdout
+                try: root=ET.fromstring(xml)
+                except ET.ParseError: time.sleep(2);continue
+                found=False
+                for el in root.iter('node'):
+                    title=(el.attrib.get('text','')+' '+el.attrib.get('content-desc','')).lower()
+                    if any(v.lower() in title for v in choices):
+                        match=re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',el.attrib.get('bounds',''))
+                        if not match:continue
+                        x1,y1,x2,y2=map(int,match.groups())
+                        subprocess.run(['adb','shell','input','tap',str((x1+x2)//2),str((y1+y2)//2)],check=True)
+                        print('Chrome onboarding: handled matching button',attempt+1)
+                        found=True
+                        time.sleep(4)
+                        break
+                if not found:break
+            PY
+            adb shell input keyevent KEYCODE_HOME
+            sleep 1
+            adb logcat -c
+            adb shell am start -W -n com.ribhlab.tradingfiew/com.ribhlab.tradingfiew.LauncherActivity > release-smoke/launcher.txt 2>&1
+            sleep 18
+            adb shell uiautomator dump /sdcard/window.xml || true
+            adb pull /sdcard/window.xml release-smoke/final-ui.xml || true
+            adb exec-out screencap -p > release-smoke/final.png || true
+            adb shell dumpsys activity activities > release-smoke/activities.txt
+            adb logcat -d -v time > release-smoke/logcat.txt
+            cat release-smoke/launcher.txt
+            grep -q 'Status: ok' release-smoke/launcher.txt
+            # Check the actual signed app process for Java crashes, not all
+            # unrelated Google services that can crash in old emulators.
+            if grep -A 12 'FATAL EXCEPTION' release-smoke/logcat.txt | grep -Eq 'Process: com.ribhlab.tradingfiew(,|$)'; then
+              echo "::error::Signed TradingFiew release crashed"
+              exit 1
+            fi
+            if grep -Eiq 'Welcome to Chrome|Accept &amp; continue|FirstRunActivity' release-smoke/final-ui.xml; then
+              echo "::error::Still seeing Chrome onboarding, not TradingFiew"
+              exit 1
+            fi
+            if ! grep -Eiq 'TradingFiew|USTEC|Market Watch|Auto SMC|Smart Money|Markets' release-smoke/final-ui.xml; then
+              echo "::error::No confirmed TradingFiew chart UI — inspect screenshot"
+              exit 1
+            fi
+            echo "Signed production APK reached TradingFiew UI; no TradingFiew Java FATAL EXCEPTION." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TradingFiew-REAL-SIGNED-Release-Startup-Evidence
+          path: release-smoke/
+          if-no-files-found: warn
+          retention-days: 10

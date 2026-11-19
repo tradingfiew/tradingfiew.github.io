@@ -40,9 +40,9 @@ jobs:
             adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.LauncherActivity > android-smoke/activity-start.txt 2>&1 || true
             sleep 12
             # TWA calendar transition must not crash even if no ad is loaded.
-            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.NaturalTransitionActivity \
-              -a android.intent.action.VIEW -d 'tradingfiew://open-calendar' \
-              > android-smoke/calendar-start.txt 2>&1 || true
+            # Runner executes every line separately, so keep the full intent
+            # on ONE line (backslash continuation caused an illegal '-a' command).
+            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.NaturalTransitionActivity -a android.intent.action.VIEW -d 'tradingfiew://open-calendar' > android-smoke/calendar-start.txt 2>&1 || true
             sleep 5
             adb logcat -d -v time > android-smoke/logcat.txt
             adb shell dumpsys activity activities > android-smoke/activities.txt
@@ -57,7 +57,7 @@ jobs:
               echo "::error::Android activity could not start."
               exit 1
             fi
-            echo "TradingFiew 1.0.3 DEBUG launched without a detected native crash; calendar interstitial tested with Google TEST IDs only."
+            echo "TradingFiew DEBUG launched without a detected native crash; calendar interstitial tested with Google TEST IDs only."
       - name: Upload logs and activity state
         uses: actions/upload-artifact@v4
         if: always()

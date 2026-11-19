@@ -9,13 +9,23 @@ permissions:
   contents: read
 jobs:
   android-native-start:
-    # GitHub-hosted standard Ubuntu runners lack reliable KVM acceleration
-    # for this AVD: last CI saw adb offline / Broken pipe before the app ran.
-    # macOS provides hardware-accelerated emulation (HVF) for this smoke test.
-    runs-on: macos-15
+    # Enable official KVM setup for GitHub's hosted Ubuntu Android emulator.
+    # MacOS runner queues were unavailable, while default Ubuntu without KVM
+    # permissions produced adb offline / Broken pipe before the app started.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Enable KVM acceleration for the Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -e /dev/kvm || { echo '::error::Hosted runner has no /dev/kvm; cannot run reliable emulator smoke test'; exit 1; }
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,6 +46,7 @@ jobs:
           arch: x86_64
           profile: pixel_5
           emulator-boot-timeout: 480
+          disable-linux-hw-accel: false
           # Avoid adb settings calls in the runner's startup sequence. These
           # previously failed with "Broken pipe (32)" before app installation.
           disable-animations: false

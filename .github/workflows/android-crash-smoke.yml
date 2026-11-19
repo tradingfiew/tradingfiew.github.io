@@ -25,11 +25,17 @@ jobs:
       - name: Install and launch on Android emulator (capture crash log)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          # API 35 emulator took ~10 minutes to boot on the hosted runner
+          # and adb crashed before our script began. Use a lighter smoke AVD;
+          # the separate API 36 build still validates the current target SDK.
+          api-level: 30
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          disable-animations: true
+          emulator-boot-timeout: 900
+          # Avoid adb settings calls in the runner's startup sequence. These
+          # previously failed with "Broken pipe (32)" before app installation.
+          disable-animations: false
           script: |
             set -e
             mkdir -p android-smoke

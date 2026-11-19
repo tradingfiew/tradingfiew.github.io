@@ -42,3 +42,28 @@ test('native built-ins are not replaced', () => {
   vm.runInContext(code, context);
   assert.equal(vm.runInContext('previous === Object.hasOwn', context), true);
 });
+
+test('older Chrome can replace DOM element children and accepts text arguments', () => {
+  const context = vm.createContext({});
+  vm.runInContext(`
+    function Element() { this.children = []; this.ownerDocument = document; }
+    Object.defineProperty(Element.prototype, 'firstChild', {
+      get: function () { return this.children[0] || null; }
+    });
+    Element.prototype.removeChild = function () { return this.children.shift(); };
+    Element.prototype.appendChild = function (value) { this.children.push(value); };
+    var document = {createTextNode: function(value) { return {nodeType: 3, textContent: value}; }};
+    this.Element = Element;
+    this.DocumentFragment = function DocumentFragment(){};
+    this.Document = function Document(){};
+  `,context);
+  vm.runInContext(code,context,{filename:'browser-compat.js'});
+  assert.equal(vm.runInContext(`
+    var element = new Element();
+    element.children.push({nodeType: 1});
+    element.replaceChildren('news', {nodeType: 1});
+    element.children.length
+  `,context),2);
+  assert.equal(vm.runInContext("element.children[0].textContent",context),'news');
+  assert.equal(vm.runInContext("element.children[1].nodeType",context),1);
+});

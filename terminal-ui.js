@@ -57,6 +57,12 @@ function switchView(view){
   save("mobileView",view);
   resize();
 }
+// A tap on a pair must reveal its real chart on phones, not leave
+// the user looking at a Market Watch panel that masks the chart.
+function onPairSelected(){
+  if(isMobile())switchView("chart");
+  else resize();
+}
 function showMarkets(){
   if(isMobile()){switchView("markets");return;}
   marketOpen=!marketOpen;save("marketWatchV2",marketOpen?"open":"collapsed");syncPanelLabels();resize();
@@ -208,5 +214,5 @@ function init(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);
 else init();
-root.TradingFiewTerminalUI=Object.freeze({onMarketChanged,restoreRange,resize,showMarkets,showAnalysis,switchView});
+root.TradingFiewTerminalUI=Object.freeze({onMarketChanged,onPairSelected,restoreRange,resize,showMarkets,showAnalysis,switchView});
 })(window);

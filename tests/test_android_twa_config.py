@@ -106,17 +106,39 @@ class AndroidTwaConfigTest(unittest.TestCase):
 
     def test_app_has_monotonic_update_version_and_correct_identity(self):
         build = (BASE / "android/app/build.gradle").read_text()
-        self.assertRegex(build, r"applicationId\s+'com\.ribhlab\.tradingfiew'")
+        self.assertRegex(build, r"applicationId\s*=\s*'com\.ribhlab\.tradingfiew'")
         # Version 6 / 1.0.5 is the current update floor; never regress to an
         # already distributed versionCode. Do not hardcode equality to 6 so
         # future valid releases do not break this test on every increment.
-        code_match = re.search(r"\bversionCode\s+(\d+)\b", build)
+        code_match = re.search(r"\bversionCode\s*=\s*(\d+)\b", build)
         self.assertIsNotNone(code_match, "Android versionCode missing")
         self.assertGreaterEqual(int(code_match.group(1)), 6)
-        name_match = re.search(r"\bversionName\s+'(\d+)\.(\d+)\.(\d+)'", build)
+        name_match = re.search(r"\bversionName\s*=\s*'(\d+)\.(\d+)\.(\d+)'", build)
         self.assertIsNotNone(name_match, "Semantic Android versionName missing")
         self.assertGreaterEqual(tuple(map(int, name_match.groups())), (1, 0, 5))
-        self.assertIn("targetSdk 36", build)
+        self.assertIn("targetSdk = 36", build)
+
+
+    def test_gradle_properties_use_gradle_10_compatible_assignment(self):
+        build = (BASE / "android/app/build.gradle").read_text()
+        for prop in ("namespace", "compileSdk", "applicationId", "minSdk",
+                     "targetSdk", "versionCode", "versionName", "buildConfig",
+                     "shrinkResources", "minifyEnabled", "signingConfig",
+                     "abortOnError"):
+            self.assertRegex(build, rf"\b{prop}\s*=",
+                             f"Expected modern Gradle assignment for {prop}")
+            self.assertNotRegex(build, rf"(?m)^\s*{prop}\s+(?![=])[^#/\n]+$",
+                                f"Deprecated space assignment for {prop}")
+
+    def test_github_workflows_do_not_pin_deprecated_node20_actions(self):
+        root = BASE / ".github/workflows"
+        for workflow in root.glob("*.yml"):
+            source = workflow.read_text()
+            for old in ("actions/checkout@v4", "actions/setup-java@v4",
+                        "actions/setup-node@v4", "actions/upload-artifact@v4",
+                        "gradle/actions/setup-gradle@v4"):
+                self.assertNotIn(old, source,
+                                 f"Outdated Node20 GitHub Action in {workflow.name}")
 
 
 if __name__ == "__main__":

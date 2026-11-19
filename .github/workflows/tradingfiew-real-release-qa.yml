@@ -38,7 +38,7 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             adb wait-for-device
             adb install -r release-smoke/tradingfiew-release.apk
             adb shell am start -a android.intent.action.VIEW -d 'https://tradingfiew.github.io/?native=1' -p com.android.chrome || true

@@ -40,6 +40,10 @@ if grep -Eiq 'Welcome to Chrome|Accept &amp; continue' release-smoke/final-ui.xm
    echo "::error::Only Chrome first-run is visible; app UI has not loaded"
    exit 1
 fi
+if grep -Eiq 'Unable to start the chart|Object[.]hasOwn is not a function|Chart library missing|Could not initialize chart' release-smoke/final-ui.xml; then
+   echo "::error::TradingFiew launched but its chart still failed; see screenshot and UI dump"
+   exit 1
+fi
 if ! grep -Eiq 'TradingFiew|USTEC|Market Watch|Auto SMC|Smart Money|Markets' release-smoke/final-ui.xml; then
    echo "::error::Cannot verify real TradingFiew UI; inspect screenshot + logs"
    exit 1

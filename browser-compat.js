@@ -54,4 +54,29 @@
     }
     return -1;
   });
+  // ParentNode.replaceChildren arrived after older Android Chrome versions.
+  // The chart UI uses it when rebuilding price levels, indicators and toolbars.
+  // Support DOM Nodes and strings without requiring any external polyfill CDN.
+  function replaceChildren() {
+    var args = arguments;
+    while (this.firstChild) this.removeChild(this.firstChild);
+    for (var i = 0; i < args.length; i++) {
+      var item = args[i];
+      this.appendChild(item && typeof item === 'object' &&
+        typeof item.nodeType === 'number'
+          ? item
+          : this.ownerDocument
+            ? this.ownerDocument.createTextNode(String(item))
+            : document.createTextNode(String(item)));
+    }
+  }
+  if (typeof Element !== 'undefined') {
+    define(Element.prototype, 'replaceChildren', replaceChildren);
+  }
+  if (typeof DocumentFragment !== 'undefined') {
+    define(DocumentFragment.prototype, 'replaceChildren', replaceChildren);
+  }
+  if (typeof Document !== 'undefined') {
+    define(Document.prototype, 'replaceChildren', replaceChildren);
+  }
 })();

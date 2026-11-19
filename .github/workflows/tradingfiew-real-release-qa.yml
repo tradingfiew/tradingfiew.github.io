@@ -1,4 +1,4 @@
-name: TradingFiew signed RELEASE startup — verify real chart not Chrome welcome
+name: TradingFiew 1.0.4 signed Android startup and chart verification
 on:
   push:
     paths:
@@ -20,14 +20,14 @@ jobs:
       - name: Download the real signed TradingFiew 1.0.3 release
         run: |
           set -euo pipefail
-          RELEASE=https://github.com/univcours/ribhlab/releases/download/tradingfiew-android-v1.0.3-admob-rivo-key
+          RELEASE=https://github.com/univcours/ribhlab/releases/download/tradingfiew-android-v1.0.4
           mkdir -p release-smoke
-          curl -fL --retry 3 "$RELEASE/TradingFiew-Android-1.0.3-RivoScanKey-SIGNED.apk" -o release-smoke/tradingfiew-release.apk
+          curl -fL --retry 3 "$RELEASE/TradingFiew-Android-1.0.4-RivoScanKey-SIGNED.apk" -o release-smoke/tradingfiew-release.apk
           curl -fL --retry 3 "$RELEASE/SHA256SUMS.txt" -o release-smoke/SHA256SUMS.txt
-          (cd release-smoke && sed -E 's#([^ /]*TradingFiew-Android-1.0.3-RivoScanKey-SIGNED.apk)#tradingfiew-release.apk#' SHA256SUMS.txt | grep 'tradingfiew-release.apk' | sha256sum --check -)
+          (cd release-smoke && sed -E 's#([^ /]*TradingFiew-Android-1.0.4-RivoScanKey-SIGNED.apk)#tradingfiew-release.apk#' SHA256SUMS.txt | grep 'tradingfiew-release.apk' | sha256sum --check -)
           AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          "$AAPT" dump badging release-smoke/tradingfiew-release.apk | grep -F "name='com.ribhlab.tradingfiew' versionCode='4' versionName='1.0.3'"
+          "$AAPT" dump badging release-smoke/tradingfiew-release.apk | grep -F "name='com.ribhlab.tradingfiew' versionCode='5' versionName='1.0.4'"
           "$APKSIGNER" verify --verbose release-smoke/tradingfiew-release.apk
       - name: Enable hardware virtualization
         run: sudo setfacl -m "u:$(id -un):rw" /dev/kvm

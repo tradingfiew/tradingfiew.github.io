@@ -28,8 +28,8 @@ android {
         applicationId 'com.ribhlab.tradingfiew'
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName '1.0.4'
+        versionCode 6
+        versionName '1.0.5'
         manifestPlaceholders = [admobAppId: admobAppIdValid ? admobAppId : debugAdmobAppId]
     }
 
@@ -49,10 +49,24 @@ android {
     buildTypes {
         release {
             buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '\"ca-app-pub-7945572016731367/8117339646\"'
-            minifyEnabled false
+            // Google Play DEX optimization: run R8 on every production release.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (signedBuild) {
                 signingConfig signingConfigs.release
             }
+        }
+        // Production-equivalent R8 checks with TEST ads, separate debug-signed ID.
+        // Never upload this QA variant to Google Play.
+        r8Qa {
+            initWith release
+            applicationIdSuffix '.r8qa'
+            versionNameSuffix '-r8qa'
+            signingConfig signingConfigs.debug
+            manifestPlaceholders = [admobAppId: debugAdmobAppId]
+            buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '\"ca-app-pub-3940256099942544/1033173712\"'
+            matchingFallbacks = ['release']
         }
         debug {
             // Never request real AdMob ads from test APKs.

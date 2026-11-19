@@ -57,10 +57,31 @@ jobs:
       - name: Upload debug APK for Android QA
         uses: actions/upload-artifact@v4
         with:
-          name: TradingFiew-Android-1.0.3-DEBUG-AdMobTest
+          name: TradingFiew-Android-1.0.5-DEBUG-AdMobTest
           if-no-files-found: error
           retention-days: 14
           path: android/app/build/outputs/apk/debug/*.apk
+      - name: Verify R8 optimized QA variant (test AdMob IDs and debug signing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon -p android :app:assembleR8Qa
+          QA_APK=android/app/build/outputs/apk/r8Qa/app-r8Qa.apk
+          R8_MAP=android/app/build/outputs/mapping/r8Qa/mapping.txt
+          test -s "$QA_APK"
+          test -s "$R8_MAP"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          "$AAPT" dump badging "$QA_APK" | grep -F "name='com.ribhlab.tradingfiew.r8qa' versionCode='6'"
+          echo 'R8 produced an optimized, obfuscated QA mapping and installable APK.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload R8 QA APK and mapping (NEVER publish this QA build)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradingFiew-1.0.5-R8-QA-DEBUG-KEY
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            android/app/build/outputs/apk/r8Qa/*.apk
+            android/app/build/outputs/mapping/r8Qa/mapping.txt
       - name: Build release ONLY if real TradingFiew AdMob ID and signing keys exist
         if: steps.signing.outputs.signed == 'true'
         env:
@@ -83,13 +104,14 @@ jobs:
         if: steps.signing.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: TradingFiew-Android-1.0.3-SIGNED
+          name: TradingFiew-Android-1.0.5-SIGNED
           if-no-files-found: error
           retention-days: 30
           path: |
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/bundle/release/*.aab
             android/app/build/outputs/SHA256SUMS.txt
+            android/app/build/outputs/mapping/release/mapping.txt
       - name: Delete temporary signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/tradingfiew-upload.p12"

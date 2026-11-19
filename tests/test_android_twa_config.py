@@ -107,15 +107,15 @@ class AndroidTwaConfigTest(unittest.TestCase):
     def test_app_has_monotonic_update_version_and_correct_identity(self):
         build = (BASE / "android/app/build.gradle").read_text()
         self.assertRegex(build, r"applicationId\s*=\s*'com\.ribhlab\.tradingfiew'")
-        # Version 6 / 1.0.5 is the current update floor; never regress to an
+        # Version 7 / 1.0.6 is the current update floor; never regress to an
         # already distributed versionCode. Do not hardcode equality to 6 so
         # future valid releases do not break this test on every increment.
         code_match = re.search(r"\bversionCode\s*=\s*(\d+)\b", build)
         self.assertIsNotNone(code_match, "Android versionCode missing")
-        self.assertGreaterEqual(int(code_match.group(1)), 6)
+        self.assertGreaterEqual(int(code_match.group(1)), 7)
         name_match = re.search(r"\bversionName\s*=\s*'(\d+)\.(\d+)\.(\d+)'", build)
         self.assertIsNotNone(name_match, "Semantic Android versionName missing")
-        self.assertGreaterEqual(tuple(map(int, name_match.groups())), (1, 0, 5))
+        self.assertGreaterEqual(tuple(map(int, name_match.groups())), (1, 0, 6))
         self.assertIn("targetSdk = 36", build)
 
 

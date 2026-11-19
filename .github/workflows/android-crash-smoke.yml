@@ -9,7 +9,10 @@ permissions:
   contents: read
 jobs:
   android-native-start:
-    runs-on: ubuntu-latest
+    # GitHub-hosted standard Ubuntu runners lack reliable KVM acceleration
+    # for this AVD: last CI saw adb offline / Broken pipe before the app ran.
+    # macOS provides hardware-accelerated emulation (HVF) for this smoke test.
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +35,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          emulator-boot-timeout: 900
+          emulator-boot-timeout: 480
           # Avoid adb settings calls in the runner's startup sequence. These
           # previously failed with "Broken pipe (32)" before app installation.
           disable-animations: false
@@ -40,6 +43,7 @@ jobs:
             set -e
             mkdir -p android-smoke
             adb wait-for-device
+            adb shell getprop sys.boot_completed
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             adb shell pm list packages | grep -E '(chrome|tradingfiew)' | tee android-smoke/packages.txt || true
             adb logcat -c

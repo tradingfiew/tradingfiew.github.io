@@ -12,7 +12,7 @@ heartbeat:null,analysisTimer:null,reconnectTimer:null,quoteTimer:null,tabTickerT
 tableTab:'events',favorites:new Set(),dark:true,activePrice:null,live:false
 };
 let chart,candles,vol,ema20,ema50,ema200,rsiChart,rsiSeries,markersApi,zoneCanvas,resizeObserver,toastTimer,shownGuide=false,markerLayoutTimer=null;
-let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map();
+let lastPriceLine=null,srGuides=[],drawingSeq=0,alertPriceLines=new Map(),renderedMarketKey=null;
 let syncingTimeRanges=false,syncingCrosshair=false,rsiPointsByTime=new Map(),rsiTimelineReady=false,priceAxisMinimum=88,sharedCrosshairTime=null,livePriceBadgePending=false;
 let alertMenuTarget=null,alertDrag=null,alertLayoutPending=false,chartLongPress=null,suppressAlertClickUntil=0;
 let drawingDrag=null,drawGesture=null,drawSequence=[],suppressDrawingClickUntil=0;
@@ -216,7 +216,7 @@ function renderMarkets(){
 const search=$('symbolSearch').value.trim().toLowerCase(),fav=state.favorites;
 const markets=coins.filter(c=>(state.category==='all'||c.category===state.category)&&(c.symbol.toLowerCase().includes(search)||c.name.toLowerCase().includes(search))).sort((a,b)=>Number(fav.has(b.symbol))-Number(fav.has(a.symbol)));
 $('marketCount').textContent=markets.length;
-$('marketList').innerHTML=markets.map(c=>`<button class="market-row ${c.symbol===state.symbol?'active':''}" data-pair="${c.symbol}"><span class="coin-symbol" style="background:${c.color}">${c.icon}</span><span class="market-name"><b>${c.symbol.replace('USDT','/USDT')}</b><small>${c.name}</small></span><span data-star="${c.symbol}" class="star ${fav.has(c.symbol)?'favorite':''}" title="Toggle favorite">${fav.has(c.symbol)?'★':'☆'}</span></button>`).join('')||'<div class="empty-small">No matching pairs</div>';
+$('marketList').innerHTML=markets.map(c=>`<button type="button" class="market-row ${c.symbol===state.symbol?'active':''}" data-pair="${c.symbol}" aria-pressed="${c.symbol===state.symbol}" title="Open ${c.symbol} chart"><span class="coin-symbol" style="background:${c.color}">${c.icon}</span><span class="market-name"><b>${c.symbol.replace('USDT','/USDT')}</b><small>${c.name}</small></span><span data-star="${c.symbol}" class="star ${fav.has(c.symbol)?'favorite':''}" title="Toggle favorite">${fav.has(c.symbol)?'★':'☆'}</span></button>`).join('')||'<div class="empty-small">No matching pairs</div>';
 }
 function showInstrument(){
 remember('symbol',state.symbol);remember('tf',state.tf);
@@ -401,18 +401,57 @@ function startQuotePolling(request){
     void fetchTicker(state.symbol,request);
   },5000);
 }
+// When selecting a different instrument, immediately clear the prior price
+// series so those candles are never mistaken for the newly chosen pair.
+function clearOldMarketChart(){
+  try{
+    for(const series of [candles,vol,ema20,ema50,ema200,rsiSeries])series?.setData([]);
+    markersApi?.setMarkers([]);
+    rsiTimelineReady=false;rsiPointsByTime.clear();
+    updateSharedCrosshairGuide(null);
+  }catch(error){console.warn('Previous chart series cleanup failed',error);}
+  for(const id of ['oVal','hVal','lVal','cVal','volumeStripValue','rsiValue',
+    'stripRSI','srSupport','srResistance']){
+    const node=$(id);if(node)node.textContent='—';
+  }
+  $('analysisLabel').textContent='Loading '+state.symbol+' candles…';
+  $('htfValue').textContent='Checking…';
+  renderMarkers();drawZones();scheduleDrawingOverlay();
+}
+// All pair selectors use the same validated path, including tapping an active
+// pair. On phones show the chart pane immediately, not Market Watch.
+function selectMarketPair(symbol){
+  if(!Markets.get(symbol))return false;
+  const changed=symbol!==state.symbol;
+  if(changed){clearDrawings({forget:false,notice:false});state.symbol=symbol;}
+  try{window.TradingFiewTerminalUI?.onPairSelected?.();}
+  catch(error){console.warn('Chart navigation unavailable',error);}
+  if(changed){
+    try{
+      const url=new URL(location.href);
+      url.searchParams.set('symbol',state.symbol);
+      url.searchParams.set('tf',state.tf);
+      history.replaceState(null,'',url.pathname+url.search+url.hash);
+    }catch(error){console.warn('Chart URL update unavailable',error);}
+    void loadMarket();
+  }
+  return true;
+}
 function clearTimer(){clearInterval(state.refreshTimer);clearInterval(state.quoteTimer);clearInterval(state.tabTickerTimer);clearInterval(state.heartbeat);clearTimeout(state.reconnectTimer);clearTimeout(state.analysisTimer);state.refreshTimer=null;state.quoteTimer=null;state.tabTickerTimer=null;state.streamLastMessageAt=null;state.streamConnectedAt=null;state.quoteBusy=false;try{state.ws?.close();}catch{}state.ws=null;}
 async function loadMarket(fit=true){
 hideChartContextMenu();
 const request=++state.request;drawingDrag=null;state.controller?.abort();state.controller=new AbortController();state.htf=null;clearTimer();
+const marketKey=state.symbol+'|'+state.tf;
+const switchedInstrument=renderedMarketKey!==null&&renderedMarketKey!==marketKey;
 try{window.TradingFiewTerminalUI?.onMarketChanged?.();}catch(error){console.warn('Terminal UI symbol reset failed',error);}
 try{window.TradingFiewMarketPanels?.select(state.symbol,state.tf);}catch(error){console.warn('Optional market panels not available',error);}
 try{if(lastPriceLine)candles.removePriceLine(lastPriceLine);}catch{}lastPriceLine=null;$('livePriceBadge').hidden=true;clearSrGuides();clearAlertPriceLines();state.activePrice=null;state.quoteAt=null;state.quotePrice=null;state.quoteIsFresh=false;state.tabChangePct=null;state.tabQuoteStatus=null;updateBrowserTabTitle();connection('CONNECTING','Fetching historical candles...');
 showInstrument();loading('Loading '+state.symbol,'Retrieving historical OHLC data from a public market feed.');
-$('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;drawZones();
+$('lastPrice').textContent='—';$('priceChange').textContent='—';$('high24').textContent='—';$('low24').textContent='—';$('volume24').textContent='—';state.data=[];state.analysis=null;state.htf=null;
+if(switchedInstrument)clearOldMarketChart();else drawZones();
 try{
 const rows=await fetchCandles(state.symbol,state.tf,650,state.controller.signal);if(request!==state.request)return;
-state.data=rows;setCandleData(true);restoreDrawings();renderAlertPriceLines();setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
+state.data=rows;setCandleData(true);renderedMarketKey=marketKey;restoreDrawings();renderAlertPriceLines();setOhlc(rows.at(-1));updatePrice(rows.at(-1).close);showChart();connection('SYNCING','Historical data ready; connecting to market feed...');
 analyze();fetchTicker(state.symbol,request);fetchHigherTimeframe(request);connectStream(request);
 if(fit)focusRecentCandles();
 try{window.TradingFiewTerminalUI?.restoreRange?.();}catch(error){console.warn('Saved history range could not be restored',error);}
@@ -2263,7 +2302,7 @@ function bind(){
 $('marketCategories').addEventListener('click',e=>{const button=e.target.closest('[data-category]');if(!button)return;state.category=button.dataset.category;remember('category',state.category);document.querySelectorAll('[data-category]').forEach(n=>n.classList.toggle('active',n===button));$('marketCategoryName').textContent=state.category==='all'?'ALL MARKETS':state.category.toUpperCase();renderMarkets();});
 $('marketList').addEventListener('click',e=>{
 const star=e.target.closest('[data-star]');if(star){const s=star.dataset.star;if(state.favorites.has(s))state.favorites.delete(s);else state.favorites.add(s);remember('favorites',JSON.stringify([...state.favorites]));renderMarkets();return;}
-const row=e.target.closest('[data-pair]');if(row&&row.dataset.pair!==state.symbol){clearDrawings({forget:false,notice:false});state.symbol=row.dataset.pair;loadMarket();}
+const row=e.target.closest('[data-pair]');if(row)selectMarketPair(row.dataset.pair);
 });
 $('symbolSearch').addEventListener('input',()=>{remember('search',$('symbolSearch').value);renderMarkets();});
 $('timeframes').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b&&b.dataset.tf!==state.tf){clearDrawings({forget:false,notice:false});state.tf=b.dataset.tf;loadMarket();}});
@@ -2429,6 +2468,7 @@ window.TradingFiewChartAPI=Object.freeze({
   resize:()=>resizeChartWindow(),
   setRange:terminalRange,
   getSnapshot:terminalSnapshot,
+  selectSymbol:selectMarketPair,
   getCandleCountdown:candleCountdownData,
   refreshPriceBadge:scheduleLivePriceBadgeLayout,
   saveScreenshot:terminalScreenshot,

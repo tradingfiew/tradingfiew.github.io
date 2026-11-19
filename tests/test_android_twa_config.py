@@ -90,11 +90,32 @@ class AndroidTwaConfigTest(unittest.TestCase):
         self.assertIn("onNaturalTransition(Activity activity", controller)
         self.assertIn("MIN_ENGAGEMENT_MS = 60_000L", controller)
 
+    def test_calendar_smoke_uses_one_shell_command(self):
+        # android-emulator-runner invokes every YAML script line separately;
+        # shell continuation here turned '-a' into a standalone shell command.
+        workflow = (BASE / ".github/workflows/android-crash-smoke.yml").read_text()
+        self.assertIn(
+            "adb shell am start -W -n "
+            "com.ribhlab.tradingfiew.debug/"
+            "com.ribhlab.tradingfiew.NaturalTransitionActivity "
+            "-a android.intent.action.VIEW "
+            "-d 'tradingfiew://open-calendar' > "
+            "android-smoke/calendar-start.txt 2>&1 || true",
+            workflow,
+        )
+
     def test_app_has_monotonic_update_version_and_correct_identity(self):
         build = (BASE / "android/app/build.gradle").read_text()
         self.assertRegex(build, r"applicationId\s+'com\.ribhlab\.tradingfiew'")
-        self.assertRegex(build, r"versionCode\s+5")
-        self.assertRegex(build, r"versionName\s+'1\.0\.4'")
+        # Version 6 / 1.0.5 is the current update floor; never regress to an
+        # already distributed versionCode. Do not hardcode equality to 6 so
+        # future valid releases do not break this test on every increment.
+        code_match = re.search(r"\bversionCode\s+(\d+)\b", build)
+        self.assertIsNotNone(code_match, "Android versionCode missing")
+        self.assertGreaterEqual(int(code_match.group(1)), 6)
+        name_match = re.search(r"\bversionName\s+'(\d+)\.(\d+)\.(\d+)'", build)
+        self.assertIsNotNone(name_match, "Semantic Android versionName missing")
+        self.assertGreaterEqual(tuple(map(int, name_match.groups())), (1, 0, 5))
         self.assertIn("targetSdk 36", build)
 
 

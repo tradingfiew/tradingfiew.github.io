@@ -9,7 +9,10 @@ permissions:
   contents: read
 jobs:
   android-native-start:
-    runs-on: ubuntu-latest
+    # GitHub-hosted standard Ubuntu runners lack reliable KVM acceleration
+    # for this AVD: last CI saw adb offline / Broken pipe before the app ran.
+    # macOS provides hardware-accelerated emulation (HVF) for this smoke test.
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -25,24 +28,31 @@ jobs:
       - name: Install and launch on Android emulator (capture crash log)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          # API 35 emulator took ~10 minutes to boot on the hosted runner
+          # and adb crashed before our script began. Use a lighter smoke AVD;
+          # the separate API 36 build still validates the current target SDK.
+          api-level: 30
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          disable-animations: true
+          emulator-boot-timeout: 480
+          # Avoid adb settings calls in the runner's startup sequence. These
+          # previously failed with "Broken pipe (32)" before app installation.
+          disable-animations: false
           script: |
             set -e
             mkdir -p android-smoke
             adb wait-for-device
+            adb shell getprop sys.boot_completed
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             adb shell pm list packages | grep -E '(chrome|tradingfiew)' | tee android-smoke/packages.txt || true
             adb logcat -c
             adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.LauncherActivity > android-smoke/activity-start.txt 2>&1 || true
             sleep 12
             # TWA calendar transition must not crash even if no ad is loaded.
-            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.NaturalTransitionActivity \
-              -a android.intent.action.VIEW -d 'tradingfiew://open-calendar' \
-              > android-smoke/calendar-start.txt 2>&1 || true
+            # Runner executes every line separately, so keep the full intent
+            # on ONE line (backslash continuation caused an illegal '-a' command).
+            adb shell am start -W -n com.ribhlab.tradingfiew.debug/com.ribhlab.tradingfiew.NaturalTransitionActivity -a android.intent.action.VIEW -d 'tradingfiew://open-calendar' > android-smoke/calendar-start.txt 2>&1 || true
             sleep 5
             adb logcat -d -v time > android-smoke/logcat.txt
             adb shell dumpsys activity activities > android-smoke/activities.txt
@@ -57,7 +67,7 @@ jobs:
               echo "::error::Android activity could not start."
               exit 1
             fi
-            echo "TradingFiew 1.0.3 DEBUG launched without a detected native crash; calendar interstitial tested with Google TEST IDs only."
+            echo "TradingFiew DEBUG launched without a detected native crash; calendar interstitial tested with Google TEST IDs only."
       - name: Upload logs and activity state
         uses: actions/upload-artifact@v4
         if: always()

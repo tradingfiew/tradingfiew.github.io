@@ -1,14 +1,18 @@
 [
   {
     "relation": [
-      "delegate_permission/common.handle_all_urls"
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
     ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.ribhlab.tradingfiew",
       "sha256_cert_fingerprints": [
         "D4:EB:66:E3:3A:A0:54:C2:34:DB:19:6D:29:31:BA:38:9A:91:0B:C6:A9:FB:23:14:A8:4E:92:A0:B6:BD:2A:BC",
-        "4A:BF:1D:24:A0:AA:23:18:E9:FA:78:E5:65:E7:9C:AF:E2:69:49:C1:98:DC:EB:1D:83:61:B6:21:4D:51:E4:E7"
+        "4A:BF:1D:24:A0:AA:23:18:E9:FA:78:E5:65:E7:9C:AF:E2:69:49:C1:98:DC:EB:1D:83:61:B6:21:4D:51:E4:E7",
+        "4A:49:0D:8F:99:C8:95:69:FB:4A:47:9B:48:1B:99:04:4E:28:13:24:ED:47:54:D2:EF:22:3F:7C:BF:1C:38:E9",
+        "06:8C:06:C3:CD:39:56:28:6B:21:F6:A7:2B:E7:8D:D8:5B:9F:84:06:28:94:C2:2C:9C:5F:B1:18:F7:65:7A:A2",
+        "40:46:DD:A6:FA:F0:D6:7A:BD:45:C3:1D:41:38:43:86:D4:66:1C:1B:FC:74:88:0E:F1:74:49:80:FA:B4:DD:D6"
       ]
     }
   }

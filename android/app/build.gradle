@@ -28,8 +28,8 @@ android {
         applicationId = 'com.ribhlab.tradingfiew'
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = '1.0.8'
+        versionCode = 10
+        versionName = '1.0.9'
         manifestPlaceholders = [admobAppId: admobAppIdValid ? admobAppId : debugAdmobAppId]
     }
 
@@ -48,7 +48,7 @@ android {
 
     buildTypes {
         release {
-            buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '\"ca-app-pub-7945572016731367/2464542387\"'
+            buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '\"ca-app-pub-7945572016731367/6455758286\"'
             // Google Play DEX optimization: run R8 on every production release.
             minifyEnabled = true
             shrinkResources = true

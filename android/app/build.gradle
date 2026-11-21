@@ -9,7 +9,8 @@ def signedBuild = [
     'TRADINGFIEW_KEY_PASSWORD'
 ].every { System.getenv(it)?.trim() }
 
-// The screenshot provides the Interstitial AD UNIT ID, not the AdMob APP ID.
+// Real AdMob App ID and Interstitial Ad Unit ID are provided separately.
+// Banner unit ID is intentionally unused until a Banner placement is implemented.
 // Never sign/publish a release using Google's sample APP ID.
 // GitHub Actions must inject the real TradingFiew App ID through a protected secret.
 def admobAppId = (System.getenv('TRADINGFIEW_ADMOB_APP_ID') ?: '').trim()
@@ -48,7 +49,7 @@ android {
 
     buildTypes {
         release {
-            buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '\"ca-app-pub-7945572016731367/6455758286\"'
+            buildConfigField 'String', 'ADMOB_INTERSTITIAL_UNIT_ID', '\"ca-app-pub-7945572016731367/2464542387\"'
             // Google Play DEX optimization: run R8 on every production release.
             minifyEnabled = true
             shrinkResources = true

@@ -1,10 +1,8 @@
 # TradingFiew Android — AdMob Interstitial-only Release
 
-As of 18 Nov 2026, the previous signed Google Play AAB is **1.0.2 / versionCode 3**.
-This branch contains an **Android 1.0.3 / versionCode 4** integration tested with Google's
-sample AdMob IDs in DEBUG. **Version 4 is NOT signed and NOT uploaded to Play** until
-the correct TradingFiew application ID and applicable Play Ads / Data Safety forms
-are verified.
+As of 18 Nov 2026, the Current prepared release: **Android 1.0.9 / versionCode 10**. Production uses the
+TradingFiew AdMob App ID and the verified Interstitial unit. Test variants keep Google's
+official sample IDs and a separate package suffix.
 
 ## IDs — distinct values
 - Interstitial Ad Unit ID (verified in AdMob UI as Interstitial):
@@ -40,13 +38,13 @@ refuse to produce an Android release without the real TradingFiew AdMob App ID.
 ## Data safety and publishing gates
 1. Confirm app ID belongs to `com.ribhlab.tradingfiew`, not any other app.
 2. Compile and run app; verify no startup crashes and calendar transition fallback.
-3. Build and sign AAB 1.0.3 / code 4 with original upload key; confirm
+3. Build and sign AAB 1.0.9 / code 10 with original upload key; confirm
    package/version, AdMob App ID in merged manifest, and cert fingerprint.
 4. Update Play **Ads declaration** to reflect native AdMob interstitials and
    revise **Data Safety** for advertising identifier / technical / diagnostic
    data as necessary, based on SDK and actual provider handling.
 5. Review **UMP privacy messaging** in AdMob for supported regions.
-6. Upload version 4 to **Internal Testing**, obtain a clean pre-launch report,
+6. Upload version 10 to **Internal Testing**, obtain a clean pre-launch report,
    and only then consider Production when Play policy, app review and test
    eligibility are truly satisfied.
 7. Check Google Play after each operation. A successful GitHub workflow is

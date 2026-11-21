@@ -8,11 +8,11 @@ are verified.
 
 ## IDs — distinct values
 - Interstitial Ad Unit ID (verified from the owner's AdMob screenshot):
-  `ca-app-pub-7945572016731367/8117339646`
+  `ca-app-pub-7945572016731367/2464542387`
 - Unused Banner Ad Unit:
-  `ca-app-pub-7945572016731367/9838506070`
-- **AdMob App ID (required, still unavailable):**
-  `ca-app-pub-7945572016731367~XXXXXXXXXX`.
+  `ca-app-pub-7945572016731367/6455758286`
+- **AdMob App ID (provided for TradingFiew):**
+  `ca-app-pub-7945572016731367~6802871518`.
   Obtain the exact value from **AdMob → Apps → TradingFiew → App settings → App ID**.
   This is a public configuration identifier, *not* a password or keystore.
   **Do not substitute the RivoScan or NovaGrid app IDs.**

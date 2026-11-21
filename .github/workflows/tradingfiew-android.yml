@@ -57,7 +57,7 @@ jobs:
       - name: Upload debug APK for Android QA
         uses: actions/upload-artifact@v7
         with:
-          name: TradingFiew-Android-1.0.7-DEBUG-AdMobTest
+          name: TradingFiew-Android-1.0.8-DEBUG-AdMobTest
           if-no-files-found: error
           retention-days: 14
           path: android/app/build/outputs/apk/debug/*.apk
@@ -71,12 +71,12 @@ jobs:
           test -s "$QA_APK"
           test -s "$R8_MAP"
           AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
-          "$AAPT" dump badging "$QA_APK" | grep -F "name='com.ribhlab.tradingfiew.r8qa' versionCode='8'"
+          "$AAPT" dump badging "$QA_APK" | grep -F "name='com.ribhlab.tradingfiew.r8qa' versionCode='9'"
           echo 'R8 produced an optimized, obfuscated QA mapping and installable APK.' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload R8 QA APK and mapping (NEVER publish this QA build)
         uses: actions/upload-artifact@v7
         with:
-          name: TradingFiew-1.0.7-R8-QA-DEBUG-KEY
+          name: TradingFiew-1.0.8-R8-QA-DEBUG-KEY
           retention-days: 14
           if-no-files-found: error
           path: |
@@ -104,7 +104,7 @@ jobs:
         if: steps.signing.outputs.signed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: TradingFiew-Android-1.0.7-SIGNED
+          name: TradingFiew-Android-1.0.8-SIGNED
           if-no-files-found: error
           retention-days: 30
           path: |

@@ -71,12 +71,14 @@ class AndroidTwaConfigTest(unittest.TestCase):
         ]
         self.assertEqual(len(ads_meta), 1)
         self.assertEqual(ads_meta[0].get(ANDROID + "value"), "${admobAppId}")
+        permissions = {p.get(ANDROID + "name") for p in root.findall("uses-permission")}
+        self.assertIn("com.google.android.gms.permission.AD_ID", permissions)
         build = (BASE / "android/app/build.gradle").read_text()
         self.assertIn("play-services-ads:25.5.0", build)
         self.assertIn("user-messaging-platform:4.0.0", build)
         self.assertIn("TRADINGFIEW_ADMOB_APP_ID", build)
-        self.assertIn("ca-app-pub-7945572016731367/6455758286", build)
-        self.assertNotIn("ca-app-pub-7945572016731367/2464542387", build)
+        self.assertIn("ca-app-pub-7945572016731367/2464542387", build)
+        self.assertNotIn("ca-app-pub-7945572016731367/6455758286", build)
         self.assertNotIn("ca-app-pub-7945572016731367/8117339646", build)
         self.assertNotIn("9838506070", build)
         interstitial = (BASE / "android/app/src/main/java/com/ribhlab/tradingfiew/AdMobInterstitialController.java").read_text()

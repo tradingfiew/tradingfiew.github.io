@@ -121,6 +121,8 @@ class AndroidTwaConfigTest(unittest.TestCase):
         self.assertIsNotNone(name_match, "Semantic Android versionName missing")
         self.assertGreaterEqual(tuple(map(int, name_match.groups())), (1, 0, 7))
         self.assertIn("targetSdk = 36", build)
+        self.assertIn("versionCode = 11", build)
+        self.assertIn("versionName = '1.0.10'", build)
 
 
     def test_gradle_properties_use_gradle_10_compatible_assignment(self):

@@ -7,10 +7,10 @@ the correct TradingFiew application ID and applicable Play Ads / Data Safety for
 are verified.
 
 ## IDs — distinct values
-- Interstitial Ad Unit ID (verified from the owner's AdMob screenshot):
-  `ca-app-pub-7945572016731367/2464542387`
-- Unused Banner Ad Unit:
+- Interstitial Ad Unit ID (verified in AdMob UI as Interstitial):
   `ca-app-pub-7945572016731367/6455758286`
+- Banner Ad Unit (not currently used by the Android app):
+  `ca-app-pub-7945572016731367/2464542387`
 - **AdMob App ID (provided for TradingFiew):**
   `ca-app-pub-7945572016731367~6802871518`.
   Obtain the exact value from **AdMob → Apps → TradingFiew → App settings → App ID**.
